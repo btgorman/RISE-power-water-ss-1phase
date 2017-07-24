@@ -1,0 +1,4 @@
+INPUT,INPUT,INPUT,INPUT,INPUT,INPUT,INPUT,INPUT,INPUT,INPUT,INPUT,INPUT
+ID,type,x_1_coordinate,x_2_coordinate,x_3_coordinate,x_4_coordinate,x_5_coordinate,y_1_coordinate,y_2_coordinate,y_3_coordinate,y_4_coordinate,y_5_coordinate
+1,1000,0,0.1,0.2,0.4,1,0,0.86,0.9,0.93,0.97
+2,1000,0,25,50,75,100,1.2,1,0.9,0.8,0.6

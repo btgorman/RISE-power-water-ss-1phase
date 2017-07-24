@@ -1,0 +1,4 @@
+INPUT,INPUT,INPUT,INPUT,INPUT,INPUT,INPUT,INPUT,INPUT,INPUT,INPUT,RELIABILITY,RELIABILITY,CONTROL,OUTPUT,OUTPUT,OUTPUT,OUTPUT,OUTPUT,OUTPUT,OUTPUT,OUTPUT,OUTPUT,OUTPUT,OUTPUT,OUTPUT,OUTPUT,OUTPUT,OUTPUT,OUTPUT,OUTPUT,OUTPUT,OUTPUT,OUTPUT,OUTPUT,OUTPUT,OUTPUT,OUTPUT
+ID,type,terminal_1_ID,terminal_2_ID,functional_status,a,b,c,nominal_LL_voltage,rated_reactive_power,wiring,angle_delta_limit,max_PU_capacity,operational_status,a_1_current,b_1_current,c_1_current,n_1_current,a_1_current_angle,b_1_current_angle,c_1_current_angle,n_1_current_angle,a_2_current,b_2_current,c_2_current,n_2_current,a_2_current_angle,b_2_current_angle,c_2_current_angle,n_2_current_angle,real_power_1,reactive_power_1,real_power_2,reactive_power_2,real_power_losses,reactive_power_losses,angle_delta,PU_capacity
+744,1404,844,0,1,1,1,1,24.9,300,1,90,1.4,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+748,1404,848,0,1,1,1,1,24.9,450,1,90,1.4,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0

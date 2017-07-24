@@ -1,0 +1,4 @@
+INPUT,INPUT,INPUT,INPUT,INPUT,INPUT,INPUT,INPUT,RELIABILITY,OUTPUTS,OUTPUTS,OUTPUTS,OUTPUTS,OUTPUTS
+ID,type,functional_status,diameter,elevation,initial_level,max_level,min_volume,min_level,demand,head,percent_level,pressure,quality
+34,2102,1,50,0,10,20,0,0,0,0,0,0,0
+37,2102,1,50,0,10,20,0,0,0,0,0,0,0
