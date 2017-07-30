@@ -1,6 +1,2 @@
 INPUT,INPUT,INPUT,INPUT,INPUT,INPUT
 ID,type,load_ID,pump_ID,check_load_demand,check_pump_status
-2,9000,802,41,0,1
-3,9000,920,9,0,1
-4,9000,922,33,0,1
-5,9000,840,42,0,1

@@ -315,24 +315,10 @@ class LineCode: #errors -1125 to -1149
 	KRON_REDUCTION = 2
 	NORMAL_AMPS = 3
 	NUMBER_OF_PHASES = 4
-	R11 = 5
-	R21 = 6
-	R22 = 7
-	R31 = 8
-	R32 = 9
-	R33 = 10
-	X11 = 11
-	X21 = 12
-	X22 = 13
-	X31 = 14
-	X32 = 15
-	X33 = 16
-	C11 = 17
-	C21 = 18
-	C22 = 19
-	C31 = 20
-	C32 = 21
-	C33 = 22
+	R0_SCALAR = 5
+	R1_SCALAR = 6
+	X0_SCALAR = 7
+	X1_SCALAR = 8
 	MAX_PU_CAPACITY = 23
 	UNITS = 'kft'
 
@@ -361,38 +347,17 @@ class LineCode: #errors -1125 to -1149
 
 				str_self_name = str(int(row[LineCode.TYPE])) + '_' + str(int(row[LineCode.ID]))
 
-				if row[LineCode.NUMBER_OF_PHASES] == 1.0:
-					str_rmatrix = '~ Rmatrix = ({:f})'.format(row[LineCode.R11])
-					str_xmatrix = '~ Xmatrix = ({:f})'.format(row[LineCode.X11])
-					str_cmatrix = '~ Cmatrix = ({:f})'.format(row[LineCode.C11])
-				elif row[LineCode.NUMBER_OF_PHASES] == 2.0:
-					str_rmatrix = '~ Rmatrix = [{:f} | {:f} {:f}]'.format(row[LineCode.R11], row[LineCode.R21], row[LineCode.R22])
-					str_xmatrix = '~ Xmatrix = [{:f} | {:f} {:f}]'.format(row[LineCode.X11], row[LineCode.X21], row[LineCode.X22])
-					str_cmatrix = '~ Cmatrix = [{:f} | {:f} {:f}]'.format(row[LineCode.C11], row[LineCode.C21], row[LineCode.C22])
-				elif row[LineCode.NUMBER_OF_PHASES] == 3.0:
-					str_rmatrix = '~ Rmatrix = [{:f} | {:f} {:f} | {:f} {:f} {:f}]'.format(row[LineCode.R11], row[LineCode.R21], row[LineCode.R22],
-						row[LineCode.R31], row[LineCode.R32], row[LineCode.R33])
-					str_xmatrix = '~ Xmatrix = [{:f} | {:f} {:f} | {:f} {:f} {:f}]'.format(row[LineCode.X11], row[LineCode.X21], row[LineCode.X22],
-						row[LineCode.X31], row[LineCode.X32], row[LineCode.X33])
-					str_cmatrix = '~ Cmatrix = [{:f} | {:f} {:f} | {:f} {:f} {:f}]'.format(row[LineCode.C11], row[LineCode.C21], row[LineCode.C22],
-						row[LineCode.C31], row[LineCode.C32], row[LineCode.C33])
-				else:
-					print('Error: -1128')
-
 				if debug == 1:
-					print('New \'LineCode.{}\' Nphases=\'{}\' Units=\'{}\' Normamps=\'{:f}\' Emergamps=\'{:f}\' Kron=\'{}\''.format(
-					str_self_name, int(row[LineCode.NUMBER_OF_PHASES]), LineCode.UNITS, row[LineCode.NORMAL_AMPS],
+					print('New \'LineCode.{}\' Nphases=\'{}\' R0=\'{}\' R1=\'{}\' X0=\'{}\' X1=\'{}\' Units=\'{}\' Normamps=\'{:f}\' Emergamps=\'{:f}\' Kron=\'{}\''.format(
+					str_self_name, int(row[LineCode.NUMBER_OF_PHASES]), row[LineCode.R0_SCALAR], row[LineCode.R1_SCALAR],
+					row[LineCode.X0_SCALAR], row[LineCode.X1_SCALAR], LineCode.UNITS, row[LineCode.NORMAL_AMPS],
 					row[LineCode.NORMAL_AMPS]*row[LineCode.MAX_PU_CAPACITY], neutral_reduce))
-					print(str_rmatrix)
-					print(str_xmatrix)
-					print(str_cmatrix, '\n')
+					print('\n')
 
-				dss.Command = 'New \'LineCode.{}\' Nphases=\'{}\' Units=\'{}\' Normamps=\'{:f}\' Emergamps=\'{:f}\' Kron=\'{}\''.format(
-					str_self_name, int(row[LineCode.NUMBER_OF_PHASES]), LineCode.UNITS, row[LineCode.NORMAL_AMPS],
+				dss.Command = 'New \'LineCode.{}\' Nphases=\'{}\' R0=\'{}\' R1=\'{}\' X0=\'{}\' X1=\'{}\' Units=\'{}\' Normamps=\'{:f}\' Emergamps=\'{:f}\' Kron=\'{}\''.format(
+					str_self_name, int(row[LineCode.NUMBER_OF_PHASES]), row[LineCode.R0_SCALAR], row[LineCode.R1_SCALAR],
+					row[LineCode.X0_SCALAR], row[LineCode.X1_SCALAR], LineCode.UNITS, row[LineCode.NORMAL_AMPS],
 					row[LineCode.NORMAL_AMPS]*row[LineCode.MAX_PU_CAPACITY], neutral_reduce)
-				dss.Command = str_rmatrix
-				dss.Command = str_xmatrix
-				dss.Command = str_cmatrix
 			return 0
 		except:
 			print('Error: #-1125')
@@ -449,20 +414,12 @@ class Bus: #errors -1150 to -1174
 	FUNCTIONAL_STATUS = 2 # switch
 	NOMINAL_LL_VOLTAGE = 3
 	A = 4
-	B = 5
-	C = 6
-	MIN_PU_VOLTAGE = 7
-	MAX_PU_VOLTAGE = 8
-	OPERATIONAL_STATUS = 9 # switch
-	A_PU_VOLTAGE = 10
-	B_PU_VOLTAGE = 11
-	C_PU_VOLTAGE = 12
-	A_VOLTAGE = 13
-	B_VOLTAGE = 14
-	C_VOLTAGE = 15
-	A_VOLTAGE_ANGLE = 16
-	B_VOLTAGE_ANGLE = 17
-	C_VOLTAGE_ANGLE = 18
+	MIN_PU_VOLTAGE = 5
+	MAX_PU_VOLTAGE = 6
+	OPERATIONAL_STATUS = 7 # switch
+	A_PU_VOLTAGE = 8
+	A_VOLTAGE = 9
+	A_VOLTAGE_ANGLE = 10
 
 	def __init__(self, dframe):
 		self.cols = list(dframe.columns)
@@ -502,23 +459,12 @@ class Bus: #errors -1150 to -1174
 				var_volt_mag = list(dssActvBus.VMagAngle)
 				var_volt_pu = list(dssActvBus.puVmagAngle)
 
-				row[Bus.A_PU_VOLTAGE : Bus.C_VOLTAGE_ANGLE+1] = 0.0
+				row[Bus.A_PU_VOLTAGE] = 0.0
 
-				if row[Bus.A] == 1.0:
-					row[Bus.A_VOLTAGE] = var_volt_mag[idxcount*2]
-					row[Bus.A_VOLTAGE_ANGLE] = var_volt_mag[idxcount*2 + 1]
-					row[Bus.A_PU_VOLTAGE] = var_volt_pu[idxcount*2]
-					idxcount += 1
-				if row[Bus.B] == 1.0:
-					row[Bus.B_VOLTAGE] = var_volt_mag[idxcount*2]
-					row[Bus.B_VOLTAGE_ANGLE] = var_volt_mag[idxcount*2 + 1]
-					row[Bus.B_PU_VOLTAGE] = var_volt_pu[idxcount*2]
-					idxcount += 1
-				if row[Bus.C] == 1.0:
-					row[Bus.C_VOLTAGE] = var_volt_mag[idxcount*2]
-					row[Bus.C_VOLTAGE_ANGLE] = var_volt_mag[idxcount*2 + 1]
-					row[Bus.C_PU_VOLTAGE] = var_volt_pu[idxcount*2]
-					idxcount += 1
+				row[Bus.A_VOLTAGE] = var_volt_mag[idxcount*2]
+				row[Bus.A_VOLTAGE_ANGLE] = var_volt_mag[idxcount*2 + 1]
+				row[Bus.A_PU_VOLTAGE] = var_volt_pu[idxcount*2]
+				idxcount += 1
 			return 0
 		except:
 			print('Error: #-1152')
@@ -541,7 +487,7 @@ class Bus: #errors -1150 to -1174
 	def convertToOutputTensor(self):
 		try:
 			output_list = []
-			output_col = ['a_PU_voltage', 'b_PU_voltage', 'c_PU_voltage']
+			output_col = ['a_PU_voltage']
 
 			for row in self.matrix:
 				for elem in output_col:
@@ -573,43 +519,24 @@ class VSource: #errors -1175 to -1199
 	FUNCTIONAL_STATUS = 2 # switch
 	NOMINAL_LL_VOLTAGE = 3
 	A = 4
-	B = 5
-	C = 6
-	EXPECTED_GENERATION = 7
-	R0 = 8
-	R1 = 9
-	SHORT_CIRCUIT_3 = 10
-	SHORT_CIRCUIT_SLG = 11
-	UNIT_COMMIT_COST = 12
-	UNIT_MARGINAL_COST = 13
-	VOLTAGE_ANGLE = 14
-	X0 = 15
-	X1 = 16
-	MIN_PU_VOLTAGE = 17
-	MAX_PU_VOLTAGE = 18
-	MAX_AREA_CONTROL_ERROR = 19
-	OPERATIONAL_STATUS = 20 # switch
-	A_PU_VOLTAGE = 21
-	B_PU_VOLTAGE = 22
-	C_PU_VOLTAGE = 23
-	A_VOLTAGE = 24
-	B_VOLTAGE = 25
-	C_VOLTAGE = 26
-	A_VOLTAGE_ANGLE = 27
-	B_VOLTAGE_ANGLE = 28
-	C_VOLTAGE_ANGLE = 29
-	A_CURRENT = 30
-	B_CURRENT = 31
-	C_CURRENT = 32
-	N_CURRENT = 33
-	A_CURRENT_ANGLE = 34
-	B_CURRENT_ANGLE = 35
-	C_CURRENT_ANGLE = 36
-	N_CURRENT_ANGLE = 37
-	REAL_POWER = 38
-	REACTIVE_POWER = 39
-	AREA_CONTROL_ERROR = 40
-	UNIT_NET_COST = 41
+	EXPECTED_GENERATION = 5
+	R0 = 6
+	R1 = 7
+	VOLTAGE_ANGLE = 8
+	X0 = 9
+	X1 = 10
+	MIN_PU_VOLTAGE = 11
+	MAX_PU_VOLTAGE = 12
+	MAX_AREA_CONTROL_ERROR = 13
+	OPERATIONAL_STATUS = 14 # switch
+	A_PU_VOLTAGE = 15
+	A_VOLTAGE = 16
+	A_VOLTAGE_ANGLE = 17
+	A_CURRENT = 18
+	A_CURRENT_ANGLE = 19
+	REAL_POWER = 20
+	REACTIVE_POWER = 21
+	AREA_CONTROL_ERROR = 22
 
 	def __init__(self, dframe):
 		self.cols = list(dframe.columns)
@@ -630,16 +557,22 @@ class VSource: #errors -1175 to -1199
 		try:
 			for row in self.matrix:
 				str_self_name = str(int(row[VSource.TYPE])) + '_' + str(int(row[VSource.ID]))
+				num_phases = 0
+				mvasc1 = 100
+				mvasc3 = 300
+
+				if row[VSource.A] == 1.0:
+					num_phase += 1
 
 				if debug == 1:
 					print('New \'Circuit.{}\' Basekv=\'{:f}\' phases=\'{}\' pu=\'{:f}\' Angle=\'{:f}\' Mvasc1=\'{:f}\' Mvasc3=\'{:f}\' R0=\'{:f}\' R1=\'{:f}\' X0=\'{:f}\' X1=\'{:f}\'\n'.format(
-					str_self_name, row[VSource.NOMINAL_LL_VOLTAGE], 3, 1.05, row[VSource.VOLTAGE_ANGLE],
-					row[VSource.SHORT_CIRCUIT_SLG], row[VSource.SHORT_CIRCUIT_3], row[VSource.R0], row[VSource.R1],
+					str_self_name, row[VSource.NOMINAL_LL_VOLTAGE], num_phases, row[VSource.A_PU_VOLTAGE], row[VSource.VOLTAGE_ANGLE],
+					mvasc1, mvasc3, row[VSource.R0], row[VSource.R1],
 					row[VSource.X0], row[VSource.X1]))
 
 				dss.Command = 'New \'Circuit.{}\' Basekv=\'{:f}\' phases=\'{}\' pu=\'{:f}\' Angle=\'{:f}\' Mvasc1=\'{:f}\' Mvasc3=\'{:f}\' R0=\'{:f}\' R1=\'{:f}\' X0=\'{:f}\' X1=\'{:f}\''.format(
-					str_self_name, row[VSource.NOMINAL_LL_VOLTAGE], 3, 1.05, row[VSource.VOLTAGE_ANGLE],
-					row[VSource.SHORT_CIRCUIT_SLG], row[VSource.SHORT_CIRCUIT_3], row[VSource.R0], row[VSource.R1],
+					str_self_name, row[VSource.NOMINAL_LL_VOLTAGE], num_phases, row[VSource.A_PU_VOLTAGE], row[VSource.VOLTAGE_ANGLE],
+					mvasc1, mvasc3, row[VSource.R0], row[VSource.R1],
 					row[VSource.X0], row[VSource.X1])
 			return 0
 		except:
@@ -671,7 +604,7 @@ class VSource: #errors -1175 to -1199
 				num_phases = dssActvElem.NumPhases
 				num_conds = dssActvElem.NumConductors
 
-				row[VSource.A_PU_VOLTAGE : VSource.UNIT_NET_COST+1] = 0.0
+				row[VSource.A_PU_VOLTAGE : VSource.AREA_CONTROL_ERROR+1] = 0.0
 
 				if row[VSource.A] == 1.0:
 					row[VSource.A_VOLTAGE] = var_volt_mag[idxcount*2]
@@ -679,24 +612,6 @@ class VSource: #errors -1175 to -1199
 					row[VSource.A_PU_VOLTAGE] = var_volt_pu[idxcount*2]
 					row[VSource.A_CURRENT] = var_curr[idxcount*2]
 					row[VSource.A_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
-					row[VSource.REAL_POWER] += var_pow[idxcount*2]
-					row[VSource.REACTIVE_POWER] += var_pow[idxcount*2 + 1]
-					idxcount += 1
-				if row[VSource.B] == 1.0:
-					row[VSource.B_VOLTAGE] = var_volt_mag[idxcount*2]
-					row[VSource.B_VOLTAGE_ANGLE] = var_volt_mag[idxcount*2 + 1]
-					row[VSource.B_PU_VOLTAGE] = var_volt_pu[idxcount*2]
-					row[VSource.B_CURRENT] = var_curr[idxcount*2]
-					row[VSource.B_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
-					row[VSource.REAL_POWER] += var_pow[idxcount*2]
-					row[VSource.REACTIVE_POWER] += var_pow[idxcount*2 + 1]
-					idxcount += 1
-				if row[VSource.C] == 1.0:
-					row[VSource.C_VOLTAGE] = var_volt_mag[idxcount*2]
-					row[VSource.C_VOLTAGE_ANGLE] = var_volt_mag[idxcount*2 + 1]
-					row[VSource.C_PU_VOLTAGE] = var_volt_pu[idxcount*2]
-					row[VSource.C_CURRENT] = var_curr[idxcount*2]
-					row[VSource.C_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
 					row[VSource.REAL_POWER] += var_pow[idxcount*2]
 					row[VSource.REACTIVE_POWER] += var_pow[idxcount*2 + 1]
 					idxcount += 1
@@ -726,7 +641,7 @@ class VSource: #errors -1175 to -1199
 	def convertToOutputTensor(self):
 		try:
 			output_list = []
-			output_col = ['a_PU_voltage', 'b_PU_voltage', 'c_PU_voltage', 'a_current', 'b_current', 'c_current', 'n_current']
+			output_col = ['a_PU_voltage', 'a_current']
 
 			for row in self.matrix:
 				for elem in output_col:
