@@ -615,10 +615,6 @@ class VSource: #errors -1175 to -1199
 					row[VSource.REAL_POWER] += var_pow[idxcount*2]
 					row[VSource.REACTIVE_POWER] += var_pow[idxcount*2 + 1]
 					idxcount += 1
-				if num_conds > num_phases:
-					row[VSource.N_CURRENT] = var_curr[idxcount*2]
-					row[VSource.N_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
-					idxcount += 1
 			return 0
 		except:
 			print('Error: #-1179')
@@ -668,43 +664,26 @@ class Generator: #errors -1200 to -1224
 	FUNCTIONAL_STATUS = 2 # switch
 	NOMINAL_LL_VOLTAGE = 3
 	A = 4
-	B = 5
-	C = 6
-	GENERATION = 7 # stochastic temporary
-	MIN_POWER_FACTOR = 8
-	MODEL = 9
-	RAMP_RATE = 10
-	RATED_CAPACITY = 11
-	UNIT_COMMIT_COST = 12
-	UNIT_MARGINAL_COST = 13
-	WATER_CONSUMPTION = 14
-	WATER_DERATING = 15
-	WIRING = 16
-	MIN_PU_VOLTAGE = 17
-	MAX_PU_VOLTAGE = 18
-	OPERATIONAL_STATUS = 19 # switch
-	GENERATION_TARGET = 20 # stochastic
-	POWER_FACTOR_CONTROL = 21 # stochastic
-	A_PU_VOLTAGE = 22
-	B_PU_VOLTAGE = 23
-	C_PU_VOLTAGE = 24
-	A_VOLTAGE = 25
-	B_VOLTAGE = 26
-	C_VOLTAGE = 27
-	A_VOLTAGE_ANGLE = 28
-	B_VOLTAGE_ANGLE = 29
-	C_VOLTAGE_ANGLE = 30
-	A_CURRENT = 31
-	B_CURRENT = 32
-	C_CURRENT = 33
-	N_CURRENT = 34
-	A_CURRENT_ANGLE = 35
-	B_CURRENT_ANGLE = 36
-	C_CURRENT_ANGLE = 37
-	N_CURRENT_ANGLE = 38
-	REAL_POWER = 39
-	REACTIVE_POWER = 40
-	UNIT_NET_COST = 41
+	GENERATION = 5 # stochastic temporary
+	MIN_POWER_FACTOR = 6
+	MODEL = 7
+	RAMP_RATE = 8
+	RATED_CAPACITY = 9
+	WATER_CONSUMPTION = 10
+	WATER_DERATING = 11
+	WIRING = 12
+	MIN_PU_VOLTAGE = 13
+	MAX_PU_VOLTAGE = 14
+	OPERATIONAL_STATUS = 15 # switch
+	GENERATION_TARGET = 16 # stochastic
+	POWER_FACTOR_CONTROL = 17 # stochastic
+	A_PU_VOLTAGE = 18
+	A_VOLTAGE = 19
+	A_VOLTAGE_ANGLE = 20
+	A_CURRENT = 21
+	A_CURRENT_ANGLE = 22
+	REAL_POWER = 23
+	REACTIVE_POWER = 24
 
 	def __init__(self, dframe):
 		self.cols = list(dframe.columns)
@@ -730,12 +709,6 @@ class Generator: #errors -1200 to -1224
 
 				if row[Generator.A] == 1.0:
 					str_bus_conn = str_bus_conn + '.1'
-					num_phases += 1
-				if row[Generator.B] == 1.0:
-					str_bus_conn = str_bus_conn + '.2'
-					num_phases += 1
-				if row[Generator.C] == 1.0:
-					str_bus_conn = str_bus_conn + '.3'
 					num_phases += 1
 
 				if num_phases == 0:
@@ -815,7 +788,7 @@ class Generator: #errors -1200 to -1224
 				num_phases = dssActvElem.NumPhases
 				num_conds = dssActvElem.NumConductors
 
-				row[Generator.A_PU_VOLTAGE : Generator.UNIT_NET_COST+1] = 0.0
+				row[Generator.A_PU_VOLTAGE : Generator.REACTIVE_POWER+1] = 0.0
 
 				if row[Generator.A] == 1.0:
 					row[Generator.A_VOLTAGE] = var_volt_mag[idxcount*2]
@@ -825,28 +798,6 @@ class Generator: #errors -1200 to -1224
 					row[Generator.A_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
 					row[Generator.REAL_POWER] += var_pow[idxcount*2]
 					row[Generator.REACTIVE_POWER] += var_pow[idxcount*2 + 1]
-					idxcount += 1
-				if row[Generator.B] == 1.0:
-					row[Generator.B_VOLTAGE] = var_volt_mag[idxcount*2]
-					row[Generator.B_VOLTAGE_ANGLE] = var_volt_mag[idxcount*2 + 1]
-					row[Generator.B_PU_VOLTAGE] = var_volt_pu[idxcount*2]
-					row[Generator.B_CURRENT] = var_curr[idxcount*2]
-					row[Generator.B_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
-					row[Generator.REAL_POWER] += var_pow[idxcount*2]
-					row[Generator.REACTIVE_POWER] += var_pow[idxcount*2 + 1]
-					idxcount += 1
-				if row[Generator.C] == 1.0:
-					row[Generator.C_VOLTAGE] = var_volt_mag[idxcount*2]
-					row[Generator.C_VOLTAGE_ANGLE] = var_volt_mag[idxcount*2 + 1]
-					row[Generator.C_PU_VOLTAGE] = var_volt_pu[idxcount*2]
-					row[Generator.C_CURRENT] = var_curr[idxcount*2]
-					row[Generator.C_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
-					row[Generator.REAL_POWER] += var_pow[idxcount*2]
-					row[Generator.REACTIVE_POWER] += var_pow[idxcount*2 + 1]
-					idxcount += 1
-				if num_conds > num_phases:
-					row[Generator.N_CURRENT] = var_curr[idxcount*2]
-					row[Generator.N_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
 					idxcount += 1
 			return 0
 		except:
@@ -884,7 +835,7 @@ class Generator: #errors -1200 to -1224
 	def convertToOutputTensor(self):
 		try:
 			output_list = []
-			output_col = ['a_PU_voltage', 'b_PU_voltage', 'c_PU_voltage', 'a_current', 'b_current', 'c_current', 'n_current']
+			output_col = ['a_PU_voltage', 'a_current']
 			
 			for row in self.matrix:
 				for elem in output_col:
@@ -935,42 +886,21 @@ class Load: #errors -1225 to -1249
 	FUNCTIONAL_STATUS = 2 # switch
 	NOMINAL_LL_VOLTAGE = 3
 	A = 4
-	B = 5
-	C = 6
-	DEMAND_LIMIT = 7
-	MODEL = 8
-	POWER_FACTOR = 9 # stochastic ?
-	WIRING = 10
-	ZIP_PU_VOLTAGE_CUTOFF = 11
-	ZIP_REAL_POWER = 12
-	ZIP_REAL_CURRENT = 13
-	ZIP_REAL_IMPEDANCE = 14
-	ZIP_REACTIVE_POWER = 15
-	ZIP_REACTIVE_CURRENT = 16
-	ZIP_REACTIVE_IMPEDANCE = 17
-	DEMAND = 18 # stochastic
-	MIN_PU_VOLTAGE = 19
-	MAX_PU_VOLTAGE = 20
-	OPERATIONAL_STATUS = 21 # switch
-	A_PU_VOLTAGE = 22
-	B_PU_VOLTAGE = 23
-	C_PU_VOLTAGE = 24
-	A_VOLTAGE = 25
-	B_VOLTAGE = 26
-	C_VOLTAGE = 27
-	A_VOLTAGE_ANGLE = 28
-	B_VOLTAGE_ANGLE = 29
-	C_VOLTAGE_ANGLE = 30
-	A_CURRENT = 31
-	B_CURRENT = 32
-	C_CURRENT = 33
-	N_CURRENT = 34
-	A_CURRENT_ANGLE = 35
-	B_CURRENT_ANGLE = 36
-	C_CURRENT_ANGLE = 37
-	N_CURRENT_ANGLE = 38
-	REAL_POWER = 39
-	REACTIVE_POWER = 40
+	DEMAND_LIMIT = 5
+	MODEL = 6
+	POWER_FACTOR = 7 # stochastic ?
+	WIRING = 8
+	DEMAND = 9 # stochastic
+	MIN_PU_VOLTAGE = 10
+	MAX_PU_VOLTAGE = 11
+	OPERATIONAL_STATUS = 12 # switch
+	A_PU_VOLTAGE = 13
+	A_VOLTAGE = 14
+	A_VOLTAGE_ANGLE = 15
+	A_CURRENT = 16
+	A_CURRENT_ANGLE = 17
+	REAL_POWER = 18
+	REACTIVE_POWER = 19
 
 	def __init__(self, dframe):
 		self.cols = list(dframe.columns)
@@ -997,12 +927,6 @@ class Load: #errors -1225 to -1249
 				if row[Load.A] == 1.0:
 					str_bus_conn = str_bus_conn + '.1'
 					num_phases += 1
-				if row[Load.B] == 1.0:
-					str_bus_conn = str_bus_conn + '.2'
-					num_phases += 1
-				if row[Load.C] == 1.0:
-					str_bus_conn = str_bus_conn + '.3'
-					num_phases += 1
 
 				if num_phases == 0:
 					print('Error: #-1226')
@@ -1012,7 +936,7 @@ class Load: #errors -1225 to -1249
 				elif num_phases == 1:
 					num_kv = num_kv / math.sqrt(3.0)
 
-				str_self_name = str(int(row[Load.TYPE])) + '_' + str(int(row[Load.ID])) + '_' + str(int(row[Load.A])) + '_' + str(int(row[Load.B])) + '_' + str(int(row[Load.C]))
+				str_self_name = str(int(row[Load.TYPE])) + '_' + str(int(row[Load.ID])) + '_' + str(int(row[Load.A]))
 				str_bus_name = str(Bus.CLID) + '_' + str(int(row[Load.ID]))
 
 				for interconn_row in interconn_dict['pumpload'].matrix:
@@ -1024,6 +948,7 @@ class Load: #errors -1225 to -1249
 
 				if debug == 1:
 					if row[Load.MODEL] == 8.0:
+						print('Zip model not included!\n')
 						print('New \'Load.{}\' Bus1=\'{}{}\' Phases=\'{}\' Kv=\'{:f}\' Kw=\'{:f}\' Pf=\'{:f}\' Model=\'{}\' ZIPV=[{:f} {:f} {:f} {:f} {:f} {:f} {:f}] Conn=\'{}\' Vminpu=\'{:f}\' Vmaxpu=\'{:f}\'\n'.format(
 							str_self_name, str_bus_name, str_bus_conn, num_phases,
 							num_kv, row[Load.DEMAND]+interconn_demand, row[Load.POWER_FACTOR], int(row[Load.MODEL]),
@@ -1101,28 +1026,6 @@ class Load: #errors -1225 to -1249
 					row[Load.REAL_POWER] += var_pow[idxcount*2]
 					row[Load.REACTIVE_POWER] += var_pow[idxcount*2 + 1]
 					idxcount += 1
-				if row[Load.B] == 1.0:
-					row[Load.B_VOLTAGE] = var_volt_mag[idxcount*2]
-					row[Load.B_VOLTAGE_ANGLE] = var_volt_mag[idxcount*2 + 1]
-					row[Load.B_PU_VOLTAGE] = var_volt_pu[idxcount*2]
-					row[Load.B_CURRENT] = var_curr[idxcount*2]
-					row[Load.B_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
-					row[Load.REAL_POWER] += var_pow[idxcount*2]
-					row[Load.REACTIVE_POWER] += var_pow[idxcount*2 + 1]
-					idxcount += 1
-				if row[Load.C] == 1.0:
-					row[Load.C_VOLTAGE] = var_volt_mag[idxcount*2]
-					row[Load.C_VOLTAGE_ANGLE] = var_volt_mag[idxcount*2 + 1]
-					row[Load.C_PU_VOLTAGE] = var_volt_pu[idxcount*2]
-					row[Load.C_CURRENT] = var_curr[idxcount*2]
-					row[Load.C_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
-					row[Load.REAL_POWER] += var_pow[idxcount*2]
-					row[Load.REACTIVE_POWER] += var_pow[idxcount*2 + 1]
-					idxcount += 1
-				if num_conds > num_phases:
-					row[Load.N_CURRENT] = var_curr[idxcount*2]
-					row[Load.N_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
-					idxcount += 1
 			return 0
 		except:
 			print('Error: #-1231')
@@ -1159,7 +1062,7 @@ class Load: #errors -1225 to -1249
 	def convertToOutputTensor(self):
 		try:
 			output_list = []
-			output_col = ['a_PU_voltage', 'b_PU_voltage', 'c_PU_voltage', 'a_current', 'b_current', 'c_current', 'n_current']
+			output_col = ['a_PU_voltage', 'a_current']
 			
 			for row in self.matrix:
 				for elem in output_col:
@@ -1201,44 +1104,27 @@ class SolarPV: #errors -1250 to -1274
 	FUNCTIONAL_STATUS = 2 # switch
 	NOMINAL_LL_VOLTAGE = 3
 	A = 4
-	B = 5
-	C = 6
-	CUT_IN_PERCENT = 7
-	CUT_OUT_PERCENT = 8
-	MIN_POWER_FACTOR = 9
-	MODEL = 10
-	PVEFF_CURVE_ID = 11
-	PVTEMP_CURVE_ID = 12
-	RATED_INVERTER = 13
-	RATED_CAPACITY = 14
-	UNIT_COMMIT_COST = 15
-	UNIT_MARGINAL_COST = 16
-	WIRING = 17
-	IRRADIANCE = 18 # stochastic
-	MIN_PU_VOLTAGE = 19
-	MAX_PU_VOLTAGE = 20
-	OPERATIONAL_STATUS = 21 # switch
-	POWER_FACTOR_CONTROL = 22 # stochastic
-	A_PU_VOLTAGE = 23
-	B_PU_VOLTAGE = 24
-	C_PU_VOLTAGE = 25
-	A_VOLTAGE = 26
-	B_VOLTAGE = 27
-	C_VOLTAGE = 28
-	A_VOLTAGE_ANGLE = 29
-	B_VOLTAGE_ANGLE = 30
-	C_VOLTAGE_ANGLE = 31
-	A_CURRENT = 32
-	B_CURRENT = 33
-	C_CURRENT = 34
-	N_CURRENT = 35
-	A_CURRENT_ANGLE = 36
-	B_CURRENT_ANGLE = 37
-	C_CURRENT_ANGLE = 38
-	N_CURRENT_ANGLE = 39
-	REAL_POWER = 40
-	REACTIVE_POWER = 41
-	UNIT_NET_COST = 42
+	CUT_IN_PERCENT = 5
+	CUT_OUT_PERCENT = 6
+	MIN_POWER_FACTOR = 7
+	MODEL = 8
+	PVEFF_CURVE_ID = 9
+	PVTEMP_CURVE_ID = 10
+	RATED_INVERTER = 11
+	RATED_CAPACITY = 12
+	WIRING = 13
+	IRRADIANCE = 14 # stochastic
+	MIN_PU_VOLTAGE = 15
+	MAX_PU_VOLTAGE = 16
+	OPERATIONAL_STATUS = 17 # switch
+	POWER_FACTOR_CONTROL = 18 # stochastic
+	A_PU_VOLTAGE = 19
+	A_VOLTAGE = 20
+	A_VOLTAGE_ANGLE = 21
+	A_CURRENT = 22
+	A_CURRENT_ANGLE = 23
+	REAL_POWER = 24
+	REACTIVE_POWER = 25
 
 	def __init__(self, dframe):
 		self.cols = list(dframe.columns)
@@ -1264,12 +1150,6 @@ class SolarPV: #errors -1250 to -1274
 
 				if row[SolarPV.A] == 1.0:
 					str_bus_conn = str_bus_conn + '.1'
-					num_phases += 1
-				if row[SolarPV.B] == 1.0:
-					str_bus_conn = str_bus_conn + '.2'
-					num_phases += 1
-				if row[SolarPV.C] == 1.0:
-					str_bus_conn = str_bus_conn + '.3'
 					num_phases += 1
 
 				if num_phases == 0:
@@ -1340,7 +1220,7 @@ class SolarPV: #errors -1250 to -1274
 				num_phases = dssActvElem.NumPhases
 				num_conds = dssActvElem.NumConductors
 
-				row[SolarPV.A_PU_VOLTAGE : SolarPV.UNIT_NET_COST+1] = 0.0
+				row[SolarPV.A_PU_VOLTAGE : SolarPV.REACTIVE_POWER+1] = 0.0
 
 				if row[SolarPV.A] == 1.0:
 					row[SolarPV.A_VOLTAGE] = var_volt_mag[idxcount*2]
@@ -1350,28 +1230,6 @@ class SolarPV: #errors -1250 to -1274
 					row[SolarPV.A_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
 					row[SolarPV.REAL_POWER] += var_pow[idxcount*2]
 					row[SolarPV.REACTIVE_POWER] += var_pow[idxcount*2 + 1]
-					idxcount += 1
-				if row[SolarPV.B] == 1.0:
-					row[SolarPV.B_VOLTAGE] = var_volt_mag[idxcount*2]
-					row[SolarPV.B_VOLTAGE_ANGLE] = var_volt_mag[idxcount*2 + 1]
-					row[SolarPV.B_PU_VOLTAGE] = var_volt_pu[idxcount*2]
-					row[SolarPV.B_CURRENT] = var_curr[idxcount*2]
-					row[SolarPV.B_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
-					row[SolarPV.REAL_POWER] += var_pow[idxcount*2]
-					row[SolarPV.REACTIVE_POWER] += var_pow[idxcount*2 + 1]
-					idxcount += 1
-				if row[SolarPV.C] == 1.0:
-					row[SolarPV.C_VOLTAGE] = var_volt_mag[idxcount*2]
-					row[SolarPV.C_VOLTAGE_ANGLE] = var_volt_mag[idxcount*2 + 1]
-					row[SolarPV.C_PU_VOLTAGE] = var_volt_pu[idxcount*2]
-					row[SolarPV.C_CURRENT] = var_curr[idxcount*2]
-					row[SolarPV.C_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
-					row[SolarPV.REAL_POWER] += var_pow[idxcount*2]
-					row[SolarPV.REACTIVE_POWER] += var_pow[idxcount*2 + 1]
-					idxcount += 1
-				if num_conds > num_phases:
-					row[SolarPV.N_CURRENT] = var_curr[idxcount*2]
-					row[SolarPV.N_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
 					idxcount += 1
 			return 0
 		except:
@@ -1409,7 +1267,7 @@ class SolarPV: #errors -1250 to -1274
 	def convertToOutputTensor(self):
 		try:
 			output_list = []
-			output_col = ['a_PU_voltage', 'b_PU_voltage', 'c_PU_voltage', 'a_current', 'b_current', 'c_current', 'n_current']
+			output_col = ['a_PU_voltage', 'a_current']
 			
 			for row in self.matrix:
 				for elem in output_col:
@@ -1460,16 +1318,12 @@ class WindTurbine: #errors -1275 to -1299
 	FUNCTIONAL_STATUS = 2 # switch
 	NOMINAL_LL_VOLTAGE = 3
 	A = 4
-	B = 5
-	C = 6
 	CUT_IN_SPEED = 7
 	CUT_OUT_SPEED = 8
 	MODEL = 9
 	POWER_FACTOR = 10
 	RATED_CAPACITY = 11
 	RATED_SPEED = 12
-	UNIT_COMMIT_COST = 13
-	UNIT_MARGINAL_COST = 14
 	WIND_CURVE_ID = 15
 	WIRING = 16
 	WIND_SPEED = 17 # stochastic
@@ -1477,25 +1331,12 @@ class WindTurbine: #errors -1275 to -1299
 	MAX_PU_VOLTAGE = 19
 	OPERATIONAL_STATUS = 20 # switch
 	A_PU_VOLTAGE = 21
-	B_PU_VOLTAGE = 22
-	C_PU_VOLTAGE = 23
 	A_VOLTAGE = 24
-	B_VOLTAGE = 25
-	C_VOLTAGE = 26
 	A_VOLTAGE_ANGLE = 27
-	B_VOLTAGE_ANGLE = 28
-	C_VOLTAGE_ANGLE = 29
 	A_CURRENT = 30
-	B_CURRENT = 31
-	C_CURRENT = 32
-	N_CURRENT = 33
 	A_CURRENT_ANGLE = 34
-	B_CURRENT_ANGLE = 35
-	C_CURRENT_ANGLE = 36
-	N_CURRENT_ANGLE = 37
 	REAL_POWER = 38
 	REACTIVE_POWER = 39
-	UNIT_NET_COST = 40
 
 	def __init__(self, dframe, xy_object):
 		self.cols = list(dframe.columns)
@@ -1521,12 +1362,6 @@ class WindTurbine: #errors -1275 to -1299
 
 				if row[WindTurbine.A] == 1.0:
 					str_bus_conn = str_bus_conn + '.1'
-					num_phases += 1
-				if row[WindTurbine.B] == 1.0:
-					str_bus_conn = str_bus_conn + '.2'
-					num_phases += 1
-				if row[WindTurbine.C] == 1.0:
-					str_bus_conn = str_bus_conn + '.3'
 					num_phases += 1
 
 				if num_phases == 0:
@@ -1588,7 +1423,7 @@ class WindTurbine: #errors -1275 to -1299
 				num_phases = dssActvElem.NumPhases
 				num_conds = dssActvElem.NumConductors
 
-				row[WindTurbine.A_PU_VOLTAGE : WindTurbine.UNIT_NET_COST+1] = 0.0
+				row[WindTurbine.A_PU_VOLTAGE : WindTurbine.REACTIVE_POWER+1] = 0.0
 
 				if row[WindTurbine.A] == 1.0:
 					row[WindTurbine.A_VOLTAGE] = var_volt_mag[idxcount*2]
@@ -1598,28 +1433,6 @@ class WindTurbine: #errors -1275 to -1299
 					row[WindTurbine.A_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
 					row[WindTurbine.REAL_POWER] += var_pow[idxcount*2]
 					row[WindTurbine.REACTIVE_POWER] += var_pow[idxcount*2 + 1]
-					idxcount += 1
-				if row[WindTurbine.B] == 1.0:
-					row[WindTurbine.B_VOLTAGE] = var_volt_mag[idxcount*2]
-					row[WindTurbine.B_VOLTAGE_ANGLE] = var_volt_mag[idxcount*2 + 1]
-					row[WindTurbine.B_PU_VOLTAGE] = var_volt_pu[idxcount*2]
-					row[WindTurbine.B_CURRENT] = var_curr[idxcount*2]
-					row[WindTurbine.B_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
-					row[WindTurbine.REAL_POWER] += var_pow[idxcount*2]
-					row[WindTurbine.REACTIVE_POWER] += var_pow[idxcount*2 + 1]
-					idxcount += 1
-				if row[WindTurbine.C] == 1.0:
-					row[WindTurbine.C_VOLTAGE] = var_volt_mag[idxcount*2]
-					row[WindTurbine.C_VOLTAGE_ANGLE] = var_volt_mag[idxcount*2 + 1]
-					row[WindTurbine.C_PU_VOLTAGE] = var_volt_pu[idxcount*2]
-					row[WindTurbine.C_CURRENT] = var_curr[idxcount*2]
-					row[WindTurbine.C_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
-					row[WindTurbine.REAL_POWER] += var_pow[idxcount*2]
-					row[WindTurbine.REACTIVE_POWER] += var_pow[idxcount*2 + 1]
-					idxcount += 1
-				if num_conds > num_phases:
-					row[WindTurbine.N_CURRENT] = var_curr[idxcount*2]
-					row[WindTurbine.N_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
 					idxcount += 1
 			return 0
 		except:
@@ -1635,12 +1448,14 @@ class WindTurbine: #errors -1275 to -1299
 
 	def convertToInputTensor(self):
 		try:
+			# TODO
 			return [], [], np.empty([0, 0], dtype=np.float32).flatten(), np.empty([0,0], dtype=np.float32).flatten()
 		except:
 			pass
 
 	def convertToOutputTensor(self):
 		try:
+			# TODO
 			return [], np.empty([0, 0], dtype=np.float32).flatten()
 		except:
 			pass
