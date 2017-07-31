@@ -1475,33 +1475,19 @@ class DirectConnection: #errors -1400 to -1424
 	TERMINAL_2_ID = 3
 	FUNCTIONAL_STATUS = 4 # switch
 	A = 5
-	B = 6
-	C = 7
-	ANGLE_DELTA_LIMIT = 8
-	OPERATIONAL_STATUS = 9 # switch
-	A_1_CURRENT = 10
-	B_1_CURRENT = 11
-	C_1_CURRENT = 12
-	N_1_CURRENT = 13
-	A_1_CURRENT_ANGLE = 14
-	B_1_CURRENT_ANGLE = 15
-	C_1_CURRENT_ANGLE = 16
-	N_1_CURRENT_ANGLE = 17
-	A_2_CURRENT = 18
-	B_2_CURRENT = 19
-	C_2_CURRENT = 20
-	N_2_CURRENT = 21
-	A_2_CURRENT_ANGLE = 22
-	B_2_CURRENT_ANGLE = 23
-	C_2_CURRENT_ANGLE = 24
-	N_2_CURRENT_ANGLE = 25
-	REAL_POWER_1 = 26
-	REACTIVE_POWER_1 = 27
-	REAL_POWER_2 = 28
-	REACTIVE_POWER_2 = 29
-	REAL_POWER_LOSSES = 30
-	REACTIVE_POWER_LOSSES = 31
-	ANGLE_DELTA = 32
+	ANGLE_DELTA_LIMIT = 6
+	OPERATIONAL_STATUS = 7 # switch
+	A_1_CURRENT = 8
+	A_1_CURRENT_ANGLE = 9
+	A_2_CURRENT = 10
+	A_2_CURRENT_ANGLE = 11
+	REAL_POWER_1 = 12
+	REACTIVE_POWER_1 = 13
+	REAL_POWER_2 = 14
+	REACTIVE_POWER_2 = 15
+	REAL_POWER_LOSSES = 16
+	REACTIVE_POWER_LOSSES = 17
+	ANGLE_DELTA = 18
 	UNITS = 'ft'
 
 	def __init__(self, dframe):
@@ -1529,10 +1515,6 @@ class DirectConnection: #errors -1400 to -1424
 
 				if row[DirectConnection.A] == 1.0:
 					str_bus_conn = str_bus_conn + '.1'
-				if row[DirectConnection.B] == 1.0:
-					str_bus_conn = str_bus_conn + '.2'
-				if row[DirectConnection.C] == 1.0:
-					str_bus_conn = str_bus_conn + '.3'
 
 				if str_bus_conn == '':
 					print('Error: #-1401')
@@ -1592,21 +1574,9 @@ class DirectConnection: #errors -1400 to -1424
 					row[DirectConnection.REAL_POWER_1] += var_pow[idxcount*2]
 					row[DirectConnection.REACTIVE_POWER_1] += var_pow[idxcount*2 + 1]
 					idxcount += 1
-				if row[DirectConnection.B] == 1.0:
-					row[DirectConnection.B_1_CURRENT] = var_curr[idxcount*2]
-					row[DirectConnection.B_1_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
-					row[DirectConnection.REAL_POWER_1] += var_pow[idxcount*2]
-					row[DirectConnection.REACTIVE_POWER_1] += var_pow[idxcount*2 + 1]
-					idxcount += 1
-				if row[DirectConnection.C] == 1.0:
-					row[DirectConnection.C_1_CURRENT] = var_curr[idxcount*2]
-					row[DirectConnection.C_1_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
-					row[DirectConnection.REAL_POWER_1] += var_pow[idxcount*2]
-					row[DirectConnection.REACTIVE_POWER_1] += var_pow[idxcount*2 + 1]
-					idxcount += 1
 				if num_conds > num_phases:
-					row[DirectConnection.N_1_CURRENT] = var_curr[idxcount*2]
-					row[DirectConnection.N_1_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
+					# row[DirectConnection.N_1_CURRENT] = var_curr[idxcount*2]
+					# row[DirectConnection.N_1_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
 					idxcount += 1
 				if row[DirectConnection.A] == 1.0:
 					row[DirectConnection.A_2_CURRENT] = var_curr[idxcount*2]
@@ -1614,21 +1584,10 @@ class DirectConnection: #errors -1400 to -1424
 					row[DirectConnection.REAL_POWER_2] += var_pow[idxcount*2]
 					row[DirectConnection.REACTIVE_POWER_2] += var_pow[idxcount*2 + 1]
 					idxcount += 1
-				if row[DirectConnection.B] == 1.0:
-					row[DirectConnection.B_2_CURRENT] = var_curr[idxcount*2]
-					row[DirectConnection.B_2_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
-					row[DirectConnection.REAL_POWER_2] += var_pow[idxcount*2]
-					row[DirectConnection.REACTIVE_POWER_2] += var_pow[idxcount*2 + 1]
-					idxcount += 1
-				if row[DirectConnection.C] == 1.0:
-					row[DirectConnection.C_2_CURRENT] = var_curr[idxcount*2]
-					row[DirectConnection.C_2_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
-					row[DirectConnection.REAL_POWER_2] += var_pow[idxcount*2]
-					row[DirectConnection.REACTIVE_POWER_2] += var_pow[idxcount*2 + 1]
-					idxcount += 1
 				if num_conds > num_phases:
-					row[DirectConnection.N_2_CURRENT] = var_curr[idxcount*2]
-					row[DirectConnection.N_2_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
+					# row[DirectConnection.N_2_CURRENT] = var_curr[idxcount*2]
+					# row[DirectConnection.N_2_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
+					idxcount += 1
 
 				row[DirectConnection.REAL_POWER_LOSSES] = math.fabs(row[DirectConnection.REAL_POWER_1] + row[DirectConnection.REAL_POWER_2])
 				row[DirectConnection.REACTIVE_POWER_LOSSES] = math.fabs(row[DirectConnection.REACTIVE_POWER_1] + row[DirectConnection.REACTIVE_POWER_2])
@@ -1670,50 +1629,30 @@ class Cable: #errors -1425 to -1449
 	TERMINAL_1_ID = 2
 	TERMINAL_2_ID = 3
 	FUNCTIONAL_STATUS_A = 4 # switch
-	FUNCTIONAL_STATUS_B = 5 # switch
-	FUNCTIONAL_STATUS_C = 6 # switch
-	A = 7
-	B = 8
-	C = 9
-	LENGTH = 10
-	LINECODE_ID = 11
-	ANGLE_DELTA_LIMIT = 12
-	OPERATIONAL_STATUS_A = 13 # switch
-	OPERATIONAL_STATUS_B = 14 # switch
-	OPERATIONAL_STATUS_C = 15 # switch
-	A_1_CURRENT = 16
-	B_1_CURRENT = 17
-	C_1_CURRENT = 18
-	N_1_CURRENT = 19
-	A_1_CURRENT_ANGLE = 20
-	B_1_CURRENT_ANGLE = 21
-	C_1_CURRENT_ANGLE = 22
-	N_1_CURRENT_ANGLE = 23
-	A_2_CURRENT = 24
-	B_2_CURRENT = 25
-	C_2_CURRENT = 26
-	N_2_CURRENT = 27
-	A_2_CURRENT_ANGLE = 28
-	B_2_CURRENT_ANGLE = 29
-	C_2_CURRENT_ANGLE = 30
-	N_2_CURRENT_ANGLE = 31
-	A_PU_CAPACITY = 32
-	B_PU_CAPACITY = 33
-	C_PU_CAPACITY = 34
-	REAL_POWER_1 = 36
-	REACTIVE_POWER_1 = 36
-	REAL_POWER_2 = 37
-	REACTIVE_POWER_2 = 37
-	REAL_POWER_LOSSES = 39
-	REACTIVE_POWER_LOSSES = 40
-	ANGLE_DELTA = 41
+	A = 5
+	LENGTH = 6
+	LINECODE_ID = 7
+	ANGLE_DELTA_LIMIT = 8
+	OPERATIONAL_STATUS_A = 9 # switch
+	A_1_CURRENT = 10
+	A_1_CURRENT_ANGLE = 11
+	A_2_CURRENT = 12
+	A_2_CURRENT_ANGLE = 13
+	A_PU_CAPACITY = 14
+	REAL_POWER_1 = 15
+	REACTIVE_POWER_1 = 16
+	REAL_POWER_2 = 17
+	REACTIVE_POWER_2 = 18
+	REAL_POWER_LOSSES = 19
+	REACTIVE_POWER_LOSSES = 20
+	ANGLE_DELTA = 21
 	UNITS = 'ft'
 
 	def __init__(self, dframe):
 		self.cols = list(dframe.columns)
 		self.matrix = dframe.values
 		self.num_components = len(dframe.index)
-		self.num_switches = int(self.matrix[:, Cable.A:Cable.C+1].sum()) * 1 # temporary
+		self.num_switches = int(self.matrix[:, Cable.A].sum()) * 1 # temporary
 		self.num_stochastic = self.num_components * 0
 		self.switch_chance = (0.0, 0.0)
 		self.stochastic_chance = (0.0, 0.0)
@@ -1733,10 +1672,6 @@ class Cable: #errors -1425 to -1449
 
 				if row[Cable.A] == 1.0:
 					str_bus_conn = str_bus_conn + '.1'
-				if row[Cable.B] == 1.0:
-					str_bus_conn = str_bus_conn + '.2'
-				if row[Cable.C] == 1.0:
-					str_bus_conn = str_bus_conn + '.3'
 
 				#the correct thing to do would check this sum with the number of phases for the linecode
 				if str_bus_conn == '':
@@ -1772,12 +1707,6 @@ class Cable: #errors -1425 to -1449
 				if row[Cable.A] == 1.0 and row[Cable.FUNCTIONAL_STATUS_A]*row[Cable.OPERATIONAL_STATUS_A] == 0.0:
 					dss.Command = 'Open \'Line.{}\' Term=1 1'.format(str_self_name)
 					dss.Command = 'Open \'Line.{}\' Term=2 1'.format(str_self_name)
-				if row[Cable.B] == 1.0 and row[Cable.FUNCTIONAL_STATUS_B]*row[Cable.OPERATIONAL_STATUS_B] == 0.0:
-					dss.Command = 'Open \'Line.{}\' Term=1 2'.format(str_self_name)
-					dss.Command = 'Open \'Line.{}\' Term=2 2'.format(str_self_name)
-				if row[Cable.C] == 1.0 and row[Cable.FUNCTIONAL_STATUS_C]*row[Cable.OPERATIONAL_STATUS_C] == 0.0:
-					dss.Command = 'Open \'Line.{}\' Term=1 3'.format(str_self_name)
-					dss.Command = 'Open \'Line.{}\' Term=2 3'.format(str_self_name)
 			return 0
 		except:
 			print('Error: #-1425')
@@ -1813,21 +1742,9 @@ class Cable: #errors -1425 to -1449
 					row[Cable.REAL_POWER_1] += var_pow[idxcount*2]
 					row[Cable.REACTIVE_POWER_1] += var_pow[idxcount*2 + 1]
 					idxcount += 1
-				if row[Cable.B] == 1.0:
-					row[Cable.B_1_CURRENT] = var_curr[idxcount*2]
-					row[Cable.B_1_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
-					row[Cable.REAL_POWER_1] += var_pow[idxcount*2]
-					row[Cable.REACTIVE_POWER_1] += var_pow[idxcount*2 + 1]
-					idxcount += 1
-				if row[Cable.C] == 1.0:
-					row[Cable.C_1_CURRENT] = var_curr[idxcount*2]
-					row[Cable.C_1_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
-					row[Cable.REAL_POWER_1] += var_pow[idxcount*2]
-					row[Cable.REACTIVE_POWER_1] += var_pow[idxcount*2 + 1]
-					idxcount += 1
 				if num_conds > num_phases:
-					row[Cable.N_1_CURRENT] = var_curr[idxcount*2]
-					row[Cable.N_1_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
+					# row[Cable.N_1_CURRENT] = var_curr[idxcount*2]
+					# row[Cable.N_1_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
 					idxcount += 1
 				if row[Cable.A] == 1.0:
 					row[Cable.A_2_CURRENT] = var_curr[idxcount*2]
@@ -1835,28 +1752,15 @@ class Cable: #errors -1425 to -1449
 					row[Cable.REAL_POWER_2] += var_pow[idxcount*2]
 					row[Cable.REACTIVE_POWER_2] += var_pow[idxcount*2 + 1]
 					idxcount += 1
-				if row[Cable.B] == 1.0:
-					row[Cable.B_2_CURRENT] = var_curr[idxcount*2]
-					row[Cable.B_2_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
-					row[Cable.REAL_POWER_2] += var_pow[idxcount*2]
-					row[Cable.REACTIVE_POWER_2] += var_pow[idxcount*2 + 1]
-					idxcount += 1
-				if row[Cable.C] == 1.0:
-					row[Cable.C_2_CURRENT] = var_curr[idxcount*2]
-					row[Cable.C_2_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
-					row[Cable.REAL_POWER_2] += var_pow[idxcount*2]
-					row[Cable.REACTIVE_POWER_2] += var_pow[idxcount*2 + 1]
-					idxcount += 1
 				if num_conds > num_phases:
-					row[Cable.N_2_CURRENT] = var_curr[idxcount*2]
-					row[Cable.N_2_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
+					# row[Cable.N_2_CURRENT] = var_curr[idxcount*2]
+					# row[Cable.N_2_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
+					idxcount += 1
 
 				row[Cable.REAL_POWER_LOSSES] = math.fabs(row[Cable.REAL_POWER_1] + row[Cable.REAL_POWER_2])
 				row[Cable.REACTIVE_POWER_LOSSES] = math.fabs(row[Cable.REACTIVE_POWER_1] + row[Cable.REACTIVE_POWER_2])
 
 				row[Cable.A_PU_CAPACITY] = 0.5 * (row[Cable.A_1_CURRENT] + row[Cable.A_2_CURRENT]) * norm_amps_inv
-				row[Cable.B_PU_CAPACITY] = 0.5 * (row[Cable.B_1_CURRENT] + row[Cable.B_2_CURRENT]) * norm_amps_inv
-				row[Cable.C_PU_CAPACITY] = 0.5 * (row[Cable.C_1_CURRENT] + row[Cable.C_2_CURRENT]) * norm_amps_inv
 			return 0
 		except:
 			print('Error: #-1429')
@@ -1873,7 +1777,7 @@ class Cable: #errors -1425 to -1449
 		try:
 			input_list_continuous = []
 			input_list_categorical = []
-			input_col_categorical = ['operational_status_a', 'operational_status_b', 'operational_status_c']
+			input_col_categorical = ['operational_status_a']
 
 			for row in self.matrix:
 				for elem in input_col_categorical:
@@ -1889,7 +1793,7 @@ class Cable: #errors -1425 to -1449
 	def convertToOutputTensor(self):
 		try:
 			output_list = []
-			output_col = ['a_PU_capacity', 'b_PU_capacity', 'c_PU_capacity']
+			output_col = ['a_PU_capacity']
 
 			for row in self.matrix:
 				for elem in output_col:
@@ -1908,20 +1812,18 @@ class Cable: #errors -1425 to -1449
 	def randomSwitching(self):
 		try:
 			flag = 0
-			ridx = random.randrange(1, int(self.matrix[:, Cable.OPERATIONAL_STATUS_A:Cable.OPERATIONAL_STATUS_C+1].sum())+1)
+			ridx = random.randrange(1, int(self.matrix[:, Cable.OPERATIONAL_STATUS_A].sum())+1)
 			tempval = 0
 			for row in self.matrix:
-				tempval += int(row[Cable.OPERATIONAL_STATUS_A:Cable.OPERATIONAL_STATUS_C+1].sum())
+				tempval += int(row[Cable.OPERATIONAL_STATUS_A].sum())
 				if ridx <= tempval:
 					while True:
 						if row[Cable.OPERATIONAL_STATUS_A] != 1.0:
-							if row[Cable.OPERATIONAL_STATUS_B] != 1.0:
-								if row[Cable.OPERATIONAL_STATUS_C] != 1.0:
-									print('Error: #-1434')
-									break
-						rphase = random.randrange(0, 3)
-						if row[Cable.OPERATIONAL_STATUS_A + rphase] == 1.0:
-							row[Cable.OPERATIONAL_STATUS_A + rphase] = 0.0
+							print('Error: #-1434')
+							break
+						# rphase = random.randrange(0, 3)
+						if row[Cable.OPERATIONAL_STATUS_A] == 1.0:
+							row[Cable.OPERATIONAL_STATUS_A] = 0.0
 							flag = 1
 							break
 					break
@@ -1939,60 +1841,36 @@ class OverheadLine: #errors -1450 to -1474
 	TERMINAL_1_ID = 2
 	TERMINAL_2_ID = 3
 	FUNCTIONAL_STATUS_A = 4 # switch
-	FUNCTIONAL_STATUS_B = 5 # switch
-	FUNCTIONAL_STATUS_C = 6 # switch
-	A = 7
-	B = 8
-	C = 9
-	LENGTH = 10
-	NEUTRAL_WIREDATA_ID = 11
-	PHASE_WIREDATA_ID = 12
-	SOIL_RESISTIVITY = 13
-	X_A_COORDINATE = 14
-	X_B_COORDINATE = 15
-	X_C_COORDINATE = 16
-	X_N_COORDINATE = 17
-	H_A_COORDINATE = 18
-	H_B_COORDINATE = 19
-	H_C_COORDINATE = 20
-	H_N_COORDINATE = 21
-	ANGLE_DELTA_LIMIT = 22
-	OPERATIONAL_STATUS_A = 23 # switch
-	OPERATIONAL_STATUS_B = 24 # switch
-	OPERATIONAL_STATUS_C = 25 # switch
-	A_1_CURRENT = 26
-	B_1_CURRENT = 27
-	C_1_CURRENT = 28
-	N_1_CURRENT = 29
-	A_1_CURRENT_ANGLE = 30
-	B_1_CURRENT_ANGLE = 31
-	C_1_CURRENT_ANGLE = 32
-	N_1_CURRENT_ANGLE = 33
-	A_2_CURRENT = 34
-	B_2_CURRENT = 35
-	C_2_CURRENT = 36
-	N_2_CURRENT = 37
-	A_2_CURRENT_ANGLE = 38
-	B_2_CURRENT_ANGLE = 39
-	C_2_CURRENT_ANGLE = 40
-	N_2_CURRENT_ANGLE = 41
-	A_PU_CAPACITY = 42
-	B_PU_CAPACITY = 43
-	C_PU_CAPACITY = 44
-	REAL_POWER_1 = 45
-	REACTIVE_POWER_1 = 46
-	REAL_POWER_2 = 47
-	REACTIVE_POWER_2 = 48
-	REAL_POWER_LOSSES = 49
-	REACTIVE_POWER_LOSSES = 50
-	ANGLE_DELTA = 51
+	A = 5
+	LENGTH = 6
+	NEUTRAL_WIREDATA_ID = 7
+	PHASE_WIREDATA_ID = 8
+	SOIL_RESISTIVITY = 9
+	X_A_COORDINATE = 10
+	X_N_COORDINATE = 11
+	H_A_COORDINATE = 12
+	H_N_COORDINATE = 13
+	ANGLE_DELTA_LIMIT = 14
+	OPERATIONAL_STATUS_A = 15 # switch
+	A_1_CURRENT = 16
+	A_1_CURRENT_ANGLE = 17
+	A_2_CURRENT = 18
+	A_2_CURRENT_ANGLE = 19
+	A_PU_CAPACITY = 20
+	REAL_POWER_1 = 21
+	REACTIVE_POWER_1 = 22
+	REAL_POWER_2 = 23
+	REACTIVE_POWER_2 = 24
+	REAL_POWER_LOSSES = 25
+	REACTIVE_POWER_LOSSES = 26
+	ANGLE_DELTA = 27
 	UNITS = 'ft'
 
 	def __init__(self, dframe):
 		self.cols = list(dframe.columns)
 		self.matrix = dframe.values
 		self.num_components = len(dframe.index)
-		self.num_switches = int(self.matrix[:, OverheadLine.A:OverheadLine.C+1].sum()) * 1 # temporary
+		self.num_switches = int(self.matrix[:, OverheadLine.A].sum()) * 1 # temporary
 		self.num_stochastic = self.num_components * 0
 		self.switch_chance = (0.0, 0.0)
 		self.stochastic_chance = (0.0, 0.0)
@@ -2014,12 +1892,6 @@ class OverheadLine: #errors -1450 to -1474
 
 				if row[OverheadLine.A] == 1.0:
 					str_bus_conn = str_bus_conn + '.1'
-					num_phases += 1
-				if row[OverheadLine.B] == 1.0:
-					str_bus_conn = str_bus_conn + '.2'
-					num_phases += 1
-				if row[OverheadLine.C] == 1.0:
-					str_bus_conn = str_bus_conn + '.3'
 					num_phases += 1
 
 				if num_phases == 0:
@@ -2044,12 +1916,6 @@ class OverheadLine: #errors -1450 to -1474
 					if row[OverheadLine.A] == 1.0:
 						print('~ Cond=1 Wire=\'{}\' X=\'{:0.3f}\' H=\'{:0.3f}\' Units=\'{}\'\n'.format(
 							str_pwire_name, row[OverheadLine.X_A_COORDINATE], row[OverheadLine.H_A_COORDINATE], OverheadLine.UNITS))
-					if row[OverheadLine.B] == 1.0:
-						print('~ Cond=2 Wire=\'{}\' X=\'{:0.3f}\' H=\'{:0.3f}\' Units=\'{}\'\n'.format(
-							str_pwire_name, row[OverheadLine.X_B_COORDINATE], row[OverheadLine.H_B_COORDINATE], OverheadLine.UNITS))
-					if row[OverheadLine.C] == 1.0:
-						print('~ Cond=3 Wire=\'{}\' X=\'{:0.3f}\' H=\'{:0.3f}\' Units=\'{}\'\n'.format(
-							str_pwire_name, row[OverheadLine.X_C_COORDINATE], row[OverheadLine.H_C_COORDINATE], OverheadLine.UNITS))
 					if num_neutral == 1:
 						print('~ Cond=4 Wire=\'{}\' X=\'{:0.3f}\' H=\'{:0.3f}\' Units=\'{}\'\n'.format(
 							str_nwire_name, row[OverheadLine.X_N_COORDINATE], row[OverheadLine.H_N_COORDINATE], OverheadLine.UNITS))
@@ -2063,12 +1929,6 @@ class OverheadLine: #errors -1450 to -1474
 				if row[OverheadLine.A] == 1.0:
 					dss.Command = '~ Cond=1 Wire=\'{}\' X=\'{:0.3f}\' H=\'{:0.3f}\' Units=\'{}\''.format(
 							str_pwire_name, row[OverheadLine.X_A_COORDINATE], row[OverheadLine.H_A_COORDINATE], OverheadLine.UNITS)
-				if row[OverheadLine.B] == 1.0:
-					dss.Command = '~ Cond=2 Wire=\'{}\' X=\'{:0.3f}\' H=\'{:0.3f}\' Units=\'{}\''.format(
-							str_pwire_name, row[OverheadLine.X_B_COORDINATE], row[OverheadLine.H_B_COORDINATE], OverheadLine.UNITS)
-				if row[OverheadLine.C] == 1.0:
-					dss.Command = '~ Cond=3 Wire=\'{}\' X=\'{:0.3f}\' H=\'{:0.3f}\' Units=\'{}\''.format(
-							str_pwire_name, row[OverheadLine.X_C_COORDINATE], row[OverheadLine.H_C_COORDINATE], OverheadLine.UNITS)
 				if num_neutral == 1:
 					dss.Command = '~ Cond=4 Wire=\'{}\' X=\'{:0.3f}\' H=\'{:0.3f}\' Units=\'{}\''.format(
 							str_nwire_name, row[OverheadLine.X_N_COORDINATE], row[OverheadLine.H_N_COORDINATE], OverheadLine.UNITS)
@@ -2111,21 +1971,9 @@ class OverheadLine: #errors -1450 to -1474
 					row[OverheadLine.REAL_POWER_1] += var_pow[idxcount*2]
 					row[OverheadLine.REACTIVE_POWER_1] += var_pow[idxcount*2 + 1]
 					idxcount += 1
-				if row[OverheadLine.B] == 1.0:
-					row[OverheadLine.B_1_CURRENT] = var_curr[idxcount*2]
-					row[OverheadLine.B_1_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
-					row[OverheadLine.REAL_POWER_1] += var_pow[idxcount*2]
-					row[OverheadLine.REACTIVE_POWER_1] += var_pow[idxcount*2 + 1]
-					idxcount += 1
-				if row[OverheadLine.C] == 1.0:
-					row[OverheadLine.C_1_CURRENT] = var_curr[idxcount*2]
-					row[OverheadLine.C_1_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
-					row[OverheadLine.REAL_POWER_1] += var_pow[idxcount*2]
-					row[OverheadLine.REACTIVE_POWER_1] += var_pow[idxcount*2 + 1]
-					idxcount += 1
 				if num_conds > num_phases:
-					row[OverheadLine.N_1_CURRENT] = var_curr[idxcount*2]
-					row[OverheadLine.N_1_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
+					# row[OverheadLine.N_1_CURRENT] = var_curr[idxcount*2]
+					# row[OverheadLine.N_1_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
 					idxcount += 1
 				if row[OverheadLine.A] == 1.0:
 					row[OverheadLine.A_2_CURRENT] = var_curr[idxcount*2]
@@ -2133,28 +1981,15 @@ class OverheadLine: #errors -1450 to -1474
 					row[OverheadLine.REAL_POWER_2] += var_pow[idxcount*2]
 					row[OverheadLine.REACTIVE_POWER_2] += var_pow[idxcount*2 + 1]
 					idxcount += 1
-				if row[OverheadLine.B] == 1.0:
-					row[OverheadLine.B_2_CURRENT] = var_curr[idxcount*2]
-					row[OverheadLine.B_2_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
-					row[OverheadLine.REAL_POWER_2] += var_pow[idxcount*2]
-					row[OverheadLine.REACTIVE_POWER_2] += var_pow[idxcount*2 + 1]
-					idxcount += 1
-				if row[OverheadLine.C] == 1.0:
-					row[OverheadLine.C_2_CURRENT] = var_curr[idxcount*2]
-					row[OverheadLine.C_2_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
-					row[OverheadLine.REAL_POWER_2] += var_pow[idxcount*2]
-					row[OverheadLine.REACTIVE_POWER_2] += var_pow[idxcount*2 + 1]
-					idxcount += 1
 				if num_conds > num_phases:
-					row[OverheadLine.N_2_CURRENT] = var_curr[idxcount*2]
-					row[OverheadLine.N_2_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
+					# row[OverheadLine.N_2_CURRENT] = var_curr[idxcount*2]
+					# row[OverheadLine.N_2_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
+					idxcount +=1
 
 				row[OverheadLine.REAL_POWER_LOSSES] = math.fabs(row[OverheadLine.REAL_POWER_1] + row[OverheadLine.REAL_POWER_2])
 				row[OverheadLine.REACTIVE_POWER_LOSSES] = math.fabs(row[OverheadLine.REACTIVE_POWER_1] + row[OverheadLine.REACTIVE_POWER_2])
 
 				row[OverheadLine.A_PU_CAPACITY] = 0.5 * (row[OverheadLine.A_1_CURRENT] + row[OverheadLine.A_2_CURRENT]) * norm_amps_inv
-				row[OverheadLine.B_PU_CAPACITY] = 0.5 * (row[OverheadLine.B_1_CURRENT] + row[OverheadLine.B_2_CURRENT]) * norm_amps_inv
-				row[OverheadLine.C_PU_CAPACITY] = 0.5 * (row[OverheadLine.C_1_CURRENT] + row[OverheadLine.C_2_CURRENT]) * norm_amps_inv
 			return 0
 		except:
 			print('Error: #-1454')
@@ -2169,12 +2004,14 @@ class OverheadLine: #errors -1450 to -1474
 
 	def convertToInputTensor(self):
 		try:
+			# TODO
 			return [], [], np.empty([0, 0], dtype=np.float32).flatten(), np.empty([0,0], dtype=np.float32).flatten()
 		except:
 			pass
 
 	def convertToOutputTensor(self):
 		try:
+			# TODO
 			return [], np.empty([0, 0], dtype=np.float32).flatten()
 		except:
 			pass
@@ -2194,47 +2031,33 @@ class TwoWindingTransformer: #errors -1475 to -1499
 	TERMINAL_2_ID = 3
 	FUNCTIONAL_STATUS = 4 # switch
 	A = 5
-	B = 6
-	C = 7
-	MIN_TAP = 8 
-	MAX_TAP = 9
-	R1 = 10
-	RATED_CAPACITY = 11
-	REGCONTROL_ID = 12
-	TERMINAL_1_LL_VOLTAGE = 13
-	TERMINAL_1_WIRING = 14
-	TERMINAL_2_LL_VOLTAGE = 15
-	TERMINAL_2_WIRING = 16
-	X1 = 17
-	ANGLE_DELTA_LIMIT = 18
-	MAX_PU_CAPACITY = 19
-	OPERATIONAL_STATUS = 20 # switch
-	TAP_1 = 21 # stochastic
-	TAP_2 = 22 # stochastic
-	A_1_CURRENT = 23
-	B_1_CURRENT = 24
-	C_1_CURRENT = 25
-	N_1_CURRENT = 26
-	A_1_CURRENT_ANGLE = 27
-	B_1_CURRENT_ANGLE = 28
-	C_1_CURRENT_ANGLE = 29
-	N_1_CURRENT_ANGLE = 30
-	A_2_CURRENT = 31
-	B_2_CURRENT = 32
-	C_2_CURRENT = 33
-	N_2_CURRENT = 34
-	A_2_CURRENT_ANGLE = 35
-	B_2_CURRENT_ANGLE = 36
-	C_2_CURRENT_ANGLE = 37
-	N_2_CURRENT_ANGLE = 38
-	REAL_POWER_1 = 39
-	REACTIVE_POWER_1 = 40
-	REAL_POWER_2 = 41
-	REACTIVE_POWER_2 = 42
-	REAL_POWER_LOSSES = 43
-	REACTIVE_POWER_LOSSES = 44
-	ANGLE_DELTA = 45
-	PU_CAPACITY = 46
+	MIN_TAP = 6
+	MAX_TAP = 7
+	R1 = 8
+	RATED_CAPACITY = 9
+	REGCONTROL_ID = 10
+	TERMINAL_1_LL_VOLTAGE = 11
+	TERMINAL_1_WIRING = 12
+	TERMINAL_2_LL_VOLTAGE = 13
+	TERMINAL_2_WIRING = 14
+	X1 = 15
+	ANGLE_DELTA_LIMIT = 16
+	MAX_PU_CAPACITY = 17
+	OPERATIONAL_STATUS = 18 # switch
+	TAP_1 = 19 # stochastic
+	TAP_2 = 20 # stochastic
+	A_1_CURRENT = 21
+	A_1_CURRENT_ANGLE = 22
+	A_2_CURRENT = 23
+	A_2_CURRENT_ANGLE = 24
+	REAL_POWER_1 = 25
+	REACTIVE_POWER_1 = 26
+	REAL_POWER_2 = 27
+	REACTIVE_POWER_2 = 28
+	REAL_POWER_LOSSES = 29
+	REACTIVE_POWER_LOSSES = 30
+	ANGLE_DELTA = 31
+	PU_CAPACITY = 32
 
 	def __init__(self, dframe):
 		self.cols = list(dframe.columns)
@@ -2264,12 +2087,6 @@ class TwoWindingTransformer: #errors -1475 to -1499
 
 				if row[TwoWindingTransformer.A] == 1.0:
 					str_bus_conn = str_bus_conn + '.1'
-					num_phases += 1
-				if row[TwoWindingTransformer.B] == 1.0:
-					str_bus_conn = str_bus_conn + '.2'
-					num_phases += 1
-				if row[TwoWindingTransformer.C] == 1.0:
-					str_bus_conn = str_bus_conn + '.3'
 					num_phases += 1
 
 				if row[TwoWindingTransformer.TERMINAL_1_WIRING] == 0.0:
@@ -2376,21 +2193,9 @@ class TwoWindingTransformer: #errors -1475 to -1499
 					row[TwoWindingTransformer.REAL_POWER_1] += var_pow[idxcount*2]
 					row[TwoWindingTransformer.REACTIVE_POWER_1] += var_pow[idxcount*2 + 1]
 					idxcount += 1
-				if row[TwoWindingTransformer.B] == 1.0:
-					row[TwoWindingTransformer.B_1_CURRENT] = var_curr[idxcount*2]
-					row[TwoWindingTransformer.B_1_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
-					row[TwoWindingTransformer.REAL_POWER_1] += var_pow[idxcount*2]
-					row[TwoWindingTransformer.REACTIVE_POWER_1] += var_pow[idxcount*2 + 1]
-					idxcount += 1
-				if row[TwoWindingTransformer.C] == 1.0:
-					row[TwoWindingTransformer.C_1_CURRENT] = var_curr[idxcount*2]
-					row[TwoWindingTransformer.C_1_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
-					row[TwoWindingTransformer.REAL_POWER_1] += var_pow[idxcount*2]
-					row[TwoWindingTransformer.REACTIVE_POWER_1] += var_pow[idxcount*2 + 1]
-					idxcount += 1
 				if num_conds > num_phases:
-					row[TwoWindingTransformer.N_1_CURRENT] = var_curr[idxcount*2]
-					row[TwoWindingTransformer.N_1_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
+					# row[TwoWindingTransformer.N_1_CURRENT] = var_curr[idxcount*2]
+					# row[TwoWindingTransformer.N_1_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
 					idxcount += 1
 				if row[TwoWindingTransformer.A] == 1.0:
 					row[TwoWindingTransformer.A_2_CURRENT] = var_curr[idxcount*2]
@@ -2398,25 +2203,15 @@ class TwoWindingTransformer: #errors -1475 to -1499
 					row[TwoWindingTransformer.REAL_POWER_2] += var_pow[idxcount*2]
 					row[TwoWindingTransformer.REACTIVE_POWER_2] += var_pow[idxcount*2 + 1]
 					idxcount += 1
-				if row[TwoWindingTransformer.B] == 1.0:
-					row[TwoWindingTransformer.B_2_CURRENT] = var_curr[idxcount*2]
-					row[TwoWindingTransformer.B_2_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
-					row[TwoWindingTransformer.REAL_POWER_2] += var_pow[idxcount*2]
-					row[TwoWindingTransformer.REACTIVE_POWER_2] += var_pow[idxcount*2 + 1]
-					idxcount += 1
-				if row[TwoWindingTransformer.C] == 1.0:
-					row[TwoWindingTransformer.C_2_CURRENT] = var_curr[idxcount*2]
-					row[TwoWindingTransformer.C_2_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
-					row[TwoWindingTransformer.REAL_POWER_2] += var_pow[idxcount*2]
-					row[TwoWindingTransformer.REACTIVE_POWER_2] += var_pow[idxcount*2 + 1]
-					idxcount += 1
 				if num_conds > num_phases:
-					row[TwoWindingTransformer.N_2_CURRENT] = var_curr[idxcount*2]
-					row[TwoWindingTransformer.N_2_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
+					# row[TwoWindingTransformer.N_2_CURRENT] = var_curr[idxcount*2]
+					# row[TwoWindingTransformer.N_2_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
+					idxcount += 1
 
 				row[TwoWindingTransformer.REAL_POWER_LOSSES] = math.fabs(row[TwoWindingTransformer.REAL_POWER_1] + row[TwoWindingTransformer.REAL_POWER_2])
 				row[TwoWindingTransformer.REACTIVE_POWER_LOSSES] = math.fabs(row[TwoWindingTransformer.REACTIVE_POWER_1] + row[TwoWindingTransformer.REACTIVE_POWER_2])
-				row[TwoWindingTransformer.PU_CAPACITY] = math.fabs(row[TwoWindingTransformer.A_1_CURRENT] + row[TwoWindingTransformer.B_1_CURRENT] + row[TwoWindingTransformer.C_1_CURRENT]) / (num_phases * norm_amps)
+				row[TwoWindingTransformer.PU_CAPACITY] = math.fabs(row[TwoWindingTransformer.A_1_CURRENT]) / (num_phases * norm_amps)
+				# TODO fix above to 3x phase A current??
 			return 0
 		except:
 			print('Error: #-1481')
@@ -2503,38 +2298,24 @@ class Capacitor: #errors -1500 to -1524
 	TERMINAL_2_ID = 3
 	FUNCTIONAL_STATUS = 4 # switch
 	A = 5
-	B = 6
-	C = 7
-	NOMINAL_LL_VOLTAGE = 8
-	RATED_REACTIVE_POWER = 9
-	WIRING = 10
-	ANGLE_DELTA_LIMIT = 11
-	MAX_PU_CAPACITY = 12
-	OPERATIONAL_STATUS = 13 # switch
-	A_1_CURRENT = 14
-	B_1_CURRENT = 15
-	C_1_CURRENT = 16
-	N_1_CURRENT = 17
-	A_1_CURRENT_ANGLE = 18
-	B_1_CURRENT_ANGLE = 19
-	C_1_CURRENT_ANGLE = 20
-	N_1_CURRENT_ANGLE = 21
-	A_2_CURRENT = 22
-	B_2_CURRENT = 23
-	C_2_CURRENT = 24
-	N_2_CURRENT = 25
-	A_2_CURRENT_ANGLE = 26
-	B_2_CURRENT_ANGLE = 27
-	C_2_CURRENT_ANGLE = 28
-	N_2_CURRENT_ANGLE = 29
-	REAL_POWER_1 = 30
-	REACTIVE_POWER_1 = 31
-	REAL_POWER_2 = 32
-	REACTIVE_POWER_2 = 33
-	REAL_POWER_LOSSES = 34
-	REACTIVE_POWER_LOSSES = 35
-	ANGLE_DELTA = 36
-	PU_CAPACITY = 37
+	NOMINAL_LL_VOLTAGE = 6
+	RATED_REACTIVE_POWER = 7
+	WIRING = 8
+	ANGLE_DELTA_LIMIT = 9
+	MAX_PU_CAPACITY = 10
+	OPERATIONAL_STATUS = 11 # switch
+	A_1_CURRENT = 12
+	A_1_CURRENT_ANGLE = 13
+	A_2_CURRENT = 14
+	A_2_CURRENT_ANGLE = 15
+	REAL_POWER_1 = 16
+	REACTIVE_POWER_1 = 17
+	REAL_POWER_2 = 18
+	REACTIVE_POWER_2 = 19
+	REAL_POWER_LOSSES = 20
+	REACTIVE_POWER_LOSSES = 21
+	ANGLE_DELTA = 22
+	PU_CAPACITY = 23
 
 	def __init__(self, dframe):
 		self.cols = list(dframe.columns)
@@ -2569,12 +2350,6 @@ class Capacitor: #errors -1500 to -1524
 				if row[Capacitor.A] == 1.0:
 					str_bus_conn = str_bus_conn + '.1'
 					num_phases += 1
-				if row[Capacitor.B] == 1.0:
-					str_bus_conn = str_bus_conn + '.2'
-					num_phases += 1
-				if row[Capacitor.C] == 1.0:
-					str_bus_conn = str_bus_conn + '.3'
-					num_phases += 1
 
 				if row[Capacitor.WIRING] == 0.0:
 					str_conn = 'delta'
@@ -2592,6 +2367,7 @@ class Capacitor: #errors -1500 to -1524
 					if terminal_2_type == VSource.CLID:
 						str_term2_name = 'sourcebus'
 
+				# TODO fix rated reactive power for single phase?
 				if debug == 1:
 					if bool_terminal_2 == True:
 						print('New \'Capacitor.{}\' Bus1=\'{}{}\' Bus2=\'{}{}\' Phases={} Kvar=\'{:f}\' Kv=\'{:f}\' Conn=\'{}\'\n'.format(
@@ -2652,21 +2428,9 @@ class Capacitor: #errors -1500 to -1524
 					row[Capacitor.REAL_POWER_1] += var_pow[idxcount*2]
 					row[Capacitor.REACTIVE_POWER_1] += var_pow[idxcount*2 + 1]
 					idxcount += 1
-				if row[Capacitor.B] == 1.0:
-					row[Capacitor.B_1_CURRENT] = var_curr[idxcount*2]
-					row[Capacitor.B_1_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
-					row[Capacitor.REAL_POWER_1] += var_pow[idxcount*2]
-					row[Capacitor.REACTIVE_POWER_1] += var_pow[idxcount*2 + 1]
-					idxcount += 1
-				if row[Capacitor.C] == 1.0:
-					row[Capacitor.C_1_CURRENT] = var_curr[idxcount*2]
-					row[Capacitor.C_1_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
-					row[Capacitor.REAL_POWER_1] += var_pow[idxcount*2]
-					row[Capacitor.REACTIVE_POWER_1] += var_pow[idxcount*2 + 1]
-					idxcount += 1
 				if num_conds > num_phases:
-					row[Capacitor.N_1_CURRENT] = var_curr[idxcount*2]
-					row[Capacitor.N_1_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
+					# row[Capacitor.N_1_CURRENT] = var_curr[idxcount*2]
+					# row[Capacitor.N_1_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
 					idxcount += 1
 				if row[Capacitor.A] == 1.0:
 					row[Capacitor.A_2_CURRENT] = var_curr[idxcount*2]
@@ -2674,26 +2438,16 @@ class Capacitor: #errors -1500 to -1524
 					row[Capacitor.REAL_POWER_2] += var_pow[idxcount*2]
 					row[Capacitor.REACTIVE_POWER_2] += var_pow[idxcount*2 + 1]
 					idxcount += 1
-				if row[Capacitor.B] == 1.0:
-					row[Capacitor.B_2_CURRENT] = var_curr[idxcount*2]
-					row[Capacitor.B_2_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
-					row[Capacitor.REAL_POWER_2] += var_pow[idxcount*2]
-					row[Capacitor.REACTIVE_POWER_2] += var_pow[idxcount*2 + 1]
-					idxcount += 1
-				if row[Capacitor.C] == 1.0:
-					row[Capacitor.C_2_CURRENT] = var_curr[idxcount*2]
-					row[Capacitor.C_2_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
-					row[Capacitor.REAL_POWER_2] += var_pow[idxcount*2]
-					row[Capacitor.REACTIVE_POWER_2] += var_pow[idxcount*2 + 1]
-					idxcount += 1
 				if num_conds > num_phases:
 					row[Capacitor.N_2_CURRENT] = var_curr[idxcount*2]
 					row[Capacitor.N_2_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
+					idxcount += 1
 
 				row[Capacitor.REAL_POWER_LOSSES] = math.fabs(row[Capacitor.REAL_POWER_1] + row[Capacitor.REAL_POWER_2])
 				row[Capacitor.REACTIVE_POWER_LOSSES] = math.fabs(row[Capacitor.REACTIVE_POWER_1] + row[Capacitor.REACTIVE_POWER_2])
 
-				row[Capacitor.PU_CAPACITY] = (math.fabs(row[Capacitor.A_1_CURRENT] + row[Capacitor.B_1_CURRENT] + row[Capacitor.C_1_CURRENT]) + math.fabs(row[Capacitor.A_2_CURRENT] + row[Capacitor.B_2_CURRENT] + row[Capacitor.C_2_CURRENT])) / (2.0 * num_phases * norm_amps)
+				row[Capacitor.PU_CAPACITY] = (math.fabs(row[Capacitor.A_1_CURRENT]) + math.fabs(row[Capacitor.A_2_CURRENT])) / (2.0 * num_phases * norm_amps)
+					# TODO fix above to 3x phase a current?
 			return 0
 		except:
 			print('Error: #-1504')
@@ -2759,39 +2513,25 @@ class Reactor: #errors -1525 to -1549
 	TERMINAL_2_ID = 3
 	FUNCTIONAL_STATUS = 4 # switch
 	A = 5
-	B = 6
-	C = 7
-	NOMINAL_LL_VOLTAGE = 8
-	NORMAL_AMPS = 9
-	R1 = 10
-	RATED_REACTIVE_POWER = 11
-	ANGLE_DELTA_LIMIT = 12
-	MAX_PU_CAPACITY = 13
-	OPERATIONAL_STATUS = 14 # switch
-	A_1_CURRENT = 15
-	B_1_CURRENT = 16
-	C_1_CURRENT = 17
-	N_1_CURRENT = 18
-	A_1_CURRENT_ANGLE = 19
-	B_1_CURRENT_ANGLE = 20
-	C_1_CURRENT_ANGLE = 21
-	N_1_CURRENT_ANGLE = 22
-	A_2_CURRENT = 23
-	B_2_CURRENT = 24
-	C_2_CURRENT = 25
-	N_2_CURRENT = 26
-	A_2_CURRENT_ANGLE = 27
-	B_2_CURRENT_ANGLE = 28
-	C_2_CURRENT_ANGLE = 29
-	N_2_CURRENT_ANGLE = 30
-	REAL_POWER_1 = 31
-	REACTIVE_POWER_1 = 32
-	REAL_POWER_2 = 33
-	REACTIVE_POWER_2 = 34
-	REAL_POWER_LOSSES = 35
-	REACTIVE_POWER_LOSSES = 36
-	ANGLE_DELTA = 37
-	PU_CAPACITY = 38
+	NOMINAL_LL_VOLTAGE = 6
+	NORMAL_AMPS = 7
+	R1 = 8
+	RATED_REACTIVE_POWER = 9
+	ANGLE_DELTA_LIMIT = 10
+	MAX_PU_CAPACITY = 11
+	OPERATIONAL_STATUS = 12 # switch
+	A_1_CURRENT = 13
+	A_1_CURRENT_ANGLE = 14
+	A_2_CURRENT = 15
+	A_2_CURRENT_ANGLE = 16
+	REAL_POWER_1 = 17
+	REACTIVE_POWER_1 = 18
+	REAL_POWER_2 = 19
+	REACTIVE_POWER_2 = 20
+	REAL_POWER_LOSSES = 21
+	REACTIVE_POWER_LOSSES = 22
+	ANGLE_DELTA = 23
+	PU_CAPACITY = 24
 
 	def __init__(self, dframe):
 		self.cols = list(dframe.columns)
@@ -2810,6 +2550,7 @@ class Reactor: #errors -1525 to -1549
 
 	def createAllDSS(self, dss, dictionary, interconn_dict, debug):
 		try:
+			# TODO
 			return 0
 		except:
 			print('Error: #-1525')
@@ -2827,6 +2568,7 @@ class Reactor: #errors -1525 to -1549
 
 	def readAllDSSOutputs(self, dssCkt, dssActvElem, dssActvBus, var_bus, var_volt_mag, var_volt_pu, var_curr, var_pow):
 		try:
+			# TODO
 			return 0
 		except:
 			print('Error: #-1529')
@@ -2841,18 +2583,22 @@ class Reactor: #errors -1525 to -1549
 
 	def convertToInputTensor(self):
 		try:
+			# TODO
 			return [], [], np.empty([0, 0], dtype=np.float32).flatten(), np.empty([0,0], dtype=np.float32).flatten()
 		except:
 			pass
 
 	def convertToOutputTensor(self):
 		try:
+			# TODO
 			return [], np.empty([0, 0], dtype=np.float32).flatten()
 		except:
 			pass
 
 	def randomStochasticity(self):
+		# TODO
 		pass
 
 	def randomSwitching(self):
+		# TODO
 		pass
