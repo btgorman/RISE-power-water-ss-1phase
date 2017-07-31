@@ -561,18 +561,22 @@ class VSource: #errors -1175 to -1199
 				mvasc1 = 100
 				mvasc3 = 300
 				init_volt_pu = 1.0
+				voltage_rating = row[VSource.NOMINAL_LL_VOLTAGE]
 
 				if row[VSource.A] == 1.0:
 					num_phases += 1
 
+				if num_phases == 1:
+					voltage_rating = voltage_rating / math.sqrt(3.0)
+
 				if debug == 1:
 					print('New \'Circuit.{}\' Basekv=\'{:f}\' phases=\'{}\' pu=\'{:f}\' Angle=\'{:f}\' Mvasc1=\'{:f}\' Mvasc3=\'{:f}\' R0=\'{:f}\' R1=\'{:f}\' X0=\'{:f}\' X1=\'{:f}\'\n'.format(
-					str_self_name, row[VSource.NOMINAL_LL_VOLTAGE], num_phases, init_volt_pu, row[VSource.VOLTAGE_ANGLE],
+					str_self_name, voltage_rating, num_phases, init_volt_pu, row[VSource.VOLTAGE_ANGLE],
 					mvasc1, mvasc3, row[VSource.R0], row[VSource.R1],
 					row[VSource.X0], row[VSource.X1]))
 
 				dss.Command = 'New \'Circuit.{}\' Basekv=\'{:f}\' phases=\'{}\' pu=\'{:f}\' Angle=\'{:f}\' Mvasc1=\'{:f}\' Mvasc3=\'{:f}\' R0=\'{:f}\' R1=\'{:f}\' X0=\'{:f}\' X1=\'{:f}\''.format(
-					str_self_name, row[VSource.NOMINAL_LL_VOLTAGE], num_phases, init_volt_pu, row[VSource.VOLTAGE_ANGLE],
+					str_self_name, voltage_rating, num_phases, init_volt_pu, row[VSource.VOLTAGE_ANGLE],
 					mvasc1, mvasc3, row[VSource.R0], row[VSource.R1],
 					row[VSource.X0], row[VSource.X1])
 			return 0
