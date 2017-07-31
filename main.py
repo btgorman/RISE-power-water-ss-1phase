@@ -58,7 +58,7 @@ def main(stoch_num, write_cols):
 	csv_twowindingtransformer = pd.read_csv('./data_power/network-power/1403twowindingtransformer.csv', sep=',', header=1, index_col=None, dtype=np.float32)
 	csv_capacitor = pd.read_csv('./data_power/network-power/1404capacitor.csv', sep=',', header=1, index_col=None, dtype=np.float32)
 	csv_reactor = pd.read_csv('./data_power/network-power/1405reactor.csv', sep=',', header=1, index_col=None, dtype=np.float32)
-	csv_allcolumns= pd.read_csv('./data_power/network-power/allcolumns.csv', sep=',', header=1, index_col=None, dtype=np.float32)
+	# csv_allcolumns= pd.read_csv('./data_power/network-power/allcolumns.csv', sep=',', header=1, index_col=None, dtype=np.float32)
 
 	csv_pumpload = pd.read_csv('./data_interconnection/network-interconnection/9000pump-load.csv', sep=',', header=1, index_col=None, dtype=np.float32)
 	csv_tankgenerator = pd.read_csv('./data_interconnection/network-interconnection/9001tank-generator.csv', sep=',', header=1, index_col=None, dtype=np.float32)
@@ -197,7 +197,7 @@ def main(stoch_num, write_cols):
 						object.randomSwitching()
 
 	def run_EPANET():
-		filedir = 'C:/Users/'+os_username+'/Documents/git/RISE-power-water-ss/data_water/en-inputs/en-input.inp'
+		filedir = 'C:/Users/'+os_username+'/Documents/git/RISE-power-water-ss-1phase/data_water/en-inputs/en-input.inp'
 		with open(filedir, 'w', newline='\n') as csvfile:
 			writer = csv.writer(csvfile, delimiter=' ')
 			templist = ['[TITLE]']
@@ -306,11 +306,11 @@ def main(stoch_num, write_cols):
 			templist=['[END]']
 			writer.writerow(templist)
 
-		epalib = ct.cdll.LoadLibrary('C:/Users/'+os_username+'/Documents/git/RISE-power-water-ss/data_water/epanet2mingw64.dll')
+		epalib = ct.cdll.LoadLibrary('C:/Users/'+os_username+'/Documents/git/RISE-power-water-ss-1phase/data_water/epanet2mingw64.dll')
 
 		# Byte objects
 		en_input_file = ct.c_char_p(filedir.encode('utf-8'))
-		en_report_file = ct.c_char_p(str('C:/Users/'+os_username+'/Documents/git/RISE-power-water-ss/data_water/en-outputs/out.rpt').encode('utf-8'))
+		en_report_file = ct.c_char_p(str('C:/Users/'+os_username+'/Documents/git/RISE-power-water-ss-1phase/data_water/en-outputs/out.rpt').encode('utf-8'))
 		en_byte_file = ct.c_char_p(''.encode('utf-8'))
 
 		# Send strings as char* to the epalib function
@@ -396,16 +396,16 @@ def main(stoch_num, write_cols):
 		for object in object_list:
 			set_voltagebase = set_voltagebase | object.voltagesToSets()
 
-		# dssText.Command = 'Set VoltageBases={}'.format(list(set_voltagebase))
-		# dssText.Command = 'CalcVoltageBases'
+		dssText.Command = 'Set VoltageBases={}'.format(list(set_voltagebase))
+		dssText.Command = 'CalcVoltageBases'
 		dssText.Command = 'Solve BaseFrequency=60 MaxIter=300'
 
-		# dssText.Command = 'Save Circuit'
-		# dssText.Command = 'Export Summary (summary.csv)'
-		# dssText.Command = 'Export Currents (currents.csv)'
-		# dssText.Command = 'Export Voltages (voltages.csv)'
-		# dssText.Command = 'Export Overloads (overloads.csv)'
-		# dssText.Command = 'Export Powers kVA (powers.csv)'
+		dssText.Command = 'Save Circuit'
+		dssText.Command = 'Export Summary (summary.csv)'
+		dssText.Command = 'Export Currents (currents.csv)'
+		dssText.Command = 'Export Voltages (voltages.csv)'
+		dssText.Command = 'Export Overloads (overloads.csv)'
+		dssText.Command = 'Export Powers kVA (powers.csv)'
 
 		variant_buses = automation.VARIANT()
 		variant_voltages_mag = automation.VARIANT()
@@ -443,9 +443,10 @@ def main(stoch_num, write_cols):
 	run_stochasticity(stoch_num)
 
 	# Simulation step 3: run power and water interdependency simulation
-	input_list_continuous, input_list_categorical, _, input_tensor_continuous, input_tensor_categorical, _ = run_OpenDSS(0)
+	dss_debug = 1
+	input_list_continuous, input_list_categorical, _, input_tensor_continuous, input_tensor_categorical, _ = run_OpenDSS(dss_debug)
 	input_list_continuous1, input_list_categorical1, _, input_tensor_continuous1, input_tensor_categorical1, _ = run_EPANET()
-	_, _, output_list, _, _, output_tensor = run_OpenDSS(0)
+	_, _, output_list, _, _, output_tensor = run_OpenDSS(dss_debug)
 	_, _, output_list1, _, _, output_tensor1 = run_EPANET()
 
 	# Format data structures
@@ -459,21 +460,21 @@ def main(stoch_num, write_cols):
 
 	# Write data structures
 	if write_cols:
-		with open('C:/Users/'+os_username+'/Documents/git/RISE-power-water-ss/outputs/input_list_continuous_columns.csv', 'w') as f:
+		with open('C:/Users/'+os_username+'/Documents/git/RISE-power-water-ss-1phase/outputs/input_list_continuous_columns.csv', 'w') as f:
 			writer = csv.writer(f, delimiter=',')
 			writer.writerow(input_list_continuous)
-		with open('C:/Users/'+os_username+'/Documents/git/RISE-power-water-ss/outputs/input_list_categorical_columns.csv', 'w') as f:
+		with open('C:/Users/'+os_username+'/Documents/git/RISE-power-water-ss-1phase/outputs/input_list_categorical_columns.csv', 'w') as f:
 			writer = csv.writer(f, delimiter=',')
 			writer.writerow(input_list_categorical)
-		with open('C:/Users/'+os_username+'/Documents/git/RISE-power-water-ss/outputs/output_list_columns.csv', 'w') as f:
+		with open('C:/Users/'+os_username+'/Documents/git/RISE-power-water-ss-1phase/outputs/output_list_columns.csv', 'w') as f:
 			writer = csv.writer(f, delimiter=',')
 			writer.writerow(output_list)
 
-	with open('C:/Users/'+os_username+'/Documents/git/RISE-power-water-ss/outputs/input_tensor_continuous.csv', 'ab') as f:
+	with open('C:/Users/'+os_username+'/Documents/git/RISE-power-water-ss-1phase/outputs/input_tensor_continuous.csv', 'ab') as f:
 		np.savetxt(f, input_tensor_continuous[None, :], fmt='%0.6f', delimiter=' ', newline='\n')
-	with open('C:/Users/'+os_username+'/Documents/git/RISE-power-water-ss/outputs/input_tensor_categorical.csv', 'ab') as f:
+	with open('C:/Users/'+os_username+'/Documents/git/RISE-power-water-ss-1phase/outputs/input_tensor_categorical.csv', 'ab') as f:
 		np.savetxt(f, input_tensor_categorical[None, :], fmt='%0.6f', delimiter=' ', newline='\n')
-	with open('C:/Users/'+os_username+'/Documents/git/RISE-power-water-ss/outputs/output_tensor.csv', 'ab') as f:
+	with open('C:/Users/'+os_username+'/Documents/git/RISE-power-water-ss-1phase/outputs/output_tensor.csv', 'ab') as f:
 		np.savetxt(f, output_tensor[None, :], fmt='%0.6f', delimiter=' ', newline='\n')
 
 	# End
@@ -481,5 +482,5 @@ def main(stoch_num, write_cols):
 if __name__ == '__main__':
 	stoch_factor = int(sys.argv[1])
 	stoch_steps = 4
-	write_cols = False # Will write column names in a seperate file, need to do only once becaues column names do not change
+	write_cols = True # Will write column names in a seperate file, need to do only once becaues column names do not change
 	main(stoch_steps * stoch_factor, write_cols)

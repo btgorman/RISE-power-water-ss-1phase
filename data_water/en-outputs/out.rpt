@@ -1,4 +1,4 @@
-  Page 1                                    Fri Jun 16 16:32:04 2017
+  Page 1                                    Sun Jul 30 19:56:24 2017
 
   ******************************************************************
   *                           E P A N E T                          *
@@ -7,6 +7,12 @@
   *                         Version 2.00.12                        *
   ******************************************************************
   
-  Analysis begun Fri Jun 16 16:32:04 2017
+  Analysis begun Sun Jul 30 19:56:24 2017
 
-  Analysis ended Fri Jun 16 16:32:04 2017
+  WARNING: Negative pressures at 0:00:00 hrs.
+  WARNING: Pump 42 open but exceeds maximum flow at 0:00:00 hrs.
+  
+  WARNING: Negative pressures at 0:00:10 hrs.
+  WARNING: Pump 42 open but exceeds maximum flow at 0:00:10 hrs.
+  
+  Analysis ended Sun Jul 30 19:56:24 2017

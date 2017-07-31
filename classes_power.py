@@ -319,7 +319,7 @@ class LineCode: #errors -1125 to -1149
 	R1_SCALAR = 6
 	X0_SCALAR = 7
 	X1_SCALAR = 8
-	MAX_PU_CAPACITY = 23
+	MAX_PU_CAPACITY = 9
 	UNITS = 'kft'
 
 	def __init__(self, dframe):
@@ -560,18 +560,19 @@ class VSource: #errors -1175 to -1199
 				num_phases = 0
 				mvasc1 = 100
 				mvasc3 = 300
+				init_volt_pu = 1.0
 
 				if row[VSource.A] == 1.0:
-					num_phase += 1
+					num_phases += 1
 
 				if debug == 1:
 					print('New \'Circuit.{}\' Basekv=\'{:f}\' phases=\'{}\' pu=\'{:f}\' Angle=\'{:f}\' Mvasc1=\'{:f}\' Mvasc3=\'{:f}\' R0=\'{:f}\' R1=\'{:f}\' X0=\'{:f}\' X1=\'{:f}\'\n'.format(
-					str_self_name, row[VSource.NOMINAL_LL_VOLTAGE], num_phases, row[VSource.A_PU_VOLTAGE], row[VSource.VOLTAGE_ANGLE],
+					str_self_name, row[VSource.NOMINAL_LL_VOLTAGE], num_phases, init_volt_pu, row[VSource.VOLTAGE_ANGLE],
 					mvasc1, mvasc3, row[VSource.R0], row[VSource.R1],
 					row[VSource.X0], row[VSource.X1]))
 
 				dss.Command = 'New \'Circuit.{}\' Basekv=\'{:f}\' phases=\'{}\' pu=\'{:f}\' Angle=\'{:f}\' Mvasc1=\'{:f}\' Mvasc3=\'{:f}\' R0=\'{:f}\' R1=\'{:f}\' X0=\'{:f}\' X1=\'{:f}\''.format(
-					str_self_name, row[VSource.NOMINAL_LL_VOLTAGE], num_phases, row[VSource.A_PU_VOLTAGE], row[VSource.VOLTAGE_ANGLE],
+					str_self_name, row[VSource.NOMINAL_LL_VOLTAGE], num_phases, init_volt_pu, row[VSource.VOLTAGE_ANGLE],
 					mvasc1, mvasc3, row[VSource.R0], row[VSource.R1],
 					row[VSource.X0], row[VSource.X1])
 			return 0
@@ -937,7 +938,7 @@ class Load: #errors -1225 to -1249
 					num_kv = num_kv / math.sqrt(3.0)
 
 				str_self_name = str(int(row[Load.TYPE])) + '_' + str(int(row[Load.ID])) + '_' + str(int(row[Load.A]))
-				str_bus_name = str(Bus.CLID) + '_' + str(int(row[Load.ID]))
+				str_bus_name = str(Load.CLID) + '_' + str(int(row[Load.ID]))
 
 				for interconn_row in interconn_dict['pumpload'].matrix:
 					if interconn_row[interconn_dict['pumpload'].classValue('LOAD_ID')] == row[Load.ID]:
@@ -989,6 +990,7 @@ class Load: #errors -1225 to -1249
 	def addToNodesDict(self, dictionary):
 		try:
 			temp_dict = {row[Load.ID]:self for row in self.matrix}
+			dictionary.update(temp_dict)
 			# NOT ADDED TO DICT IN LIEU OF BUS
 			return 0
 		except:
@@ -1006,8 +1008,8 @@ class Load: #errors -1225 to -1249
 		try:
 			for row in self.matrix:
 				idxcount = 0
-				dssCkt.SetActiveBus(str(Bus.CLID) + '_' + str(int(row[Load.ID])))
-				dssCkt.Loads.Name = str(int(row[Load.TYPE])) + '_' + str(int(row[Load.ID])) + '_' + str(int(row[Load.A])) + '_' + str(int(row[Load.B])) + '_' + str(int(row[Load.C]))
+				dssCkt.SetActiveBus(str(Load.CLID) + '_' + str(int(row[Load.ID])))
+				dssCkt.Loads.Name = str(int(row[Load.TYPE])) + '_' + str(int(row[Load.ID])) + '_' + str(int(row[Load.A]))
 				var_volt_mag = list(dssActvBus.VMagAngle)
 				var_volt_pu = list(dssActvBus.puVmagAngle)
 				var_curr = list(dssActvElem.CurrentsMagAng)
@@ -1026,6 +1028,7 @@ class Load: #errors -1225 to -1249
 					row[Load.REAL_POWER] += var_pow[idxcount*2]
 					row[Load.REACTIVE_POWER] += var_pow[idxcount*2 + 1]
 					idxcount += 1
+
 			return 0
 		except:
 			print('Error: #-1231')
@@ -1686,7 +1689,6 @@ class Cable: #errors -1425 to -1449
 				elif terminal_2_type == VSource.CLID:
 					str_term2_name = 'sourcebus'
 
-
 				if debug == 1:
 					print('New \'Line.{}\' Bus1=\'{}{}\' Bus2=\'{}{}\' LineCode=\'{}\' Length=\'{:f}\' Units=\'{}\'\n'.format(
 					str_self_name, str_term1_name, str_bus_conn, str_term2_name,
@@ -1694,12 +1696,6 @@ class Cable: #errors -1425 to -1449
 					if row[Cable.A] == 1.0 and row[Cable.FUNCTIONAL_STATUS_A]*row[Cable.OPERATIONAL_STATUS_A] == 0.0:
 						print('Open \'Line.{}\' Term=1 1'.format(str_self_name))
 						print('Open \'Line.{}\' Term=2 1'.format(str_self_name))
-					if row[Cable.B] == 1.0 and row[Cable.FUNCTIONAL_STATUS_B]*row[Cable.OPERATIONAL_STATUS_B] == 0.0:
-						print('Open \'Line.{}\' Term=1 2'.format(str_self_name))
-						print('Open \'Line.{}\' Term=2 2'.format(str_self_name))
-					if row[Cable.C] == 1.0 and row[Cable.FUNCTIONAL_STATUS_C]*row[Cable.OPERATIONAL_STATUS_C] == 0.0:
-						print('Open \'Line.{}\' Term=1 3'.format(str_self_name))
-						print('Open \'Line.{}\' Term=2 3'.format(str_self_name))
 
 				dss.Command = 'New \'Line.{}\' Bus1=\'{}{}\' Bus2=\'{}{}\' LineCode=\'{}\' Length=\'{:f}\' Units=\'{}\''.format(
 					str_self_name, str_term1_name, str_bus_conn, str_term2_name,

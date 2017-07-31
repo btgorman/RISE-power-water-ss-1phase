@@ -18,7 +18,7 @@
 import subprocess
 import sys
 
-number_of_sims = 10
+number_of_sims = 1
 
 for i in range(0, number_of_sims):
 	if (i+1)%250 == 0:
