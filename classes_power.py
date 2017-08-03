@@ -333,12 +333,12 @@ class LineCode: #errors -1125 to -1149
 				str_self_name = str(int(row[LineCode.TYPE])) + '_' + str(int(row[LineCode.ID]))
 
 				if row[LineCode.R0_SCALAR] != 0.0 or row[LineCode.X0_SCALAR] != 0.0 or row[LineCode.C0_SCALAR] != 0.0:
-					str_impedance = 'R0=\'{}\' R1=\'{}\' X0=\'{}\' X1=\'{}\' C0=\'{}\' C1=\'{}\''.format(
+					str_impedance = 'R0=\'{:f}\' R1=\'{:f}\' X0=\'{:f}\' X1=\'{:f}\' C0=\'{:f}\' C1=\'{:f}\''.format(
 						row[LineCode.R0_SCALAR], row[LineCode.R1_SCALAR], row[LineCode.X0_SCALAR], row[LineCode.X1_SCALAR],
 						row[LineCode.C0_SCALAR], row[LineCode.C1_SCALAR])
 				else:
-					str_impedance = 'R1=\'{}\' X1=\'{}\' C1=\'{}\''.format(
-						row[LineCode.R1_SCALAR], row[LineCode.X1_SCALAR], row[LineCode.C1_SCALAR])
+					str_impedance = 'R1=\'{:f}\' X1=\'{:f}\''.format(
+						row[LineCode.R1_SCALAR], row[LineCode.X1_SCALAR])
 
 				if debug == 1:
 					print('New \'LineCode.{}\' Nphases=\'{}\' {} Units=\'{}\' Normamps=\'{:f}\' Emergamps=\'{:f}\' Kron=\'{}\''.format(
@@ -1449,10 +1449,11 @@ class DirectConnection: #errors -1400 to -1424
 				terminal_1_type = Bus.CLID
 				terminal_2_type = Bus.CLID
 				str_bus_conn = ''
-				num_phases = int(row[DirectConnection.A] + row[DirectConnection.B] + row[DirectConnection.C])
+				num_phases = 0
 
 				if row[DirectConnection.A] == 1.0:
 					str_bus_conn = str_bus_conn + '.1'
+					num_phases += 1
 
 				if str_bus_conn == '':
 					print('Error: #-1401')
@@ -1676,7 +1677,6 @@ class Cable: #errors -1425 to -1449
 
 				row[Cable.REAL_POWER_LOSSES] = math.fabs(row[Cable.REAL_POWER_1] + row[Cable.REAL_POWER_2])
 				row[Cable.REACTIVE_POWER_LOSSES] = math.fabs(row[Cable.REACTIVE_POWER_1] + row[Cable.REACTIVE_POWER_2])
-
 				row[Cable.A_PU_CAPACITY] = 0.5 * (row[Cable.A_1_CURRENT] + row[Cable.A_2_CURRENT]) * norm_amps_inv
 			return 0
 		except:
@@ -2009,6 +2009,7 @@ class TwoWindingTransformer: #errors -1475 to -1499
 						print('Error: #-1475')
 
 				if num_phases == 0:
+					print('Transformer {} has {} phases not {}'.format(row[TwoWindingTransformer.ID], num_phases, row[TwoWindingTransformer.A]))
 					print('Error: #-1476')
 
 				if num_phases == 1:
@@ -2039,9 +2040,9 @@ class TwoWindingTransformer: #errors -1475 to -1499
 					row[TwoWindingTransformer.TAP_2] = row[TwoWindingTransformer.MAX_TAP]
 
 				if debug == 1:
-					print('New \'Transformer.{}\' Phases=\'{}\' Windings=\'{}\' XHL=\'{:f}\' %LoadLoss=\'{:f}\'\n'.format(
-						str_self_name, num_phases, num_windings, row[TwoWindingTransformer.X1]*0.01,
-						row[TwoWindingTransformer.R1]*0.01))
+					print('New \'Transformer.{}\' Phases=\'{}\' Windings=\'{}\' XHL=\'{:f}\' %R=\'{:f}\'\n'.format(
+						str_self_name, num_phases, num_windings, row[TwoWindingTransformer.X1],
+						row[TwoWindingTransformer.R1]))
 					print('~ wdg=1 Bus=\'{}{}\' Kv=\'{:f}\' Tap=\'{:f}\' Kva=\'{:f}\' Conn=\'{}\'\n'.format(
 						str_term1_name, str_bus_conn, terminal_1_num_kv, 1.0 + row[TwoWindingTransformer.TAP_1]*0.00625,
 						row[TwoWindingTransformer.RATED_CAPACITY], terminal_1_str_conn))
@@ -2052,9 +2053,9 @@ class TwoWindingTransformer: #errors -1475 to -1499
 						print('Open \'Transformer.{}\' Term=1'.format(str_self_name))
 						print('Open \'Transformer.{}\' Term=2'.format(str_self_name))
 
-				dss.Command = 'New \'Transformer.{}\' Phases=\'{}\' Windings=\'{}\' XHL=\'{:f}\' %LoadLoss=\'{:f}\''.format(
-						str_self_name, num_phases, num_windings, row[TwoWindingTransformer.X1]*0.01,
-						row[TwoWindingTransformer.R1]*0.01)
+				dss.Command = 'New \'Transformer.{}\' Phases=\'{}\' Windings=\'{}\' XHL=\'{:f}\' %R=\'{:f}\''.format(
+						str_self_name, num_phases, num_windings, row[TwoWindingTransformer.X1],
+						row[TwoWindingTransformer.R1])
 				dss.Command = '~ wdg=1 Bus=\'{}{}\' Kv=\'{:f}\' Tap=\'{:f}\' Kva=\'{:f}\' Conn=\'{}\''.format(
 						str_term1_name, str_bus_conn, terminal_1_num_kv, 1.0 + row[TwoWindingTransformer.TAP_1]*0.00625,
 						row[TwoWindingTransformer.RATED_CAPACITY], terminal_1_str_conn)

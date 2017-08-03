@@ -170,13 +170,15 @@ def main(stoch_num, write_cols):
 				for object in w_object_list: # water list
 					lower, upper = object.stochastic_chance
 					if lower <= rval <= upper:
-						object.randomStochasticity()
+						pass
+						# object.randomStochasticity()
 			else:
 				rval = random.random()
 				for object in object_list: # power list
 					lower, upper = object.stochastic_chance
 					if lower <= rval <= upper:
-						object.randomStochasticity()
+						pass
+						# object.randomStochasticity()
 
 		# SWITCHING VALUES (e.g., on/off)
 		if random.random() <= 0.65: # 65% chance to shutoff
@@ -185,13 +187,15 @@ def main(stoch_num, write_cols):
 				for object in w_object_list: # water list
 					lower, upper = object.switch_chance
 					if lower <= rval <= upper:
-						object.randomSwitching()
+						pass
+						# object.randomSwitching()
 			else:
 				rval = random.random()
 				for object in object_list: # power list
 					lower, upper = object.switch_chance
 					if lower <= rval <= upper:
-						object.randomSwitching()
+						pass
+						# object.randomSwitching()
 
 	def run_EPANET():
 		filedir = 'C:/Users/'+os_username+'/Documents/git/RISE-power-water-ss-1phase/data_water/en-inputs/en-input.inp'
@@ -443,7 +447,7 @@ def main(stoch_num, write_cols):
 	dss_debug = 1
 	input_list_continuous, input_list_categorical, _, input_tensor_continuous, input_tensor_categorical, _ = run_OpenDSS(dss_debug)
 	input_list_continuous1, input_list_categorical1, _, input_tensor_continuous1, input_tensor_categorical1, _ = run_EPANET()
-	_, _, output_list, _, _, output_tensor = run_OpenDSS(dss_debug)
+	_, _, output_list, _, _, output_tensor = run_OpenDSS(0)
 	_, _, output_list1, _, _, output_tensor1 = run_EPANET()
 
 	# Format data structures
