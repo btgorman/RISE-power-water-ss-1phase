@@ -65,7 +65,7 @@ class XYCurve: #errors -1000 to -1024
 		except:
 			print('POWER ERROR in XYCurve0')
 
-	def createAllDSS(self, dss, dictionary, interconn_dict, debug):
+	def createAllDSS(self, dss, interconn_dict, debug):
 		try:
 			for row in self.matrix:
 				str_self_name = str(int(row[XYCurve.TYPE])) + '_' + str(int(row[XYCurve.ID]))
@@ -84,13 +84,6 @@ class XYCurve: #errors -1000 to -1024
 		except:
 			print('Error: #-1000')
 			return -1000
-
-	def addToNodesDict(self, dictionary):
-		try:
-			return 0
-		except:
-			print('Error: #-1002')
-			return -1002
 
 	def voltagesToSets(self):
 		return set()
@@ -179,10 +172,7 @@ class RegControl: #errors -1050 to -1074
 		except:
 			print('POWER ERROR in RegControl0')
 
-	def createAllDSS(self, dss, dictionary, interconn_dict, debug):
-		return 0
-
-	def addToNodesDict(self, dictionary):
+	def createAllDSS(self, dss, interconn_dict, debug):
 		return 0
 
 	def voltagesToSets(self):
@@ -245,7 +235,7 @@ class WireData: #errors -1100 to -1124
 		except:
 			print('POWER ERROR in WireData0')
 
-	def createAllDSS(self, dss, dictionary, interconn_dict, debug):
+	def createAllDSS(self, dss, interconn_dict, debug):
 		try:
 			for row in self.matrix:
 				str_self_name = str(int(row[WireData.TYPE])) + '_' + str(int(row[WireData.ID]))
@@ -264,13 +254,6 @@ class WireData: #errors -1100 to -1124
 		except:
 			print('Error: #-1100')
 			return -1100
-
-	def addToNodesDict(self, dictionary):
-		try:
-			return 0
-		except:
-			print('Error: #-1102')
-			return -1102
 
 	def voltagesToSets(self):
 		return set()
@@ -319,7 +302,9 @@ class LineCode: #errors -1125 to -1149
 	R1_SCALAR = 6
 	X0_SCALAR = 7
 	X1_SCALAR = 8
-	MAX_PU_CAPACITY = 9
+	C0_SCALAR = 9
+	C1_SCALAR = 10
+	MAX_PU_CAPACITY = 11
 	UNITS = 'kft'
 
 	def __init__(self, dframe):
@@ -337,7 +322,7 @@ class LineCode: #errors -1125 to -1149
 		except:
 			print('POWER ERROR in LineCode0')
 
-	def createAllDSS(self, dss, dictionary, interconn_dict, debug):
+	def createAllDSS(self, dss, interconn_dict, debug):
 		try:
 			for row in self.matrix:
 				neutral_reduce = 'N'
@@ -347,28 +332,27 @@ class LineCode: #errors -1125 to -1149
 
 				str_self_name = str(int(row[LineCode.TYPE])) + '_' + str(int(row[LineCode.ID]))
 
+				if row[LineCode.R0_SCALAR] != 0.0 or row[LineCode.X0_SCALAR] != 0.0 or row[LineCode.C0_SCALAR] != 0.0:
+					str_impedance = 'R0=\'{}\' R1=\'{}\' X0=\'{}\' X1=\'{}\' C0=\'{}\' C1=\'{}\''.format(
+						row[LineCode.R0_SCALAR], row[LineCode.R1_SCALAR], row[LineCode.X0_SCALAR], row[LineCode.X1_SCALAR],
+						row[LineCode.C0_SCALAR], row[LineCode.C1_SCALAR])
+				else:
+					str_impedance = 'R1=\'{}\' X1=\'{}\' C1=\'{}\''.format(
+						row[LineCode.R1_SCALAR], row[LineCode.X1_SCALAR], row[LineCode.C1_SCALAR])
+
 				if debug == 1:
-					print('New \'LineCode.{}\' Nphases=\'{}\' R0=\'{}\' R1=\'{}\' X0=\'{}\' X1=\'{}\' Units=\'{}\' Normamps=\'{:f}\' Emergamps=\'{:f}\' Kron=\'{}\''.format(
-					str_self_name, int(row[LineCode.NUMBER_OF_PHASES]), row[LineCode.R0_SCALAR], row[LineCode.R1_SCALAR],
-					row[LineCode.X0_SCALAR], row[LineCode.X1_SCALAR], LineCode.UNITS, row[LineCode.NORMAL_AMPS],
-					row[LineCode.NORMAL_AMPS]*row[LineCode.MAX_PU_CAPACITY], neutral_reduce))
+					print('New \'LineCode.{}\' Nphases=\'{}\' {} Units=\'{}\' Normamps=\'{:f}\' Emergamps=\'{:f}\' Kron=\'{}\''.format(
+					str_self_name, int(row[LineCode.NUMBER_OF_PHASES]), str_impedance, LineCode.UNITS,
+					row[LineCode.NORMAL_AMPS], row[LineCode.NORMAL_AMPS]*row[LineCode.MAX_PU_CAPACITY], neutral_reduce))
 					print('\n')
 
-				dss.Command = 'New \'LineCode.{}\' Nphases=\'{}\' R0=\'{}\' R1=\'{}\' X0=\'{}\' X1=\'{}\' Units=\'{}\' Normamps=\'{:f}\' Emergamps=\'{:f}\' Kron=\'{}\''.format(
-					str_self_name, int(row[LineCode.NUMBER_OF_PHASES]), row[LineCode.R0_SCALAR], row[LineCode.R1_SCALAR],
-					row[LineCode.X0_SCALAR], row[LineCode.X1_SCALAR], LineCode.UNITS, row[LineCode.NORMAL_AMPS],
-					row[LineCode.NORMAL_AMPS]*row[LineCode.MAX_PU_CAPACITY], neutral_reduce)
+				dss.Command = 'New \'LineCode.{}\' Nphases=\'{}\' {} Units=\'{}\' Normamps=\'{:f}\' Emergamps=\'{:f}\' Kron=\'{}\''.format(
+					str_self_name, int(row[LineCode.NUMBER_OF_PHASES]), str_impedance, LineCode.UNITS,
+					row[LineCode.NORMAL_AMPS], row[LineCode.NORMAL_AMPS]*row[LineCode.MAX_PU_CAPACITY], neutral_reduce)
 			return 0
 		except:
 			print('Error: #-1125')
 			return -1125
-
-	def addToNodesDict(self, dictionary):
-		try:
-			return 0
-		except:
-			print('Error: #-1127')
-			return -1127
 
 	def voltagesToSets(self):
 		return set()
@@ -436,17 +420,8 @@ class Bus: #errors -1150 to -1174
 		except:
 			print('POWER ERROR in Bus0')
 
-	def createAllDSS(self, dss, dictionary, interconn_dict, debug):
+	def createAllDSS(self, dss, interconn_dict, debug):
 		return 0
-
-	def addToNodesDict(self, dictionary):
-		try:
-			temp_dict = {row[Bus.ID]:self for row in self.matrix}
-			dictionary.update(temp_dict)
-			return 0
-		except:
-			print('Error: #-1150')
-			return -1150
 
 	def voltagesToSets(self):
 		return set()
@@ -455,7 +430,7 @@ class Bus: #errors -1150 to -1174
 		try:
 			for row in self.matrix:
 				idxcount = 0
-				dssCkt.SetActiveBus( str(int(row[Bus.TYPE])) + '_' + str(int(row[Bus.ID])) )
+				dssCkt.SetActiveBus( str(Bus.CLID) + '_' + str(int(row[Bus.ID])) )
 				var_volt_mag = list(dssActvBus.VMagAngle)
 				var_volt_pu = list(dssActvBus.puVmagAngle)
 
@@ -553,7 +528,7 @@ class VSource: #errors -1175 to -1199
 		except:
 			print('POWER ERROR in VSource0')
 
-	def createAllDSS(self, dss, dictionary, interconn_dict, debug):
+	def createAllDSS(self, dss, interconn_dict, debug):
 		try:
 			for row in self.matrix:
 				str_self_name = str(int(row[VSource.TYPE])) + '_' + str(int(row[VSource.ID]))
@@ -583,15 +558,6 @@ class VSource: #errors -1175 to -1199
 		except:
 			print('Error: #-1175')
 			return -1175
-
-	def addToNodesDict(self, dictionary):
-		try:
-			temp_dict = {row[VSource.ID]:self for row in self.matrix}
-			dictionary.update(temp_dict)
-			return 0
-		except:
-			print('Error: #-1177')
-			return -1177
 
 	def voltagesToSets(self):
 		return set()
@@ -703,7 +669,7 @@ class Generator: #errors -1200 to -1224
 		except:
 			print('POWER ERROR in Generator0')
 
-	def createAllDSS(self, dss, dictionary, interconn_dict, debug):
+	def createAllDSS(self, dss, interconn_dict, debug):
 		try:
 			for row in self.matrix:
 				str_bus_conn = ''
@@ -733,6 +699,7 @@ class Generator: #errors -1200 to -1224
 					row[Generator.GENERATION] = row[Generator.RATED_CAPACITY]
 
 				str_self_name = str(int(row[Generator.TYPE])) + '_' + str(int(row[Generator.ID]))
+				str_bus_name = str(Bus.CLID) + '_' + str(int(row[Generator.ID]))
 
 				for interconn_row in interconn_dict['tankgenerator'].matrix:
 					if interconn_row[interconn_dict['tankgenerator'].classValue('CHECK_TANK_LEVEL')] ==  1.0:
@@ -745,7 +712,7 @@ class Generator: #errors -1200 to -1224
 
 				if debug == 1:
 					print('New \'Generator.{}\' Bus1=\'{}{}\' Phases=\'{}\' Kv=\'{:f}\' Kw=\'{:f}\' Pf=\'{:f}\' Model=\'{}\' Conn=\'{}\'\n'.format(
-					str_self_name, str_self_name, str_bus_conn, num_phases,
+					str_self_name, str_bus_name, str_bus_conn, num_phases,
 					num_kv, row[Generator.GENERATION]*derating, row[Generator.POWER_FACTOR_CONTROL], int(row[Generator.MODEL]),
 					str_conn))
 					if row[Generator.FUNCTIONAL_STATUS]*row[Generator.OPERATIONAL_STATUS] == 0.0:
@@ -753,7 +720,7 @@ class Generator: #errors -1200 to -1224
 						print('Open \'Generator.{}\' Term=2\n'.format(str_self_name))
 
 				dss.Command = 'New \'Generator.{}\' Bus1=\'{}{}\' Phases=\'{}\' Kv=\'{:f}\' Kw=\'{:f}\' Pf=\'{:f}\' Model=\'{}\' Conn=\'{}\''.format(
-					str_self_name, str_self_name, str_bus_conn, num_phases,
+					str_self_name, str_bus_name, str_bus_conn, num_phases,
 					num_kv, row[Generator.GENERATION]*derating, row[Generator.POWER_FACTOR_CONTROL], int(row[Generator.MODEL]),
 					str_conn)
 				if row[Generator.FUNCTIONAL_STATUS]*row[Generator.OPERATIONAL_STATUS] == 0.0:
@@ -763,15 +730,6 @@ class Generator: #errors -1200 to -1224
 		except:
 			print('Error: #-1200')
 			return -1200
-
-	def addToNodesDict(self, dictionary):
-		try:
-			temp_dict = {row[Generator.ID]:self for row in self.matrix}
-			dictionary.update(temp_dict)
-			return 0
-		except:
-			print('Error: #-1202')
-			return -1202
 
 	def voltagesToSets(self):
 		try:
@@ -784,7 +742,7 @@ class Generator: #errors -1200 to -1224
 		try:
 			for row in self.matrix:
 				idxcount = 0
-				dssCkt.SetActiveBus(str(int(row[Generator.TYPE])) + '_' + str(int(row[Generator.ID])))
+				dssCkt.SetActiveBus(str(Bus.CLID) + '_' + str(int(row[Generator.ID])))
 				dssCkt.Generators.Name = str(int(row[Generator.TYPE])) + '_' + str(int(row[Generator.ID]))
 				var_volt_mag = list(dssActvBus.VMagAngle)
 				var_volt_pu = list(dssActvBus.puVmagAngle)
@@ -920,7 +878,7 @@ class Load: #errors -1225 to -1249
 		except:
 			print('POWER ERROR in Load0')
 
-	def createAllDSS(self, dss, dictionary, interconn_dict, debug):
+	def createAllDSS(self, dss, interconn_dict, debug):
 		try:
 			for row in self.matrix:
 				str_bus_conn = ''
@@ -942,7 +900,7 @@ class Load: #errors -1225 to -1249
 					num_kv = num_kv / math.sqrt(3.0)
 
 				str_self_name = str(int(row[Load.TYPE])) + '_' + str(int(row[Load.ID])) + '_' + str(int(row[Load.A]))
-				str_bus_name = str(Load.CLID) + '_' + str(int(row[Load.ID]))
+				str_bus_name = str(Bus.CLID) + '_' + str(int(row[Load.ID]))
 
 				for interconn_row in interconn_dict['pumpload'].matrix:
 					if interconn_row[interconn_dict['pumpload'].classValue('LOAD_ID')] == row[Load.ID]:
@@ -991,16 +949,6 @@ class Load: #errors -1225 to -1249
 			print('Error: #-1225')
 			return -1225
 
-	def addToNodesDict(self, dictionary):
-		try:
-			temp_dict = {row[Load.ID]:self for row in self.matrix}
-			dictionary.update(temp_dict)
-			# NOT ADDED TO DICT IN LIEU OF BUS
-			return 0
-		except:
-			print('Error: #-1227')
-			return -1227
-
 	def voltagesToSets(self):
 		try:
 			return set(self.matrix[:, Load.NOMINAL_LL_VOLTAGE])
@@ -1012,7 +960,7 @@ class Load: #errors -1225 to -1249
 		try:
 			for row in self.matrix:
 				idxcount = 0
-				dssCkt.SetActiveBus(str(Load.CLID) + '_' + str(int(row[Load.ID])))
+				dssCkt.SetActiveBus(str(Bus.CLID) + '_' + str(int(row[Load.ID])))
 				dssCkt.Loads.Name = str(int(row[Load.TYPE])) + '_' + str(int(row[Load.ID])) + '_' + str(int(row[Load.A]))
 				var_volt_mag = list(dssActvBus.VMagAngle)
 				var_volt_pu = list(dssActvBus.puVmagAngle)
@@ -1146,7 +1094,7 @@ class SolarPV: #errors -1250 to -1274
 		except:
 			print('POWER ERROR in SolarPV0')
 
-	def createAllDSS(self, dss, dictionary, interconn_dict, debug):
+	def createAllDSS(self, dss, interconn_dict, debug):
 		try:
 			for row in self.matrix:
 				str_bus_conn = ''
@@ -1197,15 +1145,6 @@ class SolarPV: #errors -1250 to -1274
 		except:
 			print('Error: #-1250')
 			return -1250
-
-	def addToNodesDict(self, dictionary):
-		try:
-			temp_dict = {row[SolarPV.ID]:self for row in self.matrix}
-			# NOT ADDED TO DICT IN LIEU OF BUS
-			return 0
-		except:
-			print('Error: #-1252')
-			return -1252
 
 	def voltagesToSets(self):
 		try:
@@ -1359,7 +1298,7 @@ class WindTurbine: #errors -1275 to -1299
 		except:
 			print('POWER ERROR in WindTurbine0')
 
-	def createAllDSS(self, dss, dictionary, interconn_dict, debug):
+	def createAllDSS(self, dss, interconn_dict, debug):
 		try:
 			for row in self.matrix:
 				str_bus_conn = ''
@@ -1385,30 +1324,22 @@ class WindTurbine: #errors -1275 to -1299
 					gen_fraction = 0.0
 
 				str_self_name = str(int(row[WindTurbine.TYPE])) + '_' + str(int(row[WindTurbine.ID]))
+				str_bus_name = str(Bus.CLID) + '_' + str(int(row[WindTurbine.ID]))
 
 				if debug == 1:
 					print('New \'Generator.{}\' Bus1=\'{}{}\' Phases=\'{}\' Kv=\'{:f}\' Kw=\'{:f}\' Pf=\'{:f}\' Model=\'{}\' Conn=\'{}\'\n'.format(
-					str_self_name, str_self_name, str_bus_conn, num_phases,
+					str_self_name, str_bus_name, str_bus_conn, num_phases,
 					num_kv, gen_fraction*row[WindTurbine.RATED_CAPACITY], row[WindTurbine.POWER_FACTOR], int(row[WindTurbine.MODEL]),
 					str_conn))
 
 				dss.Command = 'New \'Generator.{}\' Bus1=\'{}{}\' Phases=\'{}\' Kv=\'{:f}\' Kw=\'{:f}\' Pf=\'{:f}\' Model=\'{}\' Conn=\'{}\''.format(
-					str_self_name, str_self_name, str_bus_conn, num_phases,
+					str_self_name, str_bus_name, str_bus_conn, num_phases,
 					num_kv, gen_fraction*row[WindTurbine.RATED_CAPACITY], row[WindTurbine.POWER_FACTOR], int(row[WindTurbine.MODEL]),
 					str_conn)
 			return 0
 		except:
 			print('Error: #-1275')
 			return -1275
-
-	def addToNodesDict(self, dictionary):
-		try:
-			temp_dict = {row[WindTurbine.ID]:self for row in self.matrix}
-			dictionary.update(temp_dict)
-			return 0
-		except:
-			print('Error: #-1277')
-			return -1277
 
 	def voltagesToSets(self):
 		try:
@@ -1421,7 +1352,7 @@ class WindTurbine: #errors -1275 to -1299
 		try:
 			for row in self.matrix:
 				idxcount = 0
-				dssCkt.SetActiveBus(str(int(row[WindTurbine.TYPE])) + '_' + str(int(row[WindTurbine.ID])))
+				dssCkt.SetActiveBus(str(Bus.CLID) + '_' + str(int(row[WindTurbine.ID])))
 				dssCkt.Generators.Name = str(int(row[WindTurbine.TYPE])) + '_' + str(int(row[WindTurbine.ID]))
 				var_volt_mag = list(dssActvBus.VMagAngle)
 				var_volt_pu = list(dssActvBus.puVmagAngle)
@@ -1512,11 +1443,11 @@ class DirectConnection: #errors -1400 to -1424
 		except:
 			print('POWER ERROR in DirectConnection0')
 
-	def createAllDSS(self, dss, dictionary, interconn_dict, debug):
+	def createAllDSS(self, dss, interconn_dict, debug):
 		try:
 			for row in self.matrix:
-				terminal_1_type = type(dictionary[row[DirectConnection.TERMINAL_1_ID]]).CLID
-				terminal_2_type = type(dictionary[row[DirectConnection.TERMINAL_2_ID]]).CLID
+				terminal_1_type = Bus.CLID
+				terminal_2_type = Bus.CLID
 				str_bus_conn = ''
 				num_phases = int(row[DirectConnection.A] + row[DirectConnection.B] + row[DirectConnection.C])
 
@@ -1529,9 +1460,9 @@ class DirectConnection: #errors -1400 to -1424
 				str_self_name = str(int(row[DirectConnection.TYPE])) + '_' + str(int(row[DirectConnection.ID]))
 				str_term1_name = str(terminal_1_type) + '_' + str(int(row[DirectConnection.TERMINAL_1_ID]))
 				str_term2_name = str(terminal_2_type) + '_' + str(int(row[DirectConnection.TERMINAL_2_ID]))
-				if terminal_1_type == VSource.CLID:
+				if row[DirectConnection.TERMINAL_1_ID] < 1:
 					str_term1_name = 'sourcebus'
-				elif terminal_2_type == VSource.CLID:
+				elif row[DirectConnection.TERMINAL_2_ID] < 1:
 					str_term2_name = 'sourcebus'
 
 				if debug == 1:
@@ -1550,13 +1481,6 @@ class DirectConnection: #errors -1400 to -1424
 		except:
 			print('Error: #-1400')
 			return -1400
-
-	def addToNodesDict(self, dictionary):
-		try:
-			return 0
-		except:
-			print('Error: #-1402')
-			return -1402
 
 	def voltagesToSets(self):
 		return set()
@@ -1670,11 +1594,11 @@ class Cable: #errors -1425 to -1449
 		except:
 			print('POWER ERROR in Cable0')
 
-	def createAllDSS(self, dss, dictionary, interconn_dict, debug):
+	def createAllDSS(self, dss, interconn_dict, debug):
 		try:
 			for row in self.matrix:
-				terminal_1_type = type(dictionary[row[Cable.TERMINAL_1_ID]]).CLID
-				terminal_2_type = type(dictionary[row[Cable.TERMINAL_2_ID]]).CLID
+				terminal_1_type = Bus.CLID
+				terminal_2_type = Bus.CLID
 				str_bus_conn = ''
 
 				if row[Cable.A] == 1.0:
@@ -1688,9 +1612,9 @@ class Cable: #errors -1425 to -1449
 				str_term1_name = str(terminal_1_type) + '_' + str(int(row[Cable.TERMINAL_1_ID]))
 				str_term2_name = str(terminal_2_type) + '_' + str(int(row[Cable.TERMINAL_2_ID]))
 				str_linec_name = str(LineCode.CLID) + '_' + str(int(row[Cable.LINECODE_ID]))
-				if terminal_1_type == VSource.CLID:
+				if row[Cable.TERMINAL_1_ID] < 1:
 					str_term1_name = 'sourcebus'
-				elif terminal_2_type == VSource.CLID:
+				elif row[Cable.TERMINAL_2_ID] < 1:
 					str_term2_name = 'sourcebus'
 
 				if debug == 1:
@@ -1711,13 +1635,6 @@ class Cable: #errors -1425 to -1449
 		except:
 			print('Error: #-1425')
 			return -1425
-
-	def addToNodesDict(self, dictionary):
-		try:
-			return 0
-		except:
-			print('Error: #-1427')
-			return -1427
 
 	def voltagesToSets(self):
 		return set()
@@ -1881,11 +1798,11 @@ class OverheadLine: #errors -1450 to -1474
 		except:
 			print('POWER ERROR in OverheadLine0')
 
-	def createAllDSS(self, dss, dictionary, interconn_dict, debug):
+	def createAllDSS(self, dss, interconn_dict, debug):
 		try:
 			for row in self.matrix:
-				terminal_1_type = type(dictionary[row[OverheadLine.TERMINAL_1_ID]]).CLID
-				terminal_2_type = type(dictionary[row[OverheadLine.TERMINAL_2_ID]]).CLID
+				terminal_1_type = Bus.CLID
+				terminal_2_type = Bus.CLID
 				str_bus_conn = ''
 				num_phases = 0
 				num_neutral = 1
@@ -1905,9 +1822,9 @@ class OverheadLine: #errors -1450 to -1474
 				str_term2_name = str(terminal_2_type) + '_' + str(int(row[OverheadLine.TERMINAL_2_ID]))
 				str_pwire_name = str(WireData.CLID) + '_' + str(int(row[OverheadLine.PHASE_WIREDATA_ID]))
 				str_nwire_name = str(WireData.CLID) + '_' + str(int(row[OverheadLine.NEUTRAL_WIREDATA_ID]))
-				if terminal_1_type == VSource.CLID:
+				if row[OverheadLine.TERMINAL_1_ID] < 1:
 					str_term1_name = 'sourcebus'
-				elif terminal_2_type == VSource.CLID:
+				elif row[OverheadLine.TERMINAL_2_ID] < 1:
 					str_term2_name = 'sourcebus'
 
 				if debug == 1:
@@ -1940,13 +1857,6 @@ class OverheadLine: #errors -1450 to -1474
 		except:
 			print('Error: #-1450')
 			return -1450
-
-	def addToNodesDict(self, dictionary):
-		try:
-			return 0
-		except:
-			print('Error: #-1452')
-			return -1452
 
 	def voltagesToSets(self):
 		return set()
@@ -2072,11 +1982,11 @@ class TwoWindingTransformer: #errors -1475 to -1499
 		except:
 			print('POWER ERROR in TwoWindingTransformer0')
 
-	def createAllDSS(self, dss, dictionary, interconn_dict, debug):
+	def createAllDSS(self, dss, interconn_dict, debug):
 		try:
 			for row in self.matrix:
-				terminal_1_type = type(dictionary[row[TwoWindingTransformer.TERMINAL_1_ID]]).CLID
-				terminal_2_type = type(dictionary[row[TwoWindingTransformer.TERMINAL_2_ID]]).CLID
+				terminal_1_type = Bus.CLID
+				terminal_2_type = Bus.CLID
 				terminal_1_str_conn = 'wye'
 				terminal_2_str_conn = 'wye'
 				terminal_1_num_kv = row[TwoWindingTransformer.TERMINAL_1_LL_VOLTAGE]
@@ -2108,9 +2018,9 @@ class TwoWindingTransformer: #errors -1475 to -1499
 				str_self_name = str(int(row[TwoWindingTransformer.TYPE])) + '_' + str(int(row[TwoWindingTransformer.ID]))
 				str_term1_name = str(terminal_1_type) + '_' + str(int(row[TwoWindingTransformer.TERMINAL_1_ID]))
 				str_term2_name = str(terminal_2_type) + '_' + str(int(row[TwoWindingTransformer.TERMINAL_2_ID]))
-				if terminal_1_type == VSource.CLID:
+				if row[TwoWindingTransformer.TERMINAL_1_ID] < 1:
 					str_term1_name = 'sourcebus'
-				elif terminal_2_type == VSource.CLID:
+				elif row[TwoWindingTransformer.TERMINAL_2_ID] < 1:
 					str_term2_name = 'sourcebus'
 
 				row[TwoWindingTransformer.TAP_1] = round(row[TwoWindingTransformer.TAP_1])
@@ -2158,13 +2068,6 @@ class TwoWindingTransformer: #errors -1475 to -1499
 		except:
 			print('Error: #-1475')
 			return -1475
-
-	def addToNodesDict(self, dictionary):
-		try:
-			return 0
-		except:
-			print('Error: #-1477')
-			return -1477
 
 	def voltagesToSets(self):
 		try:
@@ -2332,13 +2235,13 @@ class Capacitor: #errors -1500 to -1524
 		except:
 			print('POWER ERROR in Capacitor0')
 
-	def createAllDSS(self, dss, dictionary, interconn_dict, debug):
+	def createAllDSS(self, dss, interconn_dict, debug):
 		try:
 			for row in self.matrix:
-				terminal_1_type = type(dictionary[row[Capacitor.TERMINAL_1_ID]]).CLID
+				terminal_1_type = Bus.CLID
 				bool_terminal_2 = False
 				try:
-					terminal_2_type = type(dictionary[row[Capacitor.TERMINAL_2_ID]]).CLID
+					terminal_2_type = Bus.CLID
 					bool_terminal_2 = True
 				except:
 					pass
@@ -2360,11 +2263,11 @@ class Capacitor: #errors -1500 to -1524
 
 				str_self_name = str(int(row[Capacitor.TYPE])) + '_' + str(int(row[Capacitor.ID]))
 				str_term1_name = str(terminal_1_type) + '_' + str(int(row[Capacitor.TERMINAL_1_ID]))
-				if terminal_1_type == VSource.CLID:
+				if row[Capacitor.TERMINAL_1_ID] < 1:
 					str_term1_name = 'sourcebus'
 				if bool_terminal_2 == True:
 					str_term2_name = str(terminal_2_type) + '_' + str(int(row[Capacitor.TERMINAL_2_ID]))
-					if terminal_2_type == VSource.CLID:
+					if row[Capacitor.TERMINAL_2_ID] < 1:
 						str_term2_name = 'sourcebus'
 
 				# TODO fix rated reactive power for single phase?
@@ -2398,13 +2301,6 @@ class Capacitor: #errors -1500 to -1524
 		except:
 			print('Error: #-1500')
 			return -1500
-
-	def addToNodesDict(self, dictionary):
-		try:
-			return 0
-		except:
-			print('Error: #-1502')
-			return -1502
 
 	def voltagesToSets(self):
 		return set()
@@ -2548,20 +2444,13 @@ class Reactor: #errors -1525 to -1549
 		except:
 			print('POWER ERROR in Reactor0')
 
-	def createAllDSS(self, dss, dictionary, interconn_dict, debug):
+	def createAllDSS(self, dss, interconn_dict, debug):
 		try:
 			# TODO
 			return 0
 		except:
 			print('Error: #-1525')
 			return -1525
-
-	def addToNodesDict(self, dictionary):
-		try:
-			return 0
-		except:
-			print('Error: #-1527')
-			return -1527
 
 	def voltagesToSets(self):
 		return set()

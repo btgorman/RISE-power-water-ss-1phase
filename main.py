@@ -99,9 +99,6 @@ def main(stoch_num, write_cols):
 	object_xycurve, object_wiredata, object_linecode, #OTHERS
 	object_directconnection, object_cable, object_overheadline, object_twowindingtransformer, object_capacitor, object_reactor, # CONNECTIONS
 	object_regcontrol] # CONTROLS
-	dict_power_nodes = {}
-	for object in object_list:
-		object.addToNodesDict(dict_power_nodes)
 
 	interconn_dict = {'pumpload': object_pumpload, 'tankgenerator': object_tankgenerator,
 	'pump': object_pump, 'load': object_load, 'tank': object_tank,
@@ -390,7 +387,7 @@ def main(stoch_num, write_cols):
 		dssText.Command = 'Set DefaultBaseFrequency=60'
 
 		for object in object_list:
-			object.createAllDSS(dssText, dict_power_nodes, interconn_dict, dss_debug)
+			object.createAllDSS(dssText, interconn_dict, dss_debug)
 
 		set_voltagebase = set()
 		for object in object_list:
