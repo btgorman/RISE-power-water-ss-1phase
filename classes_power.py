@@ -1403,14 +1403,14 @@ class WindTurbine: #errors -1275 to -1299
 
 	def convertToInputTensor(self):
 		try:
-			# TODO
+			# TO DO:
 			return [], [], np.empty([0, 0], dtype=np.float32).flatten(), np.empty([0,0], dtype=np.float32).flatten()
 		except:
 			pass
 
 	def convertToOutputTensor(self):
 		try:
-			# TODO
+			# TO DO:
 			return [], np.empty([0, 0], dtype=np.float32).flatten()
 		except:
 			pass
@@ -1931,14 +1931,14 @@ class OverheadLine: #errors -1450 to -1474
 
 	def convertToInputTensor(self):
 		try:
-			# TODO
+			# TO DO:
 			return [], [], np.empty([0, 0], dtype=np.float32).flatten(), np.empty([0,0], dtype=np.float32).flatten()
 		except:
 			pass
 
 	def convertToOutputTensor(self):
 		try:
-			# TODO
+			# TO DO:
 			return [], np.empty([0, 0], dtype=np.float32).flatten()
 		except:
 			pass
@@ -2132,7 +2132,7 @@ class TwoWindingTransformer: #errors -1475 to -1499
 				row[TwoWindingTransformer.REAL_POWER_LOSSES] = math.fabs(row[TwoWindingTransformer.REAL_POWER_1] + row[TwoWindingTransformer.REAL_POWER_2])
 				row[TwoWindingTransformer.REACTIVE_POWER_LOSSES] = math.fabs(row[TwoWindingTransformer.REACTIVE_POWER_1] + row[TwoWindingTransformer.REACTIVE_POWER_2])
 				row[TwoWindingTransformer.PU_CAPACITY] = math.fabs(row[TwoWindingTransformer.A_1_CURRENT]) / (num_phases * norm_amps)
-				# TODO fix above to 3x phase A current??
+				# TO DO: fix above to 3x phase A current??
 			return 0
 		except:
 			print('Error: #-1481')
@@ -2220,23 +2220,28 @@ class Capacitor: #errors -1500 to -1524
 	FUNCTIONAL_STATUS = 4 # switch
 	A = 5
 	NOMINAL_LL_VOLTAGE = 6
-	RATED_REACTIVE_POWER = 7
+	REACTIVE_POWER_RATING = 7
 	WIRING = 8
-	ANGLE_DELTA_LIMIT = 9
-	MAX_PU_CAPACITY = 10
-	OPERATIONAL_STATUS = 11 # switch
-	A_1_CURRENT = 12
-	A_1_CURRENT_ANGLE = 13
-	A_2_CURRENT = 14
-	A_2_CURRENT_ANGLE = 15
-	REAL_POWER_1 = 16
-	REACTIVE_POWER_1 = 17
-	REAL_POWER_2 = 18
-	REACTIVE_POWER_2 = 19
-	REAL_POWER_LOSSES = 20
-	REACTIVE_POWER_LOSSES = 21
-	ANGLE_DELTA = 22
-	PU_CAPACITY = 23
+	NUMBER_OF_STAGES = 9
+	ANGLE_DELTA_LIMIT = 10
+	MAX_PU_CAPACITY = 11
+	STAGE_ONE = 12 # switch
+	STAGE_TWO = 13 # switch
+	STAGE_THREE = 14 # switch
+	STAGE_FOUR = 15 # switch
+	STAGE_FIVE = 16 # switch
+	A_1_CURRENT = 17
+	A_1_CURRENT_ANGLE = 18
+	A_2_CURRENT = 19
+	A_2_CURRENT_ANGLE = 20
+	REAL_POWER_1 = 21
+	REACTIVE_POWER_1 = 22
+	REAL_POWER_2 = 23
+	REACTIVE_POWER_2 = 24
+	REAL_POWER_LOSSES = 25
+	REACTIVE_POWER_LOSSES = 26
+	ANGLE_DELTA = 27
+	PU_CAPACITY = 28
 
 	def __init__(self, dframe):
 		self.cols = list(dframe.columns)
@@ -2256,13 +2261,14 @@ class Capacitor: #errors -1500 to -1524
 	def createAllDSS(self, dss, interconn_dict, debug):
 		try:
 			for row in self.matrix:
+				reactive_power_generation = 0.0
+				reactive_power_per_stage = row[Capacitor.REACTIVE_POWER_RATING] / row[Capacitor.NUMBER_OF_STAGES]
 				terminal_1_type = Bus.CLID
 				bool_terminal_2 = False
-				try:
+				if row[Capacitor.TERMINAL_2_ID] > 0.0:
 					terminal_2_type = Bus.CLID
 					bool_terminal_2 = True
-				except:
-					pass
+
 				num_kv = row[Capacitor.NOMINAL_LL_VOLTAGE]
 				str_conn = 'wye'
 				str_bus_conn = ''
@@ -2279,6 +2285,17 @@ class Capacitor: #errors -1500 to -1524
 				if num_phases == 0:
 					print('Error: #-1501')
 
+				if row[Capacitor.STAGE_ONE] == 1.0 and row[Capacitor.NUMBER_OF_STAGES] >= 1.0:
+					reactive_power_generation += reactive_power_per_stage
+					if row[Capacitor.STAGE_TWO] == 1.0 and row[Capacitor.NUMBER_OF_STAGES] >= 2.0:
+						reactive_power_generation += reactive_power_per_stage
+						if row[Capacitor.STAGE_THREE] == 1.0 and row[Capacitor.NUMBER_OF_STAGES] >= 3.0:
+							reactive_power_generation += reactive_power_per_stage
+							if row[Capacitor.STAGE_FOUR] == 1.0 and row[Capacitor.NUMBER_OF_STAGES] >= 4.0:
+								reactive_power_generation += reactive_power_per_stage
+								if row[Capacitor.STAGE_FIVE] == 1.0 and row[Capacitor.NUMBER_OF_STAGES] >= 5.0:
+									reactive_power_generation += reactive_power_per_stage
+
 				str_self_name = str(int(row[Capacitor.TYPE])) + '_' + str(int(row[Capacitor.ID]))
 				str_term1_name = str(terminal_1_type) + '_' + str(int(row[Capacitor.TERMINAL_1_ID]))
 				if row[Capacitor.TERMINAL_1_ID] < 1:
@@ -2288,31 +2305,30 @@ class Capacitor: #errors -1500 to -1524
 					if row[Capacitor.TERMINAL_2_ID] < 1:
 						str_term2_name = 'sourcebus'
 
-				# TODO fix rated reactive power for single phase?
 				if debug == 1:
 					if bool_terminal_2 == True:
 						print('New \'Capacitor.{}\' Bus1=\'{}{}\' Bus2=\'{}{}\' Phases={} Kvar=\'{:f}\' Kv=\'{:f}\' Conn=\'{}\'\n'.format(
 							str_self_name, str_term1_name, str_bus_conn, str_term2_name,
-							str_bus_conn, num_phases, row[Capacitor.RATED_REACTIVE_POWER], num_kv,
+							str_bus_conn, num_phases, reactive_power_generation, num_kv,
 							str_conn))
 					else:
 						print('New \'Capacitor.{}\' Bus1=\'{}{}\' Phases={} Kvar=\'{:f}\' Kv=\'{:f}\' Conn=\'{}\'\n'.format(
 							str_self_name, str_term1_name, str_bus_conn, num_phases,
-							row[Capacitor.RATED_REACTIVE_POWER], num_kv, str_conn))
-					if row[Capacitor.FUNCTIONAL_STATUS]*row[Capacitor.OPERATIONAL_STATUS] == 0.0:
+							reactive_power_generation, num_kv, str_conn))
+					if row[Capacitor.FUNCTIONAL_STATUS] == 0.0:
 						print('Open \'Capacitor.{}\' Term=1'.format(str_self_name))
 						print('Open \'Capacitor.{}\' Term=2'.format(str_self_name))
 
 				if bool_terminal_2 == True:
 					dss.Command = 'New \'Capacitor.{}\' Bus1=\'{}{}\' Bus2=\'{}{}\' Phases={} Kvar=\'{:f}\ Kv=\'{:f}\' Conn=\'{}\''.format(
 							str_self_name, str_term1_name, str_bus_conn, str_term2_name,
-							str_bus_conn, num_phases, row[Capacitor.RATED_REACTIVE_POWER], num_kv,
+							str_bus_conn, num_phases, reactive_power_generation, num_kv,
 							str_conn)
 				else:
 					dss.Command = 'New \'Capacitor.{}\' Bus1=\'{}{}\' Phases={} Kvar=\'{:f}\' Kv=\'{:f}\' Conn=\'{}\''.format(
 							str_self_name, str_term1_name, str_bus_conn, num_phases,
-							row[Capacitor.RATED_REACTIVE_POWER], num_kv, str_conn)
-				if row[Capacitor.FUNCTIONAL_STATUS]*row[Capacitor.OPERATIONAL_STATUS] == 0.0:
+							reactive_power_generation, num_kv, str_conn)
+				if row[Capacitor.FUNCTIONAL_STATUS] == 0.0:
 					dss.Command = 'Open \'Capacitor.{}\' Term=1'.format(str_self_name)
 					dss.Command = 'Open \'Capacitor.{}\' Term=2'.format(str_self_name)
 			return 0
@@ -2333,7 +2349,7 @@ class Capacitor: #errors -1500 to -1524
 				var_pow = list(dssActvElem.Powers)
 				num_phases = dssActvElem.NumPhases
 				num_conds = dssActvElem.NumConductors
-				norm_amps = math.sqrt(3.0) * row[Capacitor.RATED_REACTIVE_POWER] / (num_phases * row[Capacitor.NOMINAL_LL_VOLTAGE])
+				norm_amps = math.sqrt(3.0) * row[Capacitor.REACTIVE_POWER_RATING] / (num_phases * row[Capacitor.NOMINAL_LL_VOLTAGE])
 				row[Capacitor.A_1_CURRENT : Capacitor.PU_CAPACITY+1] = 0.0
 
 				if row[Capacitor.A] == 1.0:
@@ -2353,15 +2369,15 @@ class Capacitor: #errors -1500 to -1524
 					row[Capacitor.REACTIVE_POWER_2] += var_pow[idxcount*2 + 1]
 					idxcount += 1
 				if num_conds > num_phases:
-					row[Capacitor.N_2_CURRENT] = var_curr[idxcount*2]
-					row[Capacitor.N_2_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
+					# row[Capacitor.N_2_CURRENT] = var_curr[idxcount*2]
+					# row[Capacitor.N_2_CURRENT_ANGLE] = var_curr[idxcount*2 + 1]
 					idxcount += 1
 
 				row[Capacitor.REAL_POWER_LOSSES] = math.fabs(row[Capacitor.REAL_POWER_1] + row[Capacitor.REAL_POWER_2])
 				row[Capacitor.REACTIVE_POWER_LOSSES] = math.fabs(row[Capacitor.REACTIVE_POWER_1] + row[Capacitor.REACTIVE_POWER_2])
 
 				row[Capacitor.PU_CAPACITY] = (math.fabs(row[Capacitor.A_1_CURRENT]) + math.fabs(row[Capacitor.A_2_CURRENT])) / (2.0 * num_phases * norm_amps)
-					# TODO fix above to 3x phase a current?
+					# TO DO: fix above to 3x phase a current?
 			return 0
 		except:
 			print('Error: #-1504')
@@ -2378,7 +2394,7 @@ class Capacitor: #errors -1500 to -1524
 		try:
 			input_list_continuous = []
 			input_list_categorical = []
-			input_col_categorical = ['operational_status']
+			input_col_categorical = ['stage_one', 'stage_two', 'stage_three', 'stage_four', 'stage_five']
 
 			for row in self.matrix:
 				for elem in input_col_categorical:
@@ -2464,7 +2480,7 @@ class Reactor: #errors -1525 to -1549
 
 	def createAllDSS(self, dss, interconn_dict, debug):
 		try:
-			# TODO
+			# TO DO:
 			return 0
 		except:
 			print('Error: #-1525')
@@ -2475,7 +2491,7 @@ class Reactor: #errors -1525 to -1549
 
 	def readAllDSSOutputs(self, dssCkt, dssActvElem, dssActvBus, var_bus, var_volt_mag, var_volt_pu, var_curr, var_pow):
 		try:
-			# TODO
+			# TO DO:
 			return 0
 		except:
 			print('Error: #-1529')
@@ -2490,22 +2506,22 @@ class Reactor: #errors -1525 to -1549
 
 	def convertToInputTensor(self):
 		try:
-			# TODO
+			# TO DO:
 			return [], [], np.empty([0, 0], dtype=np.float32).flatten(), np.empty([0,0], dtype=np.float32).flatten()
 		except:
 			pass
 
 	def convertToOutputTensor(self):
 		try:
-			# TODO
+			# TO DO:
 			return [], np.empty([0, 0], dtype=np.float32).flatten()
 		except:
 			pass
 
 	def randomStochasticity(self):
-		# TODO
+		# TO DO:
 		pass
 
 	def randomSwitching(self):
-		# TODO
+		# TO DO:
 		pass
