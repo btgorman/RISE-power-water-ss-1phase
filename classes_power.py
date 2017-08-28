@@ -629,32 +629,35 @@ class VSource: #errors -1175 to -1199
 
 class Generator: #errors -1200 to -1224
 	CLID = 1302
-
+	
 	ID = 0
 	TYPE = 1
 	FUNCTIONAL_STATUS = 2 # switch
 	NOMINAL_LL_VOLTAGE = 3
 	A = 4
-	GENERATION = 5 # stochastic temporary
-	MIN_POWER_FACTOR = 6
+	REAL_GENERATION = 5 # stochastic, temporary
+	REACTIVE_GENERATION = 6
 	MODEL = 7
 	RAMP_RATE = 8
-	RATED_CAPACITY = 9
-	WATER_CONSUMPTION = 10
-	WATER_DERATING = 11
-	WIRING = 12
-	MIN_PU_VOLTAGE = 13
-	MAX_PU_VOLTAGE = 14
-	OPERATIONAL_STATUS = 15 # switch
-	GENERATION_TARGET = 16 # stochastic
-	POWER_FACTOR_CONTROL = 17 # stochastic
-	A_PU_VOLTAGE = 18
-	A_VOLTAGE = 19
-	A_VOLTAGE_ANGLE = 20
-	A_CURRENT = 21
-	A_CURRENT_ANGLE = 22
-	REAL_POWER = 23
-	REACTIVE_POWER = 24
+	REAL_GENERATION_MIN_RATING = 9
+	REAL_GENERATION_MAX_RATING = 10
+	REACTIVE_GENERATION_MIN_RATING = 11
+	REACTIVE_GENERATION_MAX_RATING = 12
+	WATER_CONSUMPTION = 13
+	WATER_DERATING = 14
+	WIRING = 15
+	MIN_PU_VOLTAGE = 16
+	MAX PU VOLTAGE = 17
+	OPERATIONAL_STATUS = 18 # switch
+	REAL_GENERATION_CONTROL = 19 # stochastic
+	REACTIVE_GENERATION_CONTROL = 20 # stochastic
+	A_PU_VOLTAGE = 21
+	A_VOLTAGE = 22
+	A_VOLTAGE_ANGLE = 23
+	A_CURRENT = 24
+	A_CURRENT_ANGLE = 25
+	REAL_POWER = 26
+	REACTIVE_POWER = 27
 
 	def __init__(self, dframe):
 		self.cols = list(dframe.columns)
@@ -669,6 +672,7 @@ class Generator: #errors -1200 to -1224
 		except:
 			print('POWER ERROR in Generator0')
 
+# TO DO: Code ramp up and down change
 	def createAllDSS(self, dss, interconn_dict, debug):
 		try:
 			for row in self.matrix:
@@ -690,13 +694,15 @@ class Generator: #errors -1200 to -1224
 				elif num_phases == 1:
 					num_kv = num_kv / math.sqrt(3.0)
 
-				if math.fabs(row[Generator.POWER_FACTOR_CONTROL]) < math.fabs(row[Generator.MIN_POWER_FACTOR]):
-					print('Error: generator#')
+				if row[Generator.REAL_GENERATION_CONTROL] > row[Generator.REAL_GENERATION_MAX_RATING]:
+					row[Generator.REAL_GENERATION_CONTROL] = row[Generator.REAL_GENERATION_MAX_RATING]
+				if row[Generator.REAL_GENERATION_CONTROL] < row[Generator.REAL_GENERATION_MIN_RATING:
+					row[Generator.REAL_GENERATION_CONTROL] = row[Generator.REAL_GENERATION_MIN_RATING]
 
-				if row[Generator.GENERATION] < 0.0:
-					row[Generator.GENERATION] = 0.0
-				elif row[Generator.GENERATION] > row[Generator.RATED_CAPACITY]:
-					row[Generator.GENERATION] = row[Generator.RATED_CAPACITY]
+				if row[Generator.REACTIVE_GENERATION_CONTROL] > row[Generator.REACTIVE_GENERATION_MAX_RATING]:
+					row[Generator.REACTIVE_GENERATION_CONTROL] = row[Generator.REACTIVE_GENERATION_MAX_RATING]
+				if row[Generator.REACTIVE_GENERATION_CONTROL] < row[Generator.REACTIVE_GENERATION_MIN_RATING:
+					row[Generator.REACTIVE_GENERATION_CONTROL] = row[Generator.REACTIVE_GENERATION_MIN_RATING]
 
 				str_self_name = str(int(row[Generator.TYPE])) + '_' + str(int(row[Generator.ID]))
 				str_bus_name = str(Bus.CLID) + '_' + str(int(row[Generator.ID]))
@@ -708,20 +714,20 @@ class Generator: #errors -1200 to -1224
 								if tank_row[interconn_dict['tank'].classValue('ID')] == interconn_row[interconn_dict['tankgenerator'].classValue('TANK_ID')]:
 									if tank_row[interconn_dict['tank'].classValue('HEAD')] < tank_row[interconn_dict['tank'].classValue('MIN_LEVEL')] + 0.25*(tank_row[interconn_dict['tank'].classValue('MAX_LEVEL')] - tank_row[interconn_dict['tank'].classValue('MIN_LEVEL')]):
 										derating = 1.0 - row[Generator.WATER_DERATING]
-#chose 25% of MAX - MIN
+# TO DO: chose 50% of MAX - MIN
 
 				if debug == 1:
-					print('New \'Generator.{}\' Bus1=\'{}{}\' Phases=\'{}\' Kv=\'{:f}\' Kw=\'{:f}\' Pf=\'{:f}\' Model=\'{}\' Conn=\'{}\'\n'.format(
+					print('New \'Generator.{}\' Bus1=\'{}{}\' Phases=\'{}\' Kv=\'{:f}\' Kw=\'{:f}\' Kvar=\'{:f}\' Model=\'{}\' Conn=\'{}\'\n'.format(
 					str_self_name, str_bus_name, str_bus_conn, num_phases,
-					num_kv, row[Generator.GENERATION]*derating, row[Generator.POWER_FACTOR_CONTROL], int(row[Generator.MODEL]),
+					num_kv, row[Generator.REAL_GENERATION]*derating, row[Generator.REATIVE_GENERATION]*derating, int(row[Generator.MODEL]),
 					str_conn))
 					if row[Generator.FUNCTIONAL_STATUS]*row[Generator.OPERATIONAL_STATUS] == 0.0:
 						print('Open \'Generator.{}\' Term=1\n'.format(str_self_name))
 						print('Open \'Generator.{}\' Term=2\n'.format(str_self_name))
 
-				dss.Command = 'New \'Generator.{}\' Bus1=\'{}{}\' Phases=\'{}\' Kv=\'{:f}\' Kw=\'{:f}\' Pf=\'{:f}\' Model=\'{}\' Conn=\'{}\''.format(
+				dss.Command = 'New \'Generator.{}\' Bus1=\'{}{}\' Phases=\'{}\' Kv=\'{:f}\' Kw=\'{:f}\' Kvar=\'{:f}\' Model=\'{}\' Conn=\'{}\''.format(
 					str_self_name, str_bus_name, str_bus_conn, num_phases,
-					num_kv, row[Generator.GENERATION]*derating, row[Generator.POWER_FACTOR_CONTROL], int(row[Generator.MODEL]),
+					num_kv, row[Generator.REAL_GENERATION]*derating, row[Generator.REATIVE_GENERATION]*derating, int(row[Generator.MODEL]),
 					str_conn)
 				if row[Generator.FUNCTIONAL_STATUS]*row[Generator.OPERATIONAL_STATUS] == 0.0:
 					dss.Command = 'Open \'Generator.{}\' Term=1'.format(str_self_name)
@@ -778,7 +784,7 @@ class Generator: #errors -1200 to -1224
 		try:
 			input_list_continuous = []
 			input_list_categorical = []
-			input_col_continuous = ['generation', 'power_factor_control']
+			input_col_continuous = ['real_generation', 'reactive_generation']
 			input_col_categorical = ['operational_status']
 
 			for row in self.matrix:
@@ -815,20 +821,23 @@ class Generator: #errors -1200 to -1224
 		try:
 			row = random.randrange(0, self.num_components)
 			if random.randrange(0, 2) == 0:
-				max_generation = 600.0
-				rval = random.normalvariate(0, 0.5*max_generation*0.04)
-				self.matrix[row, Generator.GENERATION] += rval
-				if self.matrix[row, Generator.GENERATION] > max_generation:
-					self.matrix[row, Generator.GENERATION] = max_generation
-				elif self.matrix[row, Generator.GENERATION] < 0.0:
-					self.matrix[row, Generator.GENERATION] = 0.0
+				real_generation_max = self.matrix[row, Generator.REAL_GENERATION_MAX_RATING]
+				real_generation_min = self.matrix[row, Generator.REAL_GENERATION_MIN_RATING]
+				rval = random.normalvariate(0, 0.5 * (real_generation_max - real_generation_min) * 0.04)
+				self.matrix[row, Generator.REAL_GENERATION] += rval
+				if self.matrix[row, Generator.REAL_GENERATION] > real_generation_max:
+					self.matrix[row, Generator.REAL_GENERATION] = real_generation_max
+				elif self.matrix[row, Generator.REAL_GENERATION] < real_generation_min:
+					self.matrix[row, Generator.REAL_GENERATION] = real_generation_min
 			else:
-				rval = random.normalvariate(0, 0.5*(1.0-self.matrix[row, Generator.MIN_POWER_FACTOR])*0.1)
+				reactive_generation_max = self.matrix[row, Generator.REACTIVE_GENERATION_MAX_RATING]
+				reactive_generation_min = self.matrix[row, Generator.REACTIVE_GENERATION_MIN_RATING]
+				rval = random.normalvariate(0, 0.5 * (reactive_generation_max - reactive_generation_min) * 0.04)
 				self.matrix[row, Generator.POWER_FACTOR_CONTROL] += rval
-				if self.matrix[row, Generator.POWER_FACTOR_CONTROL] > 1.0:
-					self.matrix[row, Generator.POWER_FACTOR_CONTROL] = 1.0
-				elif self.matrix[row, Generator.POWER_FACTOR_CONTROL] < self.matrix[row, Generator.MIN_POWER_FACTOR]:
-					self.matrix[row, Generator.POWER_FACTOR_CONTROL] = self.matrix[row, Generator.MIN_POWER_FACTOR]
+				if self.matrix[row, Generator.POWER_FACTOR_CONTROL] > reactive_generation_max:
+					self.matrix[row, Generator.POWER_FACTOR_CONTROL] = reactive_generation_max
+				elif self.matrix[row, Generator.POWER_FACTOR_CONTROL] < reactive_generation_min:
+					self.matrix[row, Generator.POWER_FACTOR_CONTROL] = reactive_generation_min
 		except:
 			print('Error: #1211')
 			return -1211
@@ -849,21 +858,22 @@ class Load: #errors -1225 to -1249
 	FUNCTIONAL_STATUS = 2 # switch
 	NOMINAL_LL_VOLTAGE = 3
 	A = 4
-	DEMAND_LIMIT = 5
-	MODEL = 6
-	POWER_FACTOR = 7 # stochastic ?
+	REAL_LOAD_MAX = 5
+	REACTIVE_LOAD_MAX = 6
+	MODEL = 7
 	WIRING = 8
-	DEMAND = 9 # stochastic
-	MIN_PU_VOLTAGE = 10
-	MAX_PU_VOLTAGE = 11
-	OPERATIONAL_STATUS = 12 # switch
-	A_PU_VOLTAGE = 13
-	A_VOLTAGE = 14
-	A_VOLTAGE_ANGLE = 15
-	A_CURRENT = 16
-	A_CURRENT_ANGLE = 17
-	REAL_POWER = 18
-	REACTIVE_POWER = 19
+	REAL_LOAD = 9
+	REACTIVE_LOAD = 10
+	MIN_PU_VOLTAGE = 11
+	MAX_PU_VOLTAGE = 12
+	OPERATIONAL_STATUS = 13 # switch
+	A_PU_VOLTAGE = 14
+	A_VOLTAGE = 15
+	A_VOLTAGE_ANGLE = 16
+	A_CURRENT = 17
+	A_CURRENT_ANGLE = 18
+	REAL_POWER = 19
+	REACTIVE_POWER = 20
 
 	def __init__(self, dframe):
 		self.cols = list(dframe.columns)
@@ -908,38 +918,39 @@ class Load: #errors -1225 to -1249
 							if pump_row[interconn_dict['pump'].classValue('ID')] == interconn_row[interconn_dict['pumpload'].classValue('PUMP_ID')]:
 								if pump_row[interconn_dict['pump'].classValue('FUNCTIONAL_STATUS')]*pump_row[interconn_dict['pump'].classValue('OPERATIONAL_STATUS')] != 0.0:
 									interconn_demand += pump_row[interconn_dict['pump'].classValue('POWER')]
+									# TO DO: verify that interonn_demand is in kW
 
 				if debug == 1:
 					if row[Load.MODEL] == 8.0:
 						print('Zip model not included!\n')
-						print('New \'Load.{}\' Bus1=\'{}{}\' Phases=\'{}\' Kv=\'{:f}\' Kw=\'{:f}\' Pf=\'{:f}\' Model=\'{}\' ZIPV=[{:f} {:f} {:f} {:f} {:f} {:f} {:f}] Conn=\'{}\' Vminpu=\'{:f}\' Vmaxpu=\'{:f}\'\n'.format(
+						print('New \'Load.{}\' Bus1=\'{}{}\' Phases=\'{}\' Kv=\'{:f}\' Kw=\'{:f}\' Kvar=\'{:f}\' Model=\'{}\' ZIPV=[{:f} {:f} {:f} {:f} {:f} {:f} {:f}] Conn=\'{}\' Vminpu=\'{:f}\' Vmaxpu=\'{:f}\'\n'.format(
 							str_self_name, str_bus_name, str_bus_conn, num_phases,
-							num_kv, row[Load.DEMAND]+interconn_demand, row[Load.POWER_FACTOR], int(row[Load.MODEL]),
+							num_kv, row[Load.REAL_LOAD]+interconn_demand, row[Load.REACTIVE_LOAD], int(row[Load.MODEL]),
 							row[Load.ZIP_REAL_POWER], row[Load.ZIP_REAL_CURRENT], row[Load.ZIP_REAL_IMPEDANCE], row[Load.ZIP_REACTIVE_POWER],
 							row[Load.ZIP_REACTIVE_CURRENT], row[Load.ZIP_REACTIVE_IMPEDANCE], row[Load.ZIP_PU_VOLTAGE_CUTOFF], str_conn,
 							row[Load.MIN_PU_VOLTAGE], row[Load.MAX_PU_VOLTAGE]))
 					else:
-						print('New \'Load.{}\' Bus1=\'{}{}\' Phases=\'{}\' Kv=\'{:f}\' Kw=\'{:f}\' Pf=\'{:f}\' Model=\'{}\' Conn=\'{}\' Vminpu=\'{:f}\' Vmaxpu=\'{:f}\'\n'.format(
+						print('New \'Load.{}\' Bus1=\'{}{}\' Phases=\'{}\' Kv=\'{:f}\' Kw=\'{:f}\' Kvar=\'{:f}\' Model=\'{}\' Conn=\'{}\' Vminpu=\'{:f}\' Vmaxpu=\'{:f}\'\n'.format(
 							str_self_name, str_bus_name, str_bus_conn, num_phases,
-							num_kv, row[Load.DEMAND]+interconn_demand, row[Load.POWER_FACTOR], int(row[Load.MODEL]),
+							num_kv, row[Load.REAL_LOAD]+interconn_demand, row[Load.REACTIVE_LOAD], int(row[Load.MODEL]),
 							str_conn, row[Load.MIN_PU_VOLTAGE], row[Load.MAX_PU_VOLTAGE]))
 					if row[Load.FUNCTIONAL_STATUS]*row[Load.OPERATIONAL_STATUS] == 0.0:
 						print('Open \'Load.{}\' Term=1'.format(str_self_name))
 						print('Open \'Load.{}\' Term=2'.format(str_self_name))
 
 				if row[Load.MODEL] == 8.0:
-					dss.Command = 'New \'Load.{}\' Bus1=\'{}{}\' Phases=\'{}\' Kv=\'{:f}\' Kw=\'{:f}\' Pf=\'{:f}\' Model=\'{}\' ZIPV=[{:f} {:f} {:f} {:f} {:f} {:f} {:f}] Conn=\'{}\' Vminpu=\'{:f}\' Vmaxpu=\'{:f}\''.format(
+					dss.Command = 'New \'Load.{}\' Bus1=\'{}{}\' Phases=\'{}\' Kv=\'{:f}\' Kw=\'{:f}\' Kvar=\'{:f}\' Model=\'{}\' ZIPV=[{:f} {:f} {:f} {:f} {:f} {:f} {:f}] Conn=\'{}\' Vminpu=\'{:f}\' Vmaxpu=\'{:f}\''.format(
 						str_self_name, str_bus_name, str_bus_conn, num_phases,
-						num_kv, row[Load.DEMAND]+interconn_demand, row[Load.POWER_FACTOR], int(row[Load.MODEL]),
+						num_kv, row[Load.REAL_LOAD]+interconn_demand, row[Load.REACTIVE_LOAD], int(row[Load.MODEL]),
 						row[Load.ZIP_REAL_POWER], row[Load.ZIP_REAL_CURRENT], row[Load.ZIP_REAL_IMPEDANCE], row[Load.ZIP_REACTIVE_POWER],
 						row[Load.ZIP_REACTIVE_CURRENT], row[Load.ZIP_REACTIVE_IMPEDANCE], row[Load.ZIP_PU_VOLTAGE_CUTOFF], str_conn,
 						row[Load.MIN_PU_VOLTAGE], row[Load.MAX_PU_VOLTAGE])
 					if row[Load.ZIP_REAL_POWER] + row[Load.ZIP_REAL_CURRENT] + row[Load.ZIP_REAL_IMPEDANCE] != 1.0 or row[Load.ZIP_REACTIVE_POWER] + row[Load.ZIP_REACTIVE_CURRENT] + row[Load.ZIP_REACTIVE_IMPEDANCE] != 1.0:
 						print('Error: #-1228')
 				else:
-					dss.Command = 'New \'Load.{}\' Bus1=\'{}{}\' Phases=\'{}\' Kv=\'{:f}\' Kw=\'{:f}\' Pf=\'{:f}\' Model=\'{}\' Conn=\'{}\' Vminpu=\'{:f}\' Vmaxpu=\'{:f}\''.format(
+					dss.Command = 'New \'Load.{}\' Bus1=\'{}{}\' Phases=\'{}\' Kv=\'{:f}\' Kw=\'{:f}\' Kvar=\'{:f}\' Model=\'{}\' Conn=\'{}\' Vminpu=\'{:f}\' Vmaxpu=\'{:f}\''.format(
 						str_self_name, str_bus_name, str_bus_conn, num_phases,
-						num_kv, row[Load.DEMAND]+interconn_demand, row[Load.POWER_FACTOR], int(row[Load.MODEL]),
+						num_kv, row[Load.REAL_LOAD]+interconn_demand, row[Load.REACTIVE_LOAD], int(row[Load.MODEL]),
 						str_conn, row[Load.MIN_PU_VOLTAGE], row[Load.MAX_PU_VOLTAGE])
 				if row[Load.FUNCTIONAL_STATUS]*row[Load.OPERATIONAL_STATUS] == 0.0:
 					dss.Command = 'Open \'Load.{}\' Term=1'.format(str_self_name)
@@ -997,7 +1008,7 @@ class Load: #errors -1225 to -1249
 		try:
 			input_list_continuous = []
 			input_list_categorical = []
-			input_col_continuous = ['demand']
+			input_col_continuous = ['real_load', 'reactive_load']
 			input_col_categorical = ['operational_status']
 
 			for row in self.matrix:
@@ -1033,12 +1044,12 @@ class Load: #errors -1225 to -1249
 	def randomStochasticity(self):
 		try:
 			row = random.randrange(0, self.num_components)
-			rval = random.normalvariate(0, 0.5*self.matrix[row, Load.DEMAND_LIMIT]*0.06)
-			self.matrix[row, Load.DEMAND] += rval
-			if self.matrix[row, Load.DEMAND] > self.matrix[row, Load.DEMAND_LIMIT]:
-				self.matrix[row, Load.DEMAND] = self.matrix[row, Load.DEMAND_LIMIT]
-			elif self.matrix[row, Load.DEMAND] < 0.0:
-				self.matrix[row, Load.DEMAND] = 0.0
+			rval = random.normalvariate(0, 0.5*self.matrix[row, Load.REAL_LOAD_MAX]*0.06)
+			self.matrix[row, Load.REAL_LOAD] += rval
+			if self.matrix[row, Load.REAL_LOAD] > self.matrix[row, Load.REAL_LOAD_MAX]:
+				self.matrix[row, Load.REAL_LOAD] = self.matrix[row, Load.REAL_LOAD_MAX]
+			elif self.matrix[row, Load.REAL_LOAD] < 0.0:
+				self.matrix[row, Load.REAL_LOAD] = 0.0
 		except:
 			print('Error: #1236')
 			return -1236
