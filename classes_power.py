@@ -304,7 +304,9 @@ class LineCode: #errors -1125 to -1149
 	X1_SCALAR = 8
 	C0_SCALAR = 9
 	C1_SCALAR = 10
-	MAX_PU_CAPACITY = 11
+	B0_SCALAR = 11
+	B1_SCALAR = 12
+	MAX_PU_CAPACITY = 13
 	UNITS = 'kft'
 
 	def __init__(self, dframe):
@@ -332,13 +334,17 @@ class LineCode: #errors -1125 to -1149
 
 				str_self_name = str(int(row[LineCode.TYPE])) + '_' + str(int(row[LineCode.ID]))
 
-				if row[LineCode.R0_SCALAR] != 0.0 or row[LineCode.X0_SCALAR] != 0.0 or row[LineCode.C0_SCALAR] != 0.0:
+				if row[LineCode.C0_SCALAR] != 0.0 or row[LineCode.C1_SCALAR] != 0.0:
 					str_impedance = 'R0=\'{:f}\' R1=\'{:f}\' X0=\'{:f}\' X1=\'{:f}\' C0=\'{:f}\' C1=\'{:f}\''.format(
 						row[LineCode.R0_SCALAR], row[LineCode.R1_SCALAR], row[LineCode.X0_SCALAR], row[LineCode.X1_SCALAR],
 						row[LineCode.C0_SCALAR], row[LineCode.C1_SCALAR])
+				elif row[LineCode.B0_SCALAR] != 0.0 or row[LineCode.B1_SCALAR] != 0.0:
+					str_impedance = 'R0=\'{:f}\' R1=\'{:f}\' X0=\'{:f}\' X1=\'{:f}\' B0=\'{:f}\' B1=\'{:f}\''.format(
+						row[LineCode.R0_SCALAR], row[LineCode.R1_SCALAR], row[LineCode.X0_SCALAR], row[LineCode.X1_SCALAR],
+						row[LineCode.B0_SCALAR], row[LineCode.B1_SCALAR])
 				else:
-					str_impedance = 'R1=\'{:f}\' X1=\'{:f}\''.format(
-						row[LineCode.R1_SCALAR], row[LineCode.X1_SCALAR])
+					str_impedance = 'R0=\'{:f}\' R1=\'{:f}\' X0=\'{:f}\' X1=\'{:f}\''.format(
+						row[LineCode.R0_SCALAR], row[LineCode.R1_SCALAR], row[LineCode.X0_SCALAR], row[LineCode.X1_SCALAR])
 
 				if debug == 1:
 					print('New \'LineCode.{}\' Nphases=\'{}\' {} Units=\'{}\' Normamps=\'{:f}\' Emergamps=\'{:f}\' Kron=\'{}\''.format(
@@ -647,7 +653,7 @@ class Generator: #errors -1200 to -1224
 	WATER_DERATING = 14
 	WIRING = 15
 	MIN_PU_VOLTAGE = 16
-	MAX PU VOLTAGE = 17
+	MAX_PU_VOLTAGE = 17
 	OPERATIONAL_STATUS = 18 # switch
 	REAL_GENERATION_CONTROL = 19 # stochastic
 	REACTIVE_GENERATION_CONTROL = 20 # stochastic
@@ -696,12 +702,12 @@ class Generator: #errors -1200 to -1224
 
 				if row[Generator.REAL_GENERATION_CONTROL] > row[Generator.REAL_GENERATION_MAX_RATING]:
 					row[Generator.REAL_GENERATION_CONTROL] = row[Generator.REAL_GENERATION_MAX_RATING]
-				if row[Generator.REAL_GENERATION_CONTROL] < row[Generator.REAL_GENERATION_MIN_RATING:
+				elif row[Generator.REAL_GENERATION_CONTROL] < row[Generator.REAL_GENERATION_MIN_RATING]:
 					row[Generator.REAL_GENERATION_CONTROL] = row[Generator.REAL_GENERATION_MIN_RATING]
 
 				if row[Generator.REACTIVE_GENERATION_CONTROL] > row[Generator.REACTIVE_GENERATION_MAX_RATING]:
 					row[Generator.REACTIVE_GENERATION_CONTROL] = row[Generator.REACTIVE_GENERATION_MAX_RATING]
-				if row[Generator.REACTIVE_GENERATION_CONTROL] < row[Generator.REACTIVE_GENERATION_MIN_RATING:
+				elif row[Generator.REACTIVE_GENERATION_CONTROL] < row[Generator.REACTIVE_GENERATION_MIN_RATING]:
 					row[Generator.REACTIVE_GENERATION_CONTROL] = row[Generator.REACTIVE_GENERATION_MIN_RATING]
 
 				str_self_name = str(int(row[Generator.TYPE])) + '_' + str(int(row[Generator.ID]))
@@ -719,7 +725,7 @@ class Generator: #errors -1200 to -1224
 				if debug == 1:
 					print('New \'Generator.{}\' Bus1=\'{}{}\' Phases=\'{}\' Kv=\'{:f}\' Kw=\'{:f}\' Kvar=\'{:f}\' Model=\'{}\' Conn=\'{}\'\n'.format(
 					str_self_name, str_bus_name, str_bus_conn, num_phases,
-					num_kv, row[Generator.REAL_GENERATION]*derating, row[Generator.REATIVE_GENERATION]*derating, int(row[Generator.MODEL]),
+					num_kv, row[Generator.REAL_GENERATION]*derating, row[Generator.REACTIVE_GENERATION]*derating, int(row[Generator.MODEL]),
 					str_conn))
 					if row[Generator.FUNCTIONAL_STATUS]*row[Generator.OPERATIONAL_STATUS] == 0.0:
 						print('Open \'Generator.{}\' Term=1\n'.format(str_self_name))
@@ -727,7 +733,7 @@ class Generator: #errors -1200 to -1224
 
 				dss.Command = 'New \'Generator.{}\' Bus1=\'{}{}\' Phases=\'{}\' Kv=\'{:f}\' Kw=\'{:f}\' Kvar=\'{:f}\' Model=\'{}\' Conn=\'{}\''.format(
 					str_self_name, str_bus_name, str_bus_conn, num_phases,
-					num_kv, row[Generator.REAL_GENERATION]*derating, row[Generator.REATIVE_GENERATION]*derating, int(row[Generator.MODEL]),
+					num_kv, row[Generator.REAL_GENERATION]*derating, row[Generator.REACTIVE_GENERATION]*derating, int(row[Generator.MODEL]),
 					str_conn)
 				if row[Generator.FUNCTIONAL_STATUS]*row[Generator.OPERATIONAL_STATUS] == 0.0:
 					dss.Command = 'Open \'Generator.{}\' Term=1'.format(str_self_name)
@@ -1478,17 +1484,17 @@ class DirectConnection: #errors -1400 to -1424
 					str_term2_name = 'sourcebus'
 
 				if debug == 1:
-					print('New \'Line.{}\' Bus1=\'{}{}\' Bus2=\'{}{}\' Phases=\'{}\' R0=\'{:f}\' R1=\'{:f}\' X0=\'{:f}\' X1=\'{:f}\' Length=\'{:f}\' Units=\'{}\' Normamps=\'{:f}\' Emergamps=\'{:f}\'\n'.format(
+					print('New \'Line.{}\' Bus1=\'{}{}\' Bus2=\'{}{}\' Phases=\'{}\' R0=\'{:f}\' R1=\'{:f}\' X0=\'{:f}\' X1=\'{:f}\' Length=\'{:f}\' Units=\'{}\' Normamps=\'{}\' Emergamps=\'{}\'\n'.format(
 					str_self_name, str_term1_name, str_bus_conn, str_term2_name,
 					str_bus_conn, num_phases, 0.00001, 0.00001,
 					0.0001, 0.0001, 0.1, DirectConnection.UNITS,
-					99999, 99999))
+					9999, 9999))
 
-				dss.Command = 'New \'Line.{}\' Bus1=\'{}{}\' Bus2=\'{}{}\' Phases=\'{}\' R0=\'{:f}\' R1=\'{:f}\' X0=\'{:f}\' X1=\'{:f}\' Length=\'{:f}\' Units=\'{}\' Normamps=\'{:f}\' Emergamps=\'{:f}\''.format(
+				dss.Command = 'New \'Line.{}\' Bus1=\'{}{}\' Bus2=\'{}{}\' Phases=\'{}\' R0=\'{:f}\' R1=\'{:f}\' X0=\'{:f}\' X1=\'{:f}\' Length=\'{:f}\' Units=\'{}\' Normamps=\'{}\' Emergamps=\'{}\''.format(
 					str_self_name, str_term1_name, str_bus_conn, str_term2_name,
 					str_bus_conn, num_phases, 0.00001, 0.00001,
 					0.0001, 0.0001, 0.1, DirectConnection.UNITS,
-					99999, 99999)
+					9999, 9999)
 			return 0
 		except:
 			print('Error: #-1400')
