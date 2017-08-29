@@ -2220,28 +2220,29 @@ class Capacitor: #errors -1500 to -1524
 	FUNCTIONAL_STATUS = 4 # switch
 	A = 5
 	NOMINAL_LL_VOLTAGE = 6
-	REACTIVE_POWER_RATING = 7
-	WIRING = 8
-	NUMBER_OF_STAGES = 9
-	ANGLE_DELTA_LIMIT = 10
-	MAX_PU_CAPACITY = 11
-	STAGE_ONE = 12 # switch
-	STAGE_TWO = 13 # switch
-	STAGE_THREE = 14 # switch
-	STAGE_FOUR = 15 # switch
-	STAGE_FIVE = 16 # switch
-	A_1_CURRENT = 17
-	A_1_CURRENT_ANGLE = 18
-	A_2_CURRENT = 19
-	A_2_CURRENT_ANGLE = 20
-	REAL_POWER_1 = 21
-	REACTIVE_POWER_1 = 22
-	REAL_POWER_2 = 23
-	REACTIVE_POWER_2 = 24
-	REAL_POWER_LOSSES = 25
-	REACTIVE_POWER_LOSSES = 26
-	ANGLE_DELTA = 27
-	PU_CAPACITY = 28
+	REACTIVE_POWER_MIN_RATING = 7
+	REACTIVE_POWER_MAX_RATING = 8
+	WIRING = 9
+	NUMBER_OF_STAGES = 10
+	ANGLE_DELTA_LIMIT = 11
+	MAX_PU_CAPACITY = 12
+	STAGE_ONE = 13 # switch
+	STAGE_TWO = 14 # switch
+	STAGE_THREE = 15 # switch
+	STAGE_FOUR = 16 # switch
+	STAGE_FIVE = 17 # switch
+	A_1_CURRENT = 18
+	A_1_CURRENT_ANGLE = 19
+	A_2_CURRENT = 20
+	A_2_CURRENT_ANGLE = 21
+	REAL_POWER_1 = 22
+	REACTIVE_POWER_1 = 23
+	REAL_POWER_2 = 24
+	REACTIVE_POWER_2 = 25
+	REAL_POWER_LOSSES = 26
+	REACTIVE_POWER_LOSSES = 27
+	ANGLE_DELTA = 28
+	PU_CAPACITY = 29
 
 	def __init__(self, dframe):
 		self.cols = list(dframe.columns)
@@ -2261,8 +2262,10 @@ class Capacitor: #errors -1500 to -1524
 	def createAllDSS(self, dss, interconn_dict, debug):
 		try:
 			for row in self.matrix:
-				reactive_power_generation = 0.0
-				reactive_power_per_stage = row[Capacitor.REACTIVE_POWER_RATING] / row[Capacitor.NUMBER_OF_STAGES]
+				reactive_power_generation = row[Capacitor.REACTIVE_POWER_MIN_RATING]
+				if row[Capacitor.REACTIVE_POWER_MAX_RATING] < row[Capacitor.REACTIVE_POWER_MIN_RATING]:
+					print('Error: #1502')
+				reactive_power_per_stage = math.fabs(row[Capacitor.REACTIVE_POWER_MAX_RATING] - row[Capacitor.REACTIVE_POWER_MIN_RATING]) / row[Capacitor.NUMBER_OF_STAGES]
 				terminal_1_type = Bus.CLID
 				bool_terminal_2 = False
 				if row[Capacitor.TERMINAL_2_ID] > 0.0:
@@ -2349,7 +2352,7 @@ class Capacitor: #errors -1500 to -1524
 				var_pow = list(dssActvElem.Powers)
 				num_phases = dssActvElem.NumPhases
 				num_conds = dssActvElem.NumConductors
-				norm_amps = math.sqrt(3.0) * row[Capacitor.REACTIVE_POWER_RATING] / (num_phases * row[Capacitor.NOMINAL_LL_VOLTAGE])
+				norm_amps = math.sqrt(3.0) * max(math.fabs(row[Capacitor.REACTIVE_POWER_MAX_RATING]), math.fabs(row[Capacitor.REACTIVE_POWER_MIN_RATING])) / (num_phases * row[Capacitor.NOMINAL_LL_VOLTAGE])
 				row[Capacitor.A_1_CURRENT : Capacitor.PU_CAPACITY+1] = 0.0
 
 				if row[Capacitor.A] == 1.0:
