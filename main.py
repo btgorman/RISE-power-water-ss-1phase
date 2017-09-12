@@ -447,7 +447,7 @@ def main(stoch_num, write_cols):
 	dss_debug = 1
 	input_list_continuous, input_list_categorical, _, input_tensor_continuous, input_tensor_categorical, _ = run_OpenDSS(dss_debug)
 	input_list_continuous1, input_list_categorical1, _, input_tensor_continuous1, input_tensor_categorical1, _ = run_EPANET()
-	_, _, output_list, _, _, output_tensor = run_OpenDSS(0)
+	_, _, output_list, _, _, output_tensor = run_OpenDSS(dss_debug)
 	_, _, output_list1, _, _, output_tensor1 = run_EPANET()
 
 	# Format data structures

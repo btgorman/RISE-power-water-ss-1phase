@@ -710,8 +710,9 @@ class Generator: #errors -1200 to -1224
 				elif row[Generator.REACTIVE_GENERATION_CONTROL] < row[Generator.REACTIVE_GENERATION_MIN_RATING]:
 					row[Generator.REACTIVE_GENERATION_CONTROL] = row[Generator.REACTIVE_GENERATION_MIN_RATING]
 
+				busid = int(row[Generator.ID]) % 100
 				str_self_name = str(int(row[Generator.TYPE])) + '_' + str(int(row[Generator.ID]))
-				str_bus_name = str(Bus.CLID) + '_' + str(int(row[Generator.ID]))
+				str_bus_name = str(Bus.CLID) + '_' + str(busid)
 
 				for interconn_row in interconn_dict['tankgenerator'].matrix:
 					if interconn_row[interconn_dict['tankgenerator'].classValue('CHECK_TANK_LEVEL')] ==  1.0:
@@ -754,7 +755,8 @@ class Generator: #errors -1200 to -1224
 		try:
 			for row in self.matrix:
 				idxcount = 0
-				dssCkt.SetActiveBus(str(Bus.CLID) + '_' + str(int(row[Generator.ID])))
+				busid = int(row[Generator.ID]) % 100
+				dssCkt.SetActiveBus(str(Bus.CLID) + '_' + str(busid))
 				dssCkt.Generators.Name = str(int(row[Generator.TYPE])) + '_' + str(int(row[Generator.ID]))
 				var_volt_mag = list(dssActvBus.VMagAngle)
 				var_volt_pu = list(dssActvBus.puVmagAngle)
