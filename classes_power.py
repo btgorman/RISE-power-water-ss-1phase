@@ -1059,7 +1059,7 @@ class Load: #errors -1225 to -1249
 			elif self.matrix[row, Load.REAL_LOAD] < 0.0:
 				self.matrix[row, Load.REAL_LOAD] = 0.0
 		except:
-			print('Error: #1236')
+			print('Error: #-1236')
 			return -1236
 
 	def randomSwitching(self):
@@ -1067,8 +1067,16 @@ class Load: #errors -1225 to -1249
 			row = random.randrange(0, self.num_components)
 			self.matrix[row, Load.OPERATIONAL_STATUS] = 0.0
 		except:
-			print('Error: #1237')
+			print('Error: #-1237')
 			return -1237
+
+	def multiplyLoadFactor(self, load_factor):
+		try:
+			self.matrix[:, Load.REAL_LOAD] = self.matrix[:, Load.REAL_LOAD_MAX] * load_factor
+			self.matrix[:, Load.REACTIVE_LOAD] = self.matrix[:, Load.REACTIVE_LOAD_MAX] * load_factor
+		except:
+			print('Error: #-1238')
+			return -1238
 
 class SolarPV: #errors -1250 to -1274
 	CLID = 1304

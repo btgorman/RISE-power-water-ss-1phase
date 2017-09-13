@@ -2,7 +2,7 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 
-def lognormal(x, mu, sigma):
+def lognormal_pdf(x, mu, sigma):
 	return np.exp(-(np.log(x) - mu)**2 / (2. * sigma**2)) / (sigma * x * np.sqrt(2. * np.pi))
 
 week_load_scalar = {
@@ -276,12 +276,12 @@ print(len(equinox_mults))
 
 count, bins, ignored = plt.hist([winter_mults, summer_mults, equinox_mults], 50, rwidth=1., stacked=True, label=['winter', 'summer', 'spring or fall'])
 sumcount = sum(count[-1]) * math.fabs(bins[0] - bins[1])
-# sumcount = 577.6134
+print("sumcount is {}".format(sumcount)) # sumcount = 115.52268
 
 x = np.arange(0.2, 1.1, 0.02)
 lnorm_mu = -0.515408
 lnorm_sigma = 0.238325
-plt.plot(x, lognormal(x, lnorm_mu, lnorm_sigma) * sumcount, label="lognormal, AIC -9266.47")
+plt.plot(x, lognormal_pdf(x, lnorm_mu, lnorm_sigma) * sumcount, label="lognormal, AIC -9266.47")
 
 plt.xticks(fontsize="x-large")
 plt.xlabel("Percent of annual maximum", fontsize="x-large")

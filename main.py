@@ -34,6 +34,10 @@ import win32com.client
 def main(stoch_num, write_cols):
 	os_username = os.getlogin()
 
+	# --------------
+	# READ CSV FILES
+	# --------------
+
 	csv_curve = pd.read_csv('./data_water/network-water/2000curve.csv', sep=',', header=1, index_col=None, dtype=np.float32)
 	csv_junction = pd.read_csv('./data_water/network-water/2100junction.csv', sep=',', header=1, index_col=None, dtype=np.float32)
 	csv_reservoir = pd.read_csv('./data_water/network-water/2101reservoir.csv', sep=',', header=1, index_col=None, dtype=np.float32)
@@ -63,6 +67,10 @@ def main(stoch_num, write_cols):
 	csv_pumpload = pd.read_csv('./data_interconnection/network-interconnection/9000pump-load.csv', sep=',', header=1, index_col=None, dtype=np.float32)
 	csv_tankgenerator = pd.read_csv('./data_interconnection/network-interconnection/9001tank-generator.csv', sep=',', header=1, index_col=None, dtype=np.float32)
 
+	# -----------------
+	# CREATE COMPONENTS
+	# -----------------
+
 	object_curve = ENC.Curve(csv_curve)
 	object_junction = ENC.Junction(csv_junction)
 	object_reservoir = ENC.Reservoir(csv_reservoir)
@@ -91,6 +99,10 @@ def main(stoch_num, write_cols):
 	object_pumpload = ICC.PumpLoad(csv_pumpload)
 	object_tankgenerator = ICC.TankGenerator(csv_tankgenerator)
 
+	# -----------------------
+	# ADD COMPONENTS TO LISTS
+	# -----------------------
+
 	w_object_list = [object_junction, object_reservoir, object_tank, # Water NODES
 	object_pipe, object_pump, object_valve, # Water LINKS
 	object_curve] # Water SYSTEM OPS
@@ -104,98 +116,9 @@ def main(stoch_num, write_cols):
 	'pump': object_pump, 'load': object_load, 'tank': object_tank,
 	'generator': object_generator, 'junction': object_junction}
 
-	water_num_switch = 0
-	water_num_stochastic = 0
-	power_num_switch = 0
-	power_num_stochastic = 0
-	for object in w_object_list:
-		water_num_switch += object.num_switches
-		water_num_stochastic += object.num_stochastic
-	for object in object_list:
-		power_num_switch += object.num_switches
-		power_num_stochastic += object.num_stochastic
-
-	def calc_probabilities():
-		temp = 0.0
-		switch_chanceval = 0.0
-		stochastic_chanceval = 0.0
-		for object in w_object_list:
-			if object.num_switches == 0:
-				object.switch_chance = (0.0, 0.0)
-			else:
-				try:
-					temp = switch_chanceval
-					switch_chanceval += object.num_switches / water_num_switch
-					object.switch_chance = (temp, switch_chanceval)
-				except:
-					object.switch_chance = (0.0, 0.0)
-			if object.num_stochastic == 0:
-				object.stochastic_chance = (0.0, 0.0)
-			else:
-				try:
-					temp = stochastic_chanceval
-					stochastic_chanceval += object.num_stochastic / water_num_stochastic
-					object.stochastic_chance = (temp, stochastic_chanceval)
-				except:
-					object.stochastic_chance = (0.0, 0.0)
-		
-		temp = 0.0
-		switch_chanceval = 0.0
-		stochastic_chanceval = 0.0
-		for object in object_list:
-			if object.num_switches == 0:
-				object.switch_chance = (0.0, 0.0)
-			else:
-				try:
-					temp = switch_chanceval
-					switch_chanceval += object.num_switches / power_num_switch
-					object.switch_chance = (temp, switch_chanceval)
-				except:
-					object.switch_chance = (0.0, 0.0)
-			if object.num_stochastic == 0:
-				object.stochastic_chance = (0.0, 0.0)
-			else:
-				try:
-					temp = stochastic_chanceval
-					stochastic_chanceval += object.num_stochastic / power_num_stochastic
-					object.stochastic_chance = (temp, stochastic_chanceval)
-				except:
-					object.stochastic_chance = (0.0, 0.0)
-
-	def run_stochasticity(stoch_num):
-		# STOCHASTIC VALUES (e.g., demand)
-		for i in range(0, stoch_num):
-			if random.randrange(1, water_num_stochastic+power_num_stochastic+1) <= water_num_stochastic:
-				rval = random.random()
-				for object in w_object_list: # water list
-					lower, upper = object.stochastic_chance
-					if lower <= rval <= upper:
-						pass
-						# object.randomStochasticity()
-			else:
-				rval = random.random()
-				for object in object_list: # power list
-					lower, upper = object.stochastic_chance
-					if lower <= rval <= upper:
-						pass
-						# object.randomStochasticity()
-
-		# SWITCHING VALUES (e.g., on/off)
-		if random.random() <= 0.65: # 65% chance to shutoff
-			if random.randrange(1, water_num_switch+power_num_switch+1) <= water_num_switch:
-				rval = random.random()
-				for object in w_object_list: # water list
-					lower, upper = object.switch_chance
-					if lower <= rval <= upper:
-						pass
-						# object.randomSwitching()
-			else:
-				rval = random.random()
-				for object in object_list: # power list
-					lower, upper = object.switch_chance
-					if lower <= rval <= upper:
-						pass
-						# object.randomSwitching()
+	# ---------
+	# RUN EPANET and OPENDSS
+	# ---------
 
 	def run_EPANET():
 		filedir = 'C:/Users/'+os_username+'/Documents/git/RISE-power-water-ss-1phase/data_water/en-inputs/en-input.inp'
@@ -437,20 +360,27 @@ def main(stoch_num, write_cols):
 
 		return input_list_continuous, input_list_categorical, output_list, input_tensor_continuous, input_tensor_categorical, output_tensor
 
-	# Simulation step 1: calculate uniform probability for objects given number of switches/dials in the modeled power and water networks
-	calc_probabilities()
+	# SIM STEP 1: RANDOM LOAD CURVES
+	power_load_mu = -0.515408 # lognormal, AIC -9266.47
+	power_load_sigma = 0.238325 # lognormal, AIC -9266.47
+	power_load_factor = min(np.random.lognormal(power_load_mu, power_load_sigma, 1)[0], 1.0)
+	power_load_factor = max(power_load_factor, 0.2)
 
-	# Simulation step 2: stochastically change object controls and stochastially choose a random component for switching
-	run_stochasticity(stoch_num)
+	water_load_factor = min(0.5, 1.0)
+	water_load_factor = max(water_load_factor, 0.1)
 
-	# Simulation step 3: run power and water interdependency simulation
-	dss_debug = 1
+	object_load.multiplyLoadFactor(power_load_factor)
+
+	# SIM STEP 2: SET GENERATOR DISPATCH
+
+	# SIM STEP 3: RUN POWER-WATER SIMULATION
+	dss_debug = 0
 	input_list_continuous, input_list_categorical, _, input_tensor_continuous, input_tensor_categorical, _ = run_OpenDSS(dss_debug)
 	input_list_continuous1, input_list_categorical1, _, input_tensor_continuous1, input_tensor_categorical1, _ = run_EPANET()
 	_, _, output_list, _, _, output_tensor = run_OpenDSS(dss_debug)
 	_, _, output_list1, _, _, output_tensor1 = run_EPANET()
 
-	# Format data structures
+	# RESULTS STEP 1: FORMAT INPUT/OUTPUT TENSORS
 	input_list_continuous = input_list_continuous + input_list_continuous1
 	input_list_categorical = input_list_categorical + input_list_categorical1
 	output_list = output_list + output_list1
@@ -459,7 +389,7 @@ def main(stoch_num, write_cols):
 	input_tensor_categorical = np.concatenate((input_tensor_categorical, input_tensor_categorical1), axis=0)
 	output_tensor = np.concatenate((output_tensor, output_tensor1), axis=0)
 
-	# Write data structures
+	# RESULTS STEP 2: WRITE INPUT/OUTPUT TENSORS TO FILE
 	if write_cols:
 		with open('C:/Users/'+os_username+'/Documents/git/RISE-power-water-ss-1phase/outputs/input_list_continuous_columns.csv', 'w') as f:
 			writer = csv.writer(f, delimiter=',')
@@ -478,10 +408,120 @@ def main(stoch_num, write_cols):
 	with open('C:/Users/'+os_username+'/Documents/git/RISE-power-water-ss-1phase/outputs/output_tensor.csv', 'ab') as f:
 		np.savetxt(f, output_tensor[None, :], fmt='%0.6f', delimiter=' ', newline='\n')
 
-	# End
+	# END
 
 if __name__ == '__main__':
 	stoch_factor = int(sys.argv[1])
 	stoch_steps = 4
-	write_cols = True # Will write column names in a seperate file, need to do only once becaues column names do not change
+	write_cols = True # Write column names to seperate file
 	main(stoch_steps * stoch_factor, write_cols)
+
+
+
+
+# ///////////////////////////////////////////////////////////////////////////////////
+# OLD STUFF
+# \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+
+	# ------------------------
+	# STOCHASTICITY PARAMETERS
+	# ------------------------
+
+	# water_num_switch = 0
+	# water_num_stochastic = 0
+	# power_num_switch = 0
+	# power_num_stochastic = 0
+	# for object in w_object_list:
+	# 	water_num_switch += object.num_switches
+	# 	water_num_stochastic += object.num_stochastic
+	# for object in object_list:
+	# 	power_num_switch += object.num_switches
+	# 	power_num_stochastic += object.num_stochastic
+	
+	# def calc_probabilities():
+		# temp = 0.0
+		# switch_chanceval = 0.0
+		# stochastic_chanceval = 0.0
+		# for object in w_object_list:
+		# 	if object.num_switches == 0:
+		# 		object.switch_chance = (0.0, 0.0)
+		# 	else:
+		# 		try:
+		# 			temp = switch_chanceval
+		# 			switch_chanceval += object.num_switches / water_num_switch
+		# 			object.switch_chance = (temp, switch_chanceval)
+		# 		except:
+		# 			object.switch_chance = (0.0, 0.0)
+		# 	if object.num_stochastic == 0:
+		# 		object.stochastic_chance = (0.0, 0.0)
+		# 	else:
+		# 		try:
+		# 			temp = stochastic_chanceval
+		# 			stochastic_chanceval += object.num_stochastic / water_num_stochastic
+		# 			object.stochastic_chance = (temp, stochastic_chanceval)
+		# 		except:
+		# 			object.stochastic_chance = (0.0, 0.0)
+		
+		# temp = 0.0
+		# switch_chanceval = 0.0
+		# stochastic_chanceval = 0.0
+		# for object in object_list:
+		# 	if object.num_switches == 0:
+		# 		object.switch_chance = (0.0, 0.0)
+		# 	else:
+		# 		try:
+		# 			temp = switch_chanceval
+		# 			switch_chanceval += object.num_switches / power_num_switch
+		# 			object.switch_chance = (temp, switch_chanceval)
+		# 		except:
+		# 			object.switch_chance = (0.0, 0.0)
+		# 	if object.num_stochastic == 0:
+		# 		object.stochastic_chance = (0.0, 0.0)
+		# 	else:
+		# 		try:
+		# 			temp = stochastic_chanceval
+		# 			stochastic_chanceval += object.num_stochastic / power_num_stochastic
+		# 			object.stochastic_chance = (temp, stochastic_chanceval)
+		# 		except:
+		# 			object.stochastic_chance = (0.0, 0.0)
+
+	# def run_stochasticity(stoch_num):
+	# 	# STOCHASTIC VALUES (e.g., demand)
+	# 	for i in range(0, stoch_num):
+	# 		if random.randrange(1, water_num_stochastic+power_num_stochastic+1) <= water_num_stochastic:
+	# 			rval = random.random()
+	# 			for object in w_object_list: # water list
+	# 				lower, upper = object.stochastic_chance
+	# 				if lower <= rval <= upper:
+	# 					pass
+	# 					# object.randomStochasticity()
+	# 		else:
+	# 			rval = random.random()
+	# 			for object in object_list: # power list
+	# 				lower, upper = object.stochastic_chance
+	# 				if lower <= rval <= upper:
+	# 					pass
+	# 					# object.randomStochasticity()
+
+	# 	# SWITCHING VALUES (e.g., on/off)
+	# 	if random.random() <= 0.65: # 65% chance to shutoff
+	# 		if random.randrange(1, water_num_switch+power_num_switch+1) <= water_num_switch:
+	# 			rval = random.random()
+	# 			for object in w_object_list: # water list
+	# 				lower, upper = object.switch_chance
+	# 				if lower <= rval <= upper:
+	# 					pass
+	# 					# object.randomSwitching()
+	# 		else:
+	# 			rval = random.random()
+	# 			for object in object_list: # power list
+	# 				lower, upper = object.switch_chance
+	# 				if lower <= rval <= upper:
+	# 					pass
+	# 					# object.randomSwitching()
+
+	# # SIM STEP 1: CALCULATE UNIFORM PROBABILITIES FOR COMPONENTS
+	# calc_probabilities()
+
+	# # SIM STEP 2: STOCHASTICITY OF OBJECT CONTROLS AND "FAILURE"
+	# run_stochasticity(stoch_num)
