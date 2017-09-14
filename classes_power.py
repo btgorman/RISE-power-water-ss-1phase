@@ -729,16 +729,14 @@ class Generator: #errors -1200 to -1224
 					num_kv, row[Generator.REAL_GENERATION]*derating, row[Generator.REACTIVE_GENERATION]*derating, int(row[Generator.MODEL]),
 					str_conn))
 					if row[Generator.FUNCTIONAL_STATUS]*row[Generator.OPERATIONAL_STATUS] == 0.0:
-						print('Open \'Generator.{}\' Term=1\n'.format(str_self_name))
-						print('Open \'Generator.{}\' Term=2\n'.format(str_self_name))
+						print('Disable \'Generator.{}\''.format(str_self_name))
 
 				dss.Command = 'New \'Generator.{}\' Bus1=\'{}{}\' Phases=\'{}\' Kv=\'{:f}\' Kw=\'{:f}\' Kvar=\'{:f}\' Model=\'{}\' Conn=\'{}\''.format(
 					str_self_name, str_bus_name, str_bus_conn, num_phases,
 					num_kv, row[Generator.REAL_GENERATION]*derating, row[Generator.REACTIVE_GENERATION]*derating, int(row[Generator.MODEL]),
 					str_conn)
 				if row[Generator.FUNCTIONAL_STATUS]*row[Generator.OPERATIONAL_STATUS] == 0.0:
-					dss.Command = 'Open \'Generator.{}\' Term=1'.format(str_self_name)
-					dss.Command = 'Open \'Generator.{}\' Term=2'.format(str_self_name)
+					dss.Command = 'Disable \'Generator.{}\''.format(str_self_name)
 			return 0
 		except:
 			print('Error: #-1200')
@@ -943,8 +941,7 @@ class Load: #errors -1225 to -1249
 							num_kv, row[Load.REAL_LOAD]+interconn_demand, row[Load.REACTIVE_LOAD], int(row[Load.MODEL]),
 							str_conn, row[Load.MIN_PU_VOLTAGE], row[Load.MAX_PU_VOLTAGE]))
 					if row[Load.FUNCTIONAL_STATUS]*row[Load.OPERATIONAL_STATUS] == 0.0:
-						print('Open \'Load.{}\' Term=1'.format(str_self_name))
-						print('Open \'Load.{}\' Term=2'.format(str_self_name))
+						print('Disable \'Load.{}\''.format(str_self_name))
 
 				if row[Load.MODEL] == 8.0:
 					dss.Command = 'New \'Load.{}\' Bus1=\'{}{}\' Phases=\'{}\' Kv=\'{:f}\' Kw=\'{:f}\' Kvar=\'{:f}\' Model=\'{}\' ZIPV=[{:f} {:f} {:f} {:f} {:f} {:f} {:f}] Conn=\'{}\' Vminpu=\'{:f}\' Vmaxpu=\'{:f}\''.format(
@@ -961,8 +958,7 @@ class Load: #errors -1225 to -1249
 						num_kv, row[Load.REAL_LOAD]+interconn_demand, row[Load.REACTIVE_LOAD], int(row[Load.MODEL]),
 						str_conn, row[Load.MIN_PU_VOLTAGE], row[Load.MAX_PU_VOLTAGE])
 				if row[Load.FUNCTIONAL_STATUS]*row[Load.OPERATIONAL_STATUS] == 0.0:
-					dss.Command = 'Open \'Load.{}\' Term=1'.format(str_self_name)
-					dss.Command = 'Open \'Load.{}\' Term=2'.format(str_self_name)
+					dss.Command = 'Disable \'Load.{}\''.format(str_self_name)
 			return 0
 		except:
 			print('Error: #-1225')
@@ -1156,8 +1152,7 @@ class SolarPV: #errors -1250 to -1274
 					row[SolarPV.CUT_OUT_PERCENT], row[SolarPV.RATED_CAPACITY], row[SolarPV.IRRADIANCE], XYCurve.CLID,
 					int(row[SolarPV.PVEFF_CURVE_ID]), value_temperature, XYCurve.CLID, int(row[SolarPV.PVTEMP_CURVE_ID])))
 					if row[SolarPV.FUNCTIONAL_STATUS]*row[SolarPV.OPERATIONAL_STATUS] == 0.0:
-						print('Open \'PVSystem.{}\' Term=1'.format(str_self_name))
-						print('Open \'PVSystem.{}\' Term=2'.format(str_self_name))
+						print('Disable \'PVSystem.{}\''.format(str_self_name))
 
 				dss.Command = 'New \'PVSystem.{}\' Bus1=\'{}{}\' Phases=\'{}\' Kv=\'{:f}\' Kva={:f} Pf=\'{:f}\' Model=\'{}\' Conn=\'{}\' Vminpu=\'{:f}\' Vmaxpu=\'{:f}\' %Cutin=\'{:f}\' %Cutout=\'{:f}\' Pmpp=\'{:f}\' Irradiance=\'{:f}\' EffCurve=\'{}_{}\' Temperature=\'{:f}\' P-TCurve=\'{}_{}\''.format(
 					str_self_name, str_bus_name, str_bus_conn, num_phases,
@@ -1166,8 +1161,7 @@ class SolarPV: #errors -1250 to -1274
 					row[SolarPV.CUT_OUT_PERCENT], row[SolarPV.RATED_CAPACITY], row[SolarPV.IRRADIANCE], XYCurve.CLID,
 					int(row[SolarPV.PVEFF_CURVE_ID]), value_temperature, XYCurve.CLID, int(row[SolarPV.PVTEMP_CURVE_ID]))
 				if row[SolarPV.FUNCTIONAL_STATUS]*row[SolarPV.OPERATIONAL_STATUS] == 0.0:
-					dss.Command = 'Open \'PVSystem.{}\' Term=1'.format(str_self_name)
-					dss.Command = 'Open \'PVSystem.{}\' Term=2'.format(str_self_name)
+					dss.Command = 'Disable \'PVSystem.{}\''.format(str_self_name)
 			return 0
 		except:
 			print('Error: #-1250')
@@ -1358,11 +1352,15 @@ class WindTurbine: #errors -1275 to -1299
 					str_self_name, str_bus_name, str_bus_conn, num_phases,
 					num_kv, gen_fraction*row[WindTurbine.RATED_CAPACITY], row[WindTurbine.POWER_FACTOR], int(row[WindTurbine.MODEL]),
 					str_conn))
+					if row[WindTurbine.FUNCTIONAL_STATUS]*row[WindTurbine.OPERATIONAL_STATUS] == 0.0:
+						print('Disable \'Generator.{}\''.format(str_self_name))
 
 				dss.Command = 'New \'Generator.{}\' Bus1=\'{}{}\' Phases=\'{}\' Kv=\'{:f}\' Kw=\'{:f}\' Pf=\'{:f}\' Model=\'{}\' Conn=\'{}\''.format(
 					str_self_name, str_bus_name, str_bus_conn, num_phases,
 					num_kv, gen_fraction*row[WindTurbine.RATED_CAPACITY], row[WindTurbine.POWER_FACTOR], int(row[WindTurbine.MODEL]),
 					str_conn)
+				if row[WindTurbine.FUNCTIONAL_STATUS]*row[WindTurbine.OPERATIONAL_STATUS] == 0.0:
+						dss.Command = 'Disable \'Generator.{}\''.format(str_self_name)
 			return 0
 		except:
 			print('Error: #-1275')

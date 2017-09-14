@@ -31,7 +31,7 @@ import win32com.client
 # sys.argv = ['makepy', 'OpenDSSEngine.DSS']
 # makepy.main()
 
-def main(stoch_num, write_cols):
+def main(dss_debug, write_cols):
 	os_username = os.getlogin()
 
 	# --------------
@@ -360,27 +360,31 @@ def main(stoch_num, write_cols):
 
 		return input_list_continuous, input_list_categorical, output_list, input_tensor_continuous, input_tensor_categorical, output_tensor
 
-	# SIM STEP 1: RANDOM LOAD CURVES
+	# SIM STEP 1: SET LOAD CURVES
+	# ------------------------------
 	power_load_mu = -0.515408 # lognormal, AIC -9266.47
 	power_load_sigma = 0.238325 # lognormal, AIC -9266.47
 	power_load_factor = min(np.random.lognormal(power_load_mu, power_load_sigma, 1)[0], 1.0)
 	power_load_factor = max(power_load_factor, 0.2)
 
+	# TO DO: fix the water model and add water_load_factor function
 	water_load_factor = min(0.5, 1.0)
 	water_load_factor = max(water_load_factor, 0.1)
 
 	object_load.multiplyLoadFactor(power_load_factor)
 
 	# SIM STEP 2: SET GENERATOR DISPATCH
+	# ----------------------------------
 
 	# SIM STEP 3: RUN POWER-WATER SIMULATION
-	dss_debug = 0
+	# --------------------------------------
 	input_list_continuous, input_list_categorical, _, input_tensor_continuous, input_tensor_categorical, _ = run_OpenDSS(dss_debug)
 	input_list_continuous1, input_list_categorical1, _, input_tensor_continuous1, input_tensor_categorical1, _ = run_EPANET()
 	_, _, output_list, _, _, output_tensor = run_OpenDSS(dss_debug)
 	_, _, output_list1, _, _, output_tensor1 = run_EPANET()
 
 	# RESULTS STEP 1: FORMAT INPUT/OUTPUT TENSORS
+	# -------------------------------------------
 	input_list_continuous = input_list_continuous + input_list_continuous1
 	input_list_categorical = input_list_categorical + input_list_categorical1
 	output_list = output_list + output_list1
@@ -390,6 +394,7 @@ def main(stoch_num, write_cols):
 	output_tensor = np.concatenate((output_tensor, output_tensor1), axis=0)
 
 	# RESULTS STEP 2: WRITE INPUT/OUTPUT TENSORS TO FILE
+	# --------------------------------------------------
 	if write_cols:
 		with open('C:/Users/'+os_username+'/Documents/git/RISE-power-water-ss-1phase/outputs/input_list_continuous_columns.csv', 'w') as f:
 			writer = csv.writer(f, delimiter=',')
@@ -409,12 +414,38 @@ def main(stoch_num, write_cols):
 		np.savetxt(f, output_tensor[None, :], fmt='%0.6f', delimiter=' ', newline='\n')
 
 	# END
+	# ---
 
 if __name__ == '__main__':
-	stoch_factor = int(sys.argv[1])
-	stoch_steps = 4
-	write_cols = True # Write column names to seperate file
-	main(stoch_steps * stoch_factor, write_cols)
+	write_cols = False # Write column names to seperate file
+	dss_debug = 0
+
+	main(dss_debug, write_cols)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
