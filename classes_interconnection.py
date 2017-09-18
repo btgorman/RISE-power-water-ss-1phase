@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# LAST EDITED: JUNE 16, 2017
 # BUILT USING PYTHON 3.6.0
 
 import numpy as np

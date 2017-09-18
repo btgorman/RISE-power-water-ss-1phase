@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# LAST EDITED: JUNE 16, 2017
 # BUILT USING PYTHON 3.6.0
 
 import ctypes as ct
@@ -322,8 +321,34 @@ def main(dss_debug, write_cols):
 
 		# ALGORITHM to set power dispatch schedule
 		# ----------------------------------------
+		# CAISO contingency (spinning) reserve is max(5% of hydro-loads + 7% of other-loads, largest contingency) + 100% of interruptible imports
+		# CAISO spinning reserves is 50% of operating reserves
 		if flag_solve_dispatch == 1:
-			print(sum(object_load.matrix[:, object_load.REAL_LOAD])*0.001)
+			# Calculate required contingency reserves (MW)
+			max_cont_generator = max(object_generator.matrix[:, object_generator.REAL_GENERATION])
+			total_load = sum(object_load.matrix[:, object_load.REAL_LOAD])
+			print('Total Load: {} MW'.format(total_load*0.001))
+			for hydro_elem in object_generator.matrix:
+				if (int(hydro_elem[object_generator.ID]) % 100) == 22:
+					hydro_load = 0
+					hydro_load += hydro_elem[object_generator.REAL_GENERATION]
+			print('Total Hydro Load: {} MW'.format(hydro_load*0.001))
+			sc_reserve_require = max(0.05*(hydro_load) + 0.07*(total_load-hydro_load), max_cont_generator)
+			print('Required Contingency Reserve: {} MW'.format(sc_reserve_require*0.001))
+
+			# Calculate available contingency reserves (MW)
+			is_combustion_turbine = {101: True, 201: True, 102: True, 202: True}
+			sc_reserve_avail = 0.0
+			for gen_elem in object_generator.matrix:
+				if is_combustion_turbine.get(int(gen_elem[object_generator.ID]), False):
+					sc_reserve_avail += min(gen_elem[object_generator.REAL_GENERATION_MAX_RATING] - gen_elem[object_generator.REAL_GENERATION], gen_elem[object_generator.RAMP_RATE]*10)
+				elif gen_elem[object_generator.REAL_GENERATION] > 0.0:
+					sc_reserve_avail += min(gen_elem[object_generator.REAL_GENERATION_MAX_RATING] - gen_elem[object_generator.REAL_GENERATION], gen_elem[object_generator.RAMP_RATE]*10)
+				else:
+					print(min(gen_elem[object_generator.REAL_GENERATION_MAX_RATING] - gen_elem[object_generator.REAL_GENERATION], gen_elem[object_generator.RAMP_RATE]*10))
+			print('Available Contingecy Reserve: {} MW'.format(sc_reserve_avail*0.001))
+
+			# Identify sourcebus connector
 			for line_elem in object_directconnection.matrix:
 				if line_elem[object_directconnection.TERMINAL_1_ID] == 0.0:
 					dssCkt.Lines.Name = str(int(line_elem[object_directconnection.TYPE])) + '_' + str(int(line_elem[object_directconnection.ID]))
@@ -386,17 +411,26 @@ def main(dss_debug, write_cols):
 	# SIM STEP 2: SET GENERATOR DISPATCH
 	# ----------------------------------
 	flag_solve_dispatch = 1
-	generator_priority_list = [
-	[{118, 0}, {121, 0}],
-	[{323, 0}],
-	[{615, 0}, {116, 0}, {123, 0}, {223, 0}],
-	[{301, 0}, {401, 0}, {302, 0}, {402, 0}],
-	[{122, 0}, {222, 0}, {322, 0}, {422, 0}, {522, 0}, {622, 0}],
-	[{113, 0}, {213, 0}, {313, 0}],
-	[{107, 0}, {207, 0}, {307, 0}],
-	[{115, 0}, {215, 0}, {315, 0}, {415, 0}, {515, 0}],
-	[{101, 0}, {201,  0}, {102,  0}, {202, 0}]
-	]
+	generator_priority_list_calc = {
+	# mult threshold turb1 turb2 turb3 ....
+	1: [0., 0., 122, 222, 322, 422, 522, 622],
+	2: [0., 0., 118, 121],
+	3: [0., 0., 323],
+	4: [0., 0., 615, 116, 123, 223],
+	5: [0., 0., 301, 401, 302, 402],
+	6: [0., 0., 113, 213, 313],
+	7: [0., 0., 107, 207, 307],
+	8: [0., 0., 115, 215, 315, 415, 515],
+	9: [0., 0., 101, 201, 102, 202]
+	}
+	generator_priority_list_mult = {}
+	total_load = sum(object_load.matrix[:, object_load.REAL_LOAD])
+	for i in range(1, len(generator_priority_list_calc)+1):
+		if i == 1:
+
+		else:
+
+
 	run_OpenDSS(0, flag_solve_dispatch)
 
 	# SIM STEP 3: RUN POWER-WATER SIMULATION
