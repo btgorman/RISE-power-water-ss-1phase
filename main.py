@@ -296,7 +296,7 @@ def main(dss_debug, write_cols):
 
 		return input_list_continuous, input_list_categorical, output_list, input_tensor_continuous, input_tensor_categorical, output_tensor
 
-	def run_OpenDSS(dss_debug):
+	def run_OpenDSS(dss_debug, flag_solve_dispatch):
 		# SET SOURCEBUS
 		# VsourceClass.sourcebus = vsourceobj.id[1]
 		dssObj = win32com.client.Dispatch('OpenDSSEngine.DSS') # OPENDSS COMPORT
@@ -320,16 +320,27 @@ def main(dss_debug, write_cols):
 		for object in object_list:
 			set_voltagebase = set_voltagebase | object.voltagesToSets()
 
+		# ALGORITHM to set power dispatch schedule
+		# ----------------------------------------
+		if flag_solve_dispatch == 1:
+			print(sum(object_load.matrix[:, object_load.REAL_LOAD])*0.001)
+			for line_elem in object_directconnection.matrix:
+				if line_elem[object_directconnection.TERMINAL_1_ID] == 0.0:
+					dssCkt.Lines.Name = str(int(line_elem[object_directconnection.TYPE])) + '_' + str(int(line_elem[object_directconnection.ID]))
+				elif line_elem[object_directconnection.TERMINAL_2_ID] == 0.0:
+					dssCkt.Lines.Name = str(int(line_elem[object_directconnection.TYPE])) + '_' + str(int(line_elem[object_directconnection.ID]))
+
 		dssText.Command = 'Set VoltageBases={}'.format(list(set_voltagebase))
 		dssText.Command = 'CalcVoltageBases'
 		dssText.Command = 'Solve BaseFrequency=60 MaxIter=300'
 
-		dssText.Command = 'Save Circuit'
-		dssText.Command = 'Export Summary (summary.csv)'
-		dssText.Command = 'Export Currents (currents.csv)'
-		dssText.Command = 'Export Voltages (voltages.csv)'
-		dssText.Command = 'Export Overloads (overloads.csv)'
-		dssText.Command = 'Export Powers kVA (powers.csv)'
+		if flag_solve_dispatch == 0:
+			dssText.Command = 'Save Circuit'
+			dssText.Command = 'Export Summary (summary.csv)'
+			dssText.Command = 'Export Currents (currents.csv)'
+			dssText.Command = 'Export Voltages (voltages.csv)'
+			dssText.Command = 'Export Overloads (overloads.csv)'
+			dssText.Command = 'Export Powers kVA (powers.csv)'
 
 		variant_buses = automation.VARIANT()
 		variant_voltages_mag = automation.VARIANT()
@@ -366,21 +377,33 @@ def main(dss_debug, write_cols):
 	power_load_sigma = 0.238325 # lognormal, AIC -9266.47
 	power_load_factor = min(np.random.lognormal(power_load_mu, power_load_sigma, 1)[0], 1.0)
 	power_load_factor = max(power_load_factor, 0.2)
-
 	# TO DO: fix the water model and add water_load_factor function
 	water_load_factor = min(0.5, 1.0)
 	water_load_factor = max(water_load_factor, 0.1)
-
+	print('power load factor is {}'.format(power_load_factor))
 	object_load.multiplyLoadFactor(power_load_factor)
 
 	# SIM STEP 2: SET GENERATOR DISPATCH
 	# ----------------------------------
+	flag_solve_dispatch = 1
+	generator_priority_list = [
+	[{118, 0}, {121, 0}],
+	[{323, 0}],
+	[{615, 0}, {116, 0}, {123, 0}, {223, 0}],
+	[{301, 0}, {401, 0}, {302, 0}, {402, 0}],
+	[{122, 0}, {222, 0}, {322, 0}, {422, 0}, {522, 0}, {622, 0}],
+	[{113, 0}, {213, 0}, {313, 0}],
+	[{107, 0}, {207, 0}, {307, 0}],
+	[{115, 0}, {215, 0}, {315, 0}, {415, 0}, {515, 0}],
+	[{101, 0}, {201,  0}, {102,  0}, {202, 0}]
+	]
+	run_OpenDSS(0, flag_solve_dispatch)
 
 	# SIM STEP 3: RUN POWER-WATER SIMULATION
 	# --------------------------------------
-	input_list_continuous, input_list_categorical, _, input_tensor_continuous, input_tensor_categorical, _ = run_OpenDSS(dss_debug)
+	input_list_continuous, input_list_categorical, _, input_tensor_continuous, input_tensor_categorical, _ = run_OpenDSS(dss_debug, 0)
 	input_list_continuous1, input_list_categorical1, _, input_tensor_continuous1, input_tensor_categorical1, _ = run_EPANET()
-	_, _, output_list, _, _, output_tensor = run_OpenDSS(dss_debug)
+	_, _, output_list, _, _, output_tensor = run_OpenDSS(dss_debug, 0)
 	_, _, output_list1, _, _, output_tensor1 = run_EPANET()
 
 	# RESULTS STEP 1: FORMAT INPUT/OUTPUT TENSORS
