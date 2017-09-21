@@ -328,6 +328,8 @@ def main(dss_debug, write_cols):
 			max_cont_generator = max(object_generator.matrix[:, object_generator.REAL_GENERATION])
 			total_load = sum(object_load.matrix[:, object_load.REAL_LOAD])
 			print('Total Load: {} MW'.format(total_load*0.001))
+			total_generation = sum(object_generator.matrix[:, object_generator.REAL_GENERATION])
+			print('Total Gen: {} MW'.format(total_generation*0.001))
 			for hydro_elem in object_generator.matrix:
 				if (int(hydro_elem[object_generator.ID]) % 100) == 22:
 					hydro_load = 0
@@ -344,16 +346,16 @@ def main(dss_debug, write_cols):
 					sc_reserve_avail += min(gen_elem[object_generator.REAL_GENERATION_MAX_RATING] - gen_elem[object_generator.REAL_GENERATION], gen_elem[object_generator.RAMP_RATE]*10)
 				elif gen_elem[object_generator.REAL_GENERATION] > 0.0:
 					sc_reserve_avail += min(gen_elem[object_generator.REAL_GENERATION_MAX_RATING] - gen_elem[object_generator.REAL_GENERATION], gen_elem[object_generator.RAMP_RATE]*10)
-				else:
-					print(min(gen_elem[object_generator.REAL_GENERATION_MAX_RATING] - gen_elem[object_generator.REAL_GENERATION], gen_elem[object_generator.RAMP_RATE]*10))
+				# else:
+				# 	print(min(gen_elem[object_generator.REAL_GENERATION_MAX_RATING] - gen_elem[object_generator.REAL_GENERATION], gen_elem[object_generator.RAMP_RATE]*10)*0.001)
 			print('Available Contingecy Reserve: {} MW'.format(sc_reserve_avail*0.001))
 
-			# Identify sourcebus connector
-			for line_elem in object_directconnection.matrix:
-				if line_elem[object_directconnection.TERMINAL_1_ID] == 0.0:
-					dssCkt.Lines.Name = str(int(line_elem[object_directconnection.TYPE])) + '_' + str(int(line_elem[object_directconnection.ID]))
-				elif line_elem[object_directconnection.TERMINAL_2_ID] == 0.0:
-					dssCkt.Lines.Name = str(int(line_elem[object_directconnection.TYPE])) + '_' + str(int(line_elem[object_directconnection.ID]))
+			# # Identify sourcebus connector
+			# for line_elem in object_directconnection.matrix:
+			# 	if line_elem[object_directconnection.TERMINAL_1_ID] == 0.0:
+			# 		dssCkt.Lines.Name = str(int(line_elem[object_directconnection.TYPE])) + '_' + str(int(line_elem[object_directconnection.ID]))
+			# 	elif line_elem[object_directconnection.TERMINAL_2_ID] == 0.0:
+			# 		dssCkt.Lines.Name = str(int(line_elem[object_directconnection.TYPE])) + '_' + str(int(line_elem[object_directconnection.ID]))
 
 		dssText.Command = 'Set VoltageBases={}'.format(list(set_voltagebase))
 		dssText.Command = 'CalcVoltageBases'
@@ -411,25 +413,70 @@ def main(dss_debug, write_cols):
 	# SIM STEP 2: SET GENERATOR DISPATCH
 	# ----------------------------------
 	flag_solve_dispatch = 1
-	generator_priority_list_calc = {
-	# mult threshold turb1 turb2 turb3 ....
-	1: [0., 0., 122, 222, 322, 422, 522, 622],
-	2: [0., 0., 118, 121],
-	3: [0., 0., 323],
-	4: [0., 0., 615, 116, 123, 223],
-	5: [0., 0., 301, 401, 302, 402],
-	6: [0., 0., 113, 213, 313],
-	7: [0., 0., 107, 207, 307],
-	8: [0., 0., 115, 215, 315, 415, 515],
-	9: [0., 0., 101, 201, 102, 202]
+	gen_prio_list_mul = {
+	# priority: mult threshold turb1 turb2 turb3 ....
+	0: (0.0, 0.0),
+	1: (1.00000, 100.0000*1000.),
+	2: (1.00000, 366.6667*1000.),
+	3: (0.88574, 470.0033*1000.),
+	4: (0.80545, 636.6700*1000.),
+	5: (0.73671, 711.3233*1000.),
+	6: (0.84772, 878.3233*1000.),
+	7: (0.30010, 908.3333*1000.),
+	8: (0.16750, 911.6833*1000.),
+	9: (0.00000, 911.6833*1000.),
+	10:(1.00000, 925.0133*1000.),
+	11:(1.00000, 965.0133*1000.)
 	}
-	generator_priority_list_mult = {}
+	gen_prio_list_key = {
+	# id: [priority_1, priority_2]
+	122: [1],
+	222: [1],
+	322: [1],
+	422: [1],
+	522: [1],
+	622: [1],
+	118: [2],
+	121: [2],
+	323: [3, 10],
+	615: [4, 11],
+	116: [4, 11],
+	123: [4, 11],
+	223: [4, 11],
+	301: [5],
+	401: [5],
+	302: [5],
+	402: [5],
+	113: [6],
+	213: [6],
+	313: [6],
+	107: [7],
+	207: [7],
+	307: [7],
+	115: [8],
+	215: [8],
+	315: [8],
+	415: [8],
+	515: [8],
+	101: [9],
+	201: [9],
+	102: [9],
+	202: [9]
+	}
 	total_load = sum(object_load.matrix[:, object_load.REAL_LOAD])
-	for i in range(1, len(generator_priority_list_calc)+1):
-		if i == 1:
-
-		else:
-
+	print('Total Load: {} MW'.format(total_load*0.001))
+	for row in object_generator.matrix:
+		keys = gen_prio_list_key[int(row[object_generator.ID])]
+		row[object_generator.REAL_GENERATION] = 0.0
+		for elem in keys:
+			_,  low_threshold = gen_prio_list_mul[elem-1]
+			factor, high_threshold = gen_prio_list_mul[elem]
+			if total_load >= high_threshold:
+				row[object_generator.REAL_GENERATION] = factor * row[object_generator.REAL_GENERATION_MAX_RATING]
+			elif total_load >= low_threshold and total_load < high_threshold:
+				cur_factor = row[object_generator.REAL_GENERATION] / row[object_generator.REAL_GENERATION_MAX_RATING]
+				factorfactor = (total_load - low_threshold) / (high_threshold - low_threshold)
+				row[object_generator.REAL_GENERATION] = (factorfactor*(factor-cur_factor) + cur_factor) * row[object_generator.REAL_GENERATION_MAX_RATING]
 
 	run_OpenDSS(0, flag_solve_dispatch)
 
