@@ -2,8 +2,36 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 
+# source: page 30 of https://www.jmp.com/support/downloads/pdf/jmp9/quality_and_reliability_methods.pdf
+def weibull_pdf(x, scale, shape):
+	return (shape/scale) * (x/scale)**(shape-1) * np.exp(-(x/scale)**shape)
+
+def weibull_cdf(x, scale, shape):
+	return 1. - np.exp(-(x/scale)**shape)
+
 def lognormal_pdf(x, mu, sigma):
 	return np.exp(-(np.log(x) - mu)**2 / (2. * sigma**2)) / (sigma * x * np.sqrt(2. * np.pi))
+
+def exponential_pdf(x, rate):
+	return rate * np.exp(-rate*x)
+
+def frechet_pdf(x, location, scale, shape):
+	return (shape/scale) * ((x-location)/scale)**(-1.-shape) * np.exp(-((x-location)/scale)**(-shape))
+
+def loglogistic_pdf(x, scale, shape):
+	return ((shape/scale) * (x/scale)**(shape-1.)) / (1. + (x/scale)**(shape))**2
+
+def sev_pdf(x, mu, sigma):
+	return (1./sigma) * np.exp( (x-mu)/sigma - np.exp((x-mu)/sigma) )
+			
+def normal_pdf(x, mu, sigma):
+	return 1./(sigma * np.sqrt(2. * np.pi)) * np.exp(- (x - mu)**2 / (2.*sigma**2))
+
+def lev_pdf(x, mu, sigma):
+	return (1./sigma) * np.exp( -(x-mu)/sigma - np.exp(-(x-mu)/sigma) )
+
+def logistic_pdf(x, location, scale):
+	return np.exp(-(x-location) / scale) / (scale * (1. + np.exp(-(x-location) / scale))**2)
 
 week_load_scalar = {
 1: 86.2,
@@ -270,23 +298,52 @@ for i in range(0, len(hour_mults)):
 	else:
 		equinox_mults.append(hour_mults[i])
 
-print(len(winter_mults) - 8*7*24 - (1+52-44)*7*24)
-print(len(summer_mults) - (1+30-18)*7*24)
-print(len(equinox_mults))
-
 count, bins, ignored = plt.hist([winter_mults, summer_mults, equinox_mults], 50, rwidth=1., stacked=True, label=['winter', 'summer', 'spring or fall'])
 sumcount = sum(count[-1]) * math.fabs(bins[0] - bins[1])
-print("sumcount is {}".format(sumcount)) # sumcount = 115.52268
 
-x = np.arange(0.2, 1.1, 0.02)
-lnorm_mu = -0.515408
-lnorm_sigma = 0.238325
-plt.plot(x, lognormal_pdf(x, lnorm_mu, lnorm_sigma) * sumcount, label="lognormal, AIC -9266.47")
+x = np.arange(0.0, 1.0, 0.02)
+
+# weib_shape = 1./0.20784994
+# weib_scale = np.exp(-0.399369)
+# plt.plot(x, weibull_pdf(x, weib_scale, weib_shape) * sumcount, color="teal", label="weibull, AIC -9329.38")
+
+# lnorm_mu = -0.5138005
+# lnorm_sigma = 0.2327611
+# plt.plot(x, lognormal_pdf(x, lnorm_mu, lnorm_sigma) * sumcount, label="lognormal, AIC -9651.107")
+
+exp_rate = 1./np.exp(-1.2886227)
+exp_x = np.array([i for i in x if i <= max(x)-min(hour_mults)])
+plt.plot(exp_x + min(hour_mults), exponential_pdf(exp_x, exp_rate) * sumcount, label="exponential, AIC -5039.66")
+
+# frech_shape = 1./0.22285012
+# frech_scale = np.exp(-0.6312738)
+# frech_loc = -0.
+# plt.plot(x, frechet_pdf(x, frech_loc, frech_scale, frech_shape) * sumcount, label="frechet, AIC -8520.865")
+
+# llog_shape = 1./0.13933323
+# llog_scale = np.exp(-0.596069)
+# plt.plot(x, loglogistic_pdf(x, llog_scale, llog_shape) * sumcount, label="log-logistic, AIC -9013.92")
+
+# sev_mu = 0.68587809
+# sev_sigma = 0.13706715
+# plt.plot(x, sev_pdf(x, sev_mu, sev_sigma) * sumcount, label="sev, AIC -8134.44")
+
+# norm_mu = 0.61439957
+# norm_sigma = 0.14054943
+# plt.plot(x, normal_pdf(x, norm_mu, norm_sigma) * sumcount, label="normal, AIC -9487.79")
+
+# lev_mu = 0.54590407
+# lev_sigma = 0.12268245
+# plt.plot(x, lev_pdf(x, lev_mu, lev_sigma) * sumcount, color="red", label="lev, AIC -9428.09")
+
+# log_location = 0.61025576
+# log_scale = 0.08402914
+# plt.plot(x, logistic_pdf(x, log_location, log_scale) * sumcount, label="logistic, AIC -8861.96")
 
 plt.xticks(fontsize="x-large")
-plt.xlabel("Percent of annual maximum", fontsize="x-large")
+plt.xlabel("Power load factors throughout the year", fontsize="x-large")
 plt.yticks(fontsize="x-large")
-plt.ylabel("Number of occurrances in a year", fontsize="x-large")
-plt.title("Histogram of hourly load factors for the year", fontsize="x-large")
+plt.ylabel("Frequency", fontsize="x-large")
+plt.title("Histogram and PDF for hourly power loads", fontsize="x-large")
 plt.legend(fontsize="x-large")
 plt.show()
