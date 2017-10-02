@@ -170,7 +170,7 @@ for month in range(1, len(monthly_demand_scalar)+1):
 count, bins, ignored = plt.hist([winter_hourly_demands, summer_hourly_demands, equinox_hourly_demands], int(288/8), stacked=True, label=['winter', 'summer', 'spring or fall'])
 sumcount = sum(count[-1]) * math.fabs(bins[0] - bins[1])
 
-x = np.arange(0.0, max(total_hourly_demands), 0.08)
+x = np.arange(0.0, max(total_hourly_demands) - min(total_hourly_demands), 0.08) # for exponential distribution
 
 # weib_shape = 1./0.66408412
 # weib_scale = np.exp(0.34368128)

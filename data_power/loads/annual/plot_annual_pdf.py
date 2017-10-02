@@ -302,23 +302,25 @@ count, bins, ignored = plt.hist([winter_mults, summer_mults, equinox_mults], 50,
 sumcount = sum(count[-1]) * math.fabs(bins[0] - bins[1])
 
 x = np.arange(0.0, 1.0, 0.02)
+x = [i for i in x if i >= min(hour_mults)]
+x = np.array([i for i in x if i <= max(hour_mults)]) # for non-exponential distribution
 
 # weib_shape = 1./0.20784994
 # weib_scale = np.exp(-0.399369)
 # plt.plot(x, weibull_pdf(x, weib_scale, weib_shape) * sumcount, color="teal", label="weibull, AIC -9329.38")
 
-# lnorm_mu = -0.5138005
-# lnorm_sigma = 0.2327611
-# plt.plot(x, lognormal_pdf(x, lnorm_mu, lnorm_sigma) * sumcount, label="lognormal, AIC -9651.107")
+lnorm_mu = -0.5138005
+lnorm_sigma = 0.2327611
+plt.plot(x, lognormal_pdf(x, lnorm_mu, lnorm_sigma) * sumcount, label="lognormal, AIC -9651.11")
 
-exp_rate = 1./np.exp(-1.2886227)
-exp_x = np.array([i for i in x if i <= max(x)-min(hour_mults)])
-plt.plot(exp_x + min(hour_mults), exponential_pdf(exp_x, exp_rate) * sumcount, label="exponential, AIC -5039.66")
+# exp_rate = 1./np.exp(-1.2886227)
+# exp_x = np.array([i for i in x if i <= max(x)-min(hour_mults)])
+# plt.plot(exp_x + min(hour_mults), exponential_pdf(exp_x, exp_rate) * sumcount, label="exponential, AIC -5039.66")
 
 # frech_shape = 1./0.22285012
 # frech_scale = np.exp(-0.6312738)
 # frech_loc = -0.
-# plt.plot(x, frechet_pdf(x, frech_loc, frech_scale, frech_shape) * sumcount, label="frechet, AIC -8520.865")
+# plt.plot(x, frechet_pdf(x, frech_loc, frech_scale, frech_shape) * sumcount, label="frechet, AIC -8520.87")
 
 # llog_shape = 1./0.13933323
 # llog_scale = np.exp(-0.596069)
