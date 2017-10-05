@@ -1,4 +1,4 @@
 INPUT,INPUT,INPUT,INPUT,INPUT,INPUT,INPUT,INPUT,CONTROLS,OUTPUTS,OUTPUTS,OUTPUTS,OUTPUTS
 ID,type,terminal_1_ID,terminal_2_ID,functional_status,curve_ID,power,speed,operational_status,power_consumption,flow,headloss,velocity
-4,,,,,,,,,,,,
-20,,,,,,,,,,,,
+4,2201,14,24,1,0,225,1,1,0,0,0,0
+20,2201,120,220,1,0,225,1,1,0,0,0,0
