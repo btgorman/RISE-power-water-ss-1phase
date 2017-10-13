@@ -126,14 +126,14 @@ class XYCurve: #errors -1000 to -1024
 
 	def convertToInputTensor(self):
 		try:
-			return [], [], np.empty([0, 0], dtype=np.float32).flatten(), np.empty([0,0], dtype=np.float32).flatten()
+			return [], [], np.empty([0, 0], dtype=np.float64).flatten(), np.empty([0,0], dtype=np.float64).flatten()
 		except:
 			print('Error: #-1009')
 			return -1009
 
 	def convertToOutputTensor(self):
 		try:
-			return [], np.empty([0, 0], dtype=np.float32).flatten()
+			return [], np.empty([0, 0], dtype=np.float64).flatten()
 		except:
 			return 0
 
@@ -189,13 +189,13 @@ class RegControl: #errors -1050 to -1074
 
 	def convertToInputTensor(self):
 		try:
-			return [], [], np.empty([0, 0], dtype=np.float32).flatten(), np.empty([0,0], dtype=np.float32).flatten()
+			return [], [], np.empty([0, 0], dtype=np.float64).flatten(), np.empty([0,0], dtype=np.float64).flatten()
 		except:
 			pass
 
 	def convertToOutputTensor(self):
 		try:
-			return [], np.empty([0, 0], dtype=np.float32).flatten()
+			return [], np.empty([0, 0], dtype=np.float64).flatten()
 		except:
 			pass
 
@@ -273,13 +273,13 @@ class WireData: #errors -1100 to -1124
 
 	def convertToInputTensor(self):
 		try:
-			return [], [], np.empty([0, 0], dtype=np.float32).flatten(), np.empty([0,0], dtype=np.float32).flatten()
+			return [], [], np.empty([0, 0], dtype=np.float64).flatten(), np.empty([0,0], dtype=np.float64).flatten()
 		except:
 			return 0
 
 	def convertToOutputTensor(self):
 		try:
-			return [], np.empty([0, 0], dtype=np.float32).flatten()
+			return [], np.empty([0, 0], dtype=np.float64).flatten()
 		except:
 			return 0
 
@@ -378,14 +378,14 @@ class LineCode: #errors -1125 to -1149
 
 	def convertToInputTensor(self):
 		try:
-			return [], [], np.empty([0, 0], dtype=np.float32).flatten(), np.empty([0,0], dtype=np.float32).flatten()
+			return [], [], np.empty([0, 0], dtype=np.float64).flatten(), np.empty([0,0], dtype=np.float64).flatten()
 		except:
 			print('Error: #-1132')
 			return -1132
 
 	def convertToOutputTensor(self):
 		try:
-			return [], np.empty([0, 0], dtype=np.float32).flatten()
+			return [], np.empty([0, 0], dtype=np.float64).flatten()
 		except:
 			return 0
 
@@ -459,7 +459,7 @@ class Bus: #errors -1150 to -1174
 
 	def convertToInputTensor(self):
 		try:
-			return [], [], np.empty([0, 0], dtype=np.float32).flatten(), np.empty([0,0], dtype=np.float32).flatten()
+			return [], [], np.empty([0, 0], dtype=np.float64).flatten(), np.empty([0,0], dtype=np.float64).flatten()
 		except:
 			print('Error: #-1155')
 			return -1155
@@ -605,7 +605,7 @@ class VSource: #errors -1175 to -1199
 
 	def convertToInputTensor(self):
 		try:
-			return [], [], np.empty([0, 0], dtype=np.float32).flatten(), np.empty([0,0], dtype=np.float32).flatten()
+			return [], [], np.empty([0, 0], dtype=np.float64).flatten(), np.empty([0,0], dtype=np.float64).flatten()
 		except:
 			print('Error: #-1182')
 			return -1182
@@ -1411,14 +1411,14 @@ class WindTurbine: #errors -1275 to -1299
 	def convertToInputTensor(self):
 		try:
 			# TO DO:
-			return [], [], np.empty([0, 0], dtype=np.float32).flatten(), np.empty([0,0], dtype=np.float32).flatten()
+			return [], [], np.empty([0, 0], dtype=np.float64).flatten(), np.empty([0,0], dtype=np.float64).flatten()
 		except:
 			pass
 
 	def convertToOutputTensor(self):
 		try:
 			# TO DO:
-			return [], np.empty([0, 0], dtype=np.float32).flatten()
+			return [], np.empty([0, 0], dtype=np.float64).flatten()
 		except:
 			pass
 
@@ -1561,13 +1561,13 @@ class DirectConnection: #errors -1400 to -1424
 
 	def convertToInputTensor(self):
 		try:
-			return [], [], np.empty([0, 0], dtype=np.float32).flatten(), np.empty([0,0], dtype=np.float32).flatten()
+			return [], [], np.empty([0, 0], dtype=np.float64).flatten(), np.empty([0,0], dtype=np.float64).flatten()
 		except:
 			pass
 
 	def convertToOutputTensor(self):
 		try:
-			return [], np.empty([0, 0], dtype=np.float32).flatten()
+			return [], np.empty([0, 0], dtype=np.float64).flatten()
 		except:
 			pass
 
@@ -1726,7 +1726,7 @@ class Cable: #errors -1425 to -1449
 
 			inputdf = self.convertToDataFrame()
 			inputdf_categorical = inputdf[input_col_categorical]
-			return input_list_continuous, input_list_categorical, np.empty([0,0], dtype=np.float32).flatten(), inputdf_categorical.values.flatten()
+			return input_list_continuous, input_list_categorical, np.empty([0,0], dtype=np.float64).flatten(), inputdf_categorical.values.flatten()
 		except:
 			print('Error: #-1432')
 			return -1432
@@ -1939,14 +1939,14 @@ class OverheadLine: #errors -1450 to -1474
 	def convertToInputTensor(self):
 		try:
 			# TO DO:
-			return [], [], np.empty([0, 0], dtype=np.float32).flatten(), np.empty([0,0], dtype=np.float32).flatten()
+			return [], [], np.empty([0, 0], dtype=np.float64).flatten(), np.empty([0,0], dtype=np.float64).flatten()
 		except:
 			pass
 
 	def convertToOutputTensor(self):
 		try:
 			# TO DO:
-			return [], np.empty([0, 0], dtype=np.float32).flatten()
+			return [], np.empty([0, 0], dtype=np.float64).flatten()
 		except:
 			pass
 
@@ -2412,7 +2412,7 @@ class Capacitor: #errors -1500 to -1524
 
 			inputdf = self.convertToDataFrame()
 			inputdf_categorical = inputdf[input_col_categorical]
-			return input_list_continuous, input_list_categorical, np.empty([0,0], dtype=np.float32).flatten(), inputdf_categorical.values.flatten()
+			return input_list_continuous, input_list_categorical, np.empty([0,0], dtype=np.float64).flatten(), inputdf_categorical.values.flatten()
 		except:
 			print('Error: #-1507')
 			return -1507
@@ -2517,14 +2517,14 @@ class Reactor: #errors -1525 to -1549
 	def convertToInputTensor(self):
 		try:
 			# TO DO:
-			return [], [], np.empty([0, 0], dtype=np.float32).flatten(), np.empty([0,0], dtype=np.float32).flatten()
+			return [], [], np.empty([0, 0], dtype=np.float64).flatten(), np.empty([0,0], dtype=np.float64).flatten()
 		except:
 			pass
 
 	def convertToOutputTensor(self):
 		try:
 			# TO DO:
-			return [], np.empty([0, 0], dtype=np.float32).flatten()
+			return [], np.empty([0, 0], dtype=np.float64).flatten()
 		except:
 			pass
 

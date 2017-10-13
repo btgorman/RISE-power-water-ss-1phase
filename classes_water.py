@@ -175,17 +175,18 @@ class Junction:
 	BASE_DEMAND = 3 # stochastic
 	ELEVATION = 4
 	# INPUT VARIABLES
-	PATTERN_ID = 5
+	BASE_DEMAND_AVERAGE = 5
+	PATTERN_ID = 6
 	# RELIABILITY
-	MIN_PRESSURE = 6
+	MIN_PRESSURE = 7
 	# CONTROLS
 	# OUTPUTS
-	DEMAND = 7
-	HEAD = 8
-	PERCENT_DEMAND = 9
-	PERCENT_PRESSURE = 10
-	PRESSURE = 11
-	QUALITY = 12
+	DEMAND = 8
+	HEAD = 9
+	PERCENT_DEMAND = 10
+	PERCENT_PRESSURE = 11
+	PRESSURE = 12
+	QUALITY = 13
 
 	def __init__(self, dframe):
 		self.cols = list(dframe.columns)
@@ -334,6 +335,13 @@ class Junction:
 
 	def randomSwitching(self):
 		pass
+
+	def multiplyLoadFactor(self, demand_factor):
+		try:
+			self.matrix[:, Junction.BASE_DEMAND] = self.matrix[:, Junction.BASE_DEMAND_AVERAGE] * demand_factor
+		except:
+			print('WATER ERROR in Junction7')
+			return -1
 
 class Reservoir:
 	CLID = 2101
