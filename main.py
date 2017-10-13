@@ -18,6 +18,7 @@ import ctypes as ct
 import pandas as pd
 import numpy as np
 import random, csv, sys, os
+import math
 
 import classes_water as ENC
 import classes_power as ODC
@@ -296,7 +297,7 @@ def main(dss_debug, write_cols):
 
 		return input_list_continuous, input_list_categorical, output_list, input_tensor_continuous, input_tensor_categorical, output_tensor
 
-	def run_OpenDSS(dss_debug):
+	def run_OpenDSS(dss_debug, solverFlag):
 		# SET SOURCEBUS
 		# VsourceClass.sourcebus = vsourceobj.id[1]
 		dssObj = win32com.client.Dispatch('OpenDSSEngine.DSS') # OPENDSS COMPORT
@@ -324,13 +325,6 @@ def main(dss_debug, write_cols):
 		dssText.Command = 'CalcVoltageBases'
 		dssText.Command = 'Solve BaseFrequency=60 MaxIter=300'
 
-		dssText.Command = 'Save Circuit'
-		dssText.Command = 'Export Summary (summary.csv)'
-		dssText.Command = 'Export Currents (currents.csv)'
-		dssText.Command = 'Export Voltages (voltages.csv)'
-		dssText.Command = 'Export Overloads (overloads.csv)'
-		dssText.Command = 'Export Powers kVA (powers.csv)'
-
 		variant_buses = automation.VARIANT()
 		variant_voltages_mag = automation.VARIANT()
 		variant_voltages_pu = automation.VARIANT()
@@ -340,25 +334,37 @@ def main(dss_debug, write_cols):
 		for object in object_list:
 			object.readAllDSSOutputs(dssCkt, dssActvElem, dssActvBus, variant_buses, variant_voltages_mag, variant_voltages_pu, variant_currents, variant_powers)
 
-		input_list_continuous = []
-		input_list_categorical = []
-		input_tensor_continuous = np.empty([0,0], dtype=np.float64).flatten()
-		input_tensor_categorical = np.empty([0,0], dtype=np.float64).flatten()
-		for object in object_list:
-			list_continuous, list_categorical, tensor_continuous, tensor_categorical = object.convertToInputTensor()
-			input_list_continuous = input_list_continuous + list_continuous
-			input_list_categorical = input_list_categorical + list_categorical
-			input_tensor_continuous = np.concatenate((input_tensor_continuous, tensor_continuous), axis=0)
-			input_tensor_categorical = np.concatenate((input_tensor_categorical, tensor_categorical), axis=0)
+		if solverFlag == False:
+			dssText.Command = 'Save Circuit'
+			dssText.Command = 'Export Summary (summary.csv)'
+			dssText.Command = 'Export Currents (currents.csv)'
+			dssText.Command = 'Export Voltages (voltages.csv)'
+			dssText.Command = 'Export Overloads (overloads.csv)'
+			dssText.Command = 'Export Powers kVA (powers.csv)'
 
-		output_list = []
-		output_tensor = np.empty([0,0], dtype=np.float64).flatten()
-		for object in object_list:
-			o_list, o_tensor = object.convertToOutputTensor()
-			output_list = output_list + o_list
-			output_tensor = np.concatenate((output_tensor, o_tensor), axis=0)
+			input_list_continuous = []
+			input_list_categorical = []
+			input_tensor_continuous = np.empty([0,0], dtype=np.float64).flatten()
+			input_tensor_categorical = np.empty([0,0], dtype=np.float64).flatten()
+			for object in object_list:
+				list_continuous, list_categorical, tensor_continuous, tensor_categorical = object.convertToInputTensor()
+				input_list_continuous = input_list_continuous + list_continuous
+				input_list_categorical = input_list_categorical + list_categorical
+				input_tensor_continuous = np.concatenate((input_tensor_continuous, tensor_continuous), axis=0)
+				input_tensor_categorical = np.concatenate((input_tensor_categorical, tensor_categorical), axis=0)
 
-		return input_list_continuous, input_list_categorical, output_list, input_tensor_continuous, input_tensor_categorical, output_tensor
+			output_list = []
+			output_tensor = np.empty([0,0], dtype=np.float64).flatten()
+			for object in object_list:
+				o_list, o_tensor = object.convertToOutputTensor()
+				output_list = output_list + o_list
+				output_tensor = np.concatenate((output_tensor, o_tensor), axis=0)
+
+			return input_list_continuous, input_list_categorical, output_list, input_tensor_continuous, input_tensor_categorical, output_tensor
+		else:
+			losses = dssCkt.Losses
+			return float(losses[0])*0.001 # kW
+
 
 	# SIM STEP 1: SET LOAD CURVES
 	# ------------------------------
@@ -378,24 +384,33 @@ def main(dss_debug, write_cols):
 
 	# SIM STEP 2: SET GENERATOR DISPATCH
 	# ----------------------------------
-	grb_solvers.power_dispatch(object_load, object_generator)
+	base_export = 0.0 # kW 
+	export = base_export
+	losses = 0.0 # kW
+	counter = 1
+	while True:
+		grb_solvers.power_dispatch(object_load, object_generator, losses, export)
+		new_loss = run_OpenDSS(0, True)
+		for row in object_directconnection.matrix:
+			if row[ODC.DirectConnection.TERMINAL_1_ID] < 1:
+				new_export = -row[ODC.DirectConnection.REAL_POWER_1]
+			elif row[ODC.DirectConnection.TERMINAL_2_ID] < 1:
+				new_export = -row[ODC.DirectConnection.REAL_POWER_2]
+		counter += 1
+		if math.fabs(losses - new_loss) > 0.5 or math.fabs(new_export - base_export) > 1.0 and counter < 10:
+			print(counter)
+			losses = new_loss
+			export += float((base_export - new_export))
+		else:
+			break
 
-	summation = 0
-	for row in object_generator.matrix:
-		summation += row[ODC.Generator.OPERATIONAL_STATUS] * row[ODC.Generator.REAL_GENERATION]
-	loadsum = sum(object_load.matrix[:, ODC.Load.REAL_LOAD])
-
-	print('loads ', loadsum)
-	print('gens ', summation)
-	print('error ', loadsum-summation)
-
-	# run_OpenDSS(0)
+	print('')
 
 	# SIM STEP 3: RUN POWER-WATER SIMULATION
 	# --------------------------------------
-	input_list_continuous, input_list_categorical, _, input_tensor_continuous, input_tensor_categorical, _ = run_OpenDSS(dss_debug)
+	input_list_continuous, input_list_categorical, _, input_tensor_continuous, input_tensor_categorical, _ = run_OpenDSS(dss_debug, False)
 	input_list_continuous1, input_list_categorical1, _, input_tensor_continuous1, input_tensor_categorical1, _ = run_EPANET()
-	_, _, output_list, _, _, output_tensor = run_OpenDSS(dss_debug)
+	_, _, output_list, _, _, output_tensor = run_OpenDSS(dss_debug, False)
 	_, _, output_list1, _, _, output_tensor1 = run_EPANET()
 
 	# RESULTS STEP 1: FORMAT INPUT/OUTPUT TENSORS

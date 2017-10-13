@@ -16,7 +16,7 @@ GEN_PRIORITY_KEY = {122: 1, 222: 1, 322: 1, 422: 1, 522: 1, 622: 1,
 
 GEN_PRIORITY_COUNT = {1: 6, 2: 2, 3: 1, 4: 4, 5: 4, 6: 3, 7: 3, 8: 5, 9: 4}
 
-def power_dispatch(object_load, object_generator):
+def power_dispatch(object_load, object_generator, losses, export):
 	mx_dispatch = {1: 0., 2: 0., 3: 0., 4: 0., 5: 0., 6: 0., 7: 0., 8: 0., 9: 0.}
 	mx_reserve = {1: 0., 2: 0., 3: 0., 4: 0., 5: 0., 6: 0., 7: 0., 8: 0., 9: 0.}
 	dispatch_factor = {1: 0., 2: 0., 3: 0., 4: 0., 5: 0., 6: 0., 7: 0., 8: 0., 9: 0.}
@@ -68,8 +68,8 @@ def power_dispatch(object_load, object_generator):
 		m.setObjective(1*uc_1 + 2*uc_2 + 3*uc_3 + 4*uc_4 + 5*uc_5 + 6*uc_6 + 7*uc_7 + 8*uc_8 + 9*uc_9, GRB.MINIMIZE)
 
 		# Constraint - Loads = Gen
-		m.addConstr(SUM_LOAD-0.01 <= uc_1*gf_1*mx_dispatch[1] + uc_2*gf_2*mx_dispatch[2] + uc_3*gf_3*mx_dispatch[3] + uc_4*gf_4*mx_dispatch[4] + uc_5*gf_5*mx_dispatch[5] + uc_6*gf_6*mx_dispatch[6] + uc_7*gf_7*mx_dispatch[7] + uc_8*gf_8*mx_dispatch[8] + uc_9*gf_9*mx_dispatch[9], 'system_load_1')
-		m.addConstr(SUM_LOAD+0.01 >= uc_1*gf_1*mx_dispatch[1] + uc_2*gf_2*mx_dispatch[2] + uc_3*gf_3*mx_dispatch[3] + uc_4*gf_4*mx_dispatch[4] + uc_5*gf_5*mx_dispatch[5] + uc_6*gf_6*mx_dispatch[6] + uc_7*gf_7*mx_dispatch[7] + uc_8*gf_8*mx_dispatch[8] + uc_9*gf_9*mx_dispatch[9], 'system_load_2')
+		m.addConstr((SUM_LOAD+losses+export) - 0.01 <= uc_1*gf_1*mx_dispatch[1] + uc_2*gf_2*mx_dispatch[2] + uc_3*gf_3*mx_dispatch[3] + uc_4*gf_4*mx_dispatch[4] + uc_5*gf_5*mx_dispatch[5] + uc_6*gf_6*mx_dispatch[6] + uc_7*gf_7*mx_dispatch[7] + uc_8*gf_8*mx_dispatch[8] + uc_9*gf_9*mx_dispatch[9], 'system_load_1')
+		m.addConstr((SUM_LOAD+losses+export) + 0.01 >= uc_1*gf_1*mx_dispatch[1] + uc_2*gf_2*mx_dispatch[2] + uc_3*gf_3*mx_dispatch[3] + uc_4*gf_4*mx_dispatch[4] + uc_5*gf_5*mx_dispatch[5] + uc_6*gf_6*mx_dispatch[6] + uc_7*gf_7*mx_dispatch[7] + uc_8*gf_8*mx_dispatch[8] + uc_9*gf_9*mx_dispatch[9], 'system_load_2')
 
 		# Constraint - Minimum required reserve for CAISO
 		m.addConstr(ra_1 + ra_2 + ra_3 + ra_4 + ra_5 + ra_6 + ra_7 + ra_8 + ra_9 >= uc_1*gf_1*mx_dispatch[1]*0.05 + (uc_2*gf_2*mx_dispatch[2] + uc_3*gf_3*mx_dispatch[3] + uc_4*gf_4*mx_dispatch[4] + uc_5*gf_5*mx_dispatch[5] + uc_6*gf_6*mx_dispatch[6] + uc_7*gf_7*mx_dispatch[7] + uc_8*gf_8*mx_dispatch[8] + uc_9*gf_9*mx_dispatch[9])*0.07, 'net_reserves')
