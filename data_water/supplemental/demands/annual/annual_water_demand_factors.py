@@ -167,51 +167,51 @@ for month in range(1, len(monthly_demand_scalar)+1):
 			summer_hourly_demands.append(alpha*beta)
 			total_hourly_demands.append(alpha*beta)
 
-count, bins, ignored = plt.hist([winter_hourly_demands, summer_hourly_demands, equinox_hourly_demands], int(288/8), stacked=True, label=['winter', 'summer', 'spring or fall'])
+count, bins, ignored = plt.hist([winter_hourly_demands, summer_hourly_demands, equinox_hourly_demands], int(288/8), stacked=True, label=['winter', 'summer', 'spring/fall'])
 sumcount = sum(count[-1]) * math.fabs(bins[0] - bins[1])
 
 x = np.arange(0.0, max(total_hourly_demands) - min(total_hourly_demands), 0.08) # for exponential distribution
 
 # weib_shape = 1./0.66408412
 # weib_scale = np.exp(0.34368128)
-# plt.plot(x, weibull_pdf(x, weib_scale, weib_shape) * sumcount, color="teal", label="weibull, AIC 645.90")
+# plt.plot(x, weibull_pdf(x, weib_scale, weib_shape) * sumcount, color="teal", label="weibull")
 
 # lnorm_mu = -0.0121681
 # lnorm_sigma = 0.71567165
-# plt.plot(x, lognormal_pdf(x, lnorm_mu, lnorm_sigma) * sumcount, label="lognormal, AIC 621.65")
+# plt.plot(x, lognormal_pdf(x, lnorm_mu, lnorm_sigma) * sumcount, label="lognormal")
 
 exp_rate = 1./np.exp(0.0144362)
-plt.plot(x+min(total_hourly_demands), exponential_pdf(x, exp_rate) * sumcount, label="exponential, AIC 582.27")
+plt.plot(x+min(total_hourly_demands), exponential_pdf(x, exp_rate) * sumcount, label="exponential")
 
 # frech_shape = 1./0.66505673
 # frech_scale = np.exp(-0.3700751)
 # frech_loc = 0.
-# plt.plot(x, frechet_pdf(x, frech_loc, frech_scale, frech_shape) * sumcount, label="frechet, AIC 648.07")
+# plt.plot(x, frechet_pdf(x, frech_loc, frech_scale, frech_shape) * sumcount, label="frechet")
 
 # llog_shape = 1./0.42540507
 # llog_scale = np.exp(-0.0047049)
-# plt.plot(x, loglogistic_pdf(x, llog_scale, llog_shape) * sumcount, label="log-logistic, AIC 640.86")
+# plt.plot(x, loglogistic_pdf(x, llog_scale, llog_shape) * sumcount, label="log-logistic")
 
 # sev_mu = 1.75932773
 # sev_sigma = 1.09390468
-# plt.plot(x, sev_pdf(x, sev_mu, sev_sigma) * sumcount, label="sev, AIC 892.82")
+# plt.plot(x, sev_pdf(x, sev_mu, sev_sigma) * sumcount, label="sev")
 
 # norm_mu = 1.26349549
 # norm_sigma = 0.89910515
-# plt.plot(x, normal_pdf(x, norm_mu, norm_sigma) * sumcount, label="normal, AIC 760.09")
+# plt.plot(x, normal_pdf(x, norm_mu, norm_sigma) * sumcount, label="normal")
 
 # lev_mu = 0.87361666
 # lev_sigma = 0.61594864
-# plt.plot(x, lev_pdf(x, lev_mu, lev_sigma) * sumcount, color="red", label="lev, AIC 665.51")
+# plt.plot(x, lev_pdf(x, lev_mu, lev_sigma) * sumcount, color="red", label="lev")
 
 # log_location = 1.14021671
 # log_scale = 0.48387537
-# plt.plot(x, logistic_pdf(x, log_location, log_scale) * sumcount, label="logistic, AIC 745.25")
+# plt.plot(x, logistic_pdf(x, log_location, log_scale) * sumcount, label="logistic")
 
-plt.xticks(fontsize="x-large")
-plt.xlabel("Water demand factors throughout the year", fontsize="x-large")
-plt.yticks(fontsize="x-large")
-plt.ylabel("Frequency", fontsize="x-large")
-plt.title("Histogram and PDF for hourly water demands", fontsize="x-large")
-plt.legend(fontsize='x-large')
+arialfont = {'fontname': 'Arial'}
+plt.xticks(fontsize="large", **arialfont)
+plt.xlabel("Water demand factors throughout the year", fontsize="x-large", **arialfont)
+plt.yticks(fontsize="large", **arialfont)
+plt.ylabel("Frequency", fontsize="x-large", **arialfont)
+plt.legend(fontsize='large', loc=1)
 plt.show()

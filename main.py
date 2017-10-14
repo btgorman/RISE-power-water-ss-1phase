@@ -368,15 +368,15 @@ def main(dss_debug, write_cols):
 
 	# SIM STEP 1: SET LOAD CURVES
 	# ------------------------------
-	power_load_mu = -0.514 # lognormal, AIC -9651.11
-	power_load_sigma = 0.233 # lognormal, AIC -9651.11
-	power_load_lb = 0.2
+	power_load_mu = -0.51385 # lognormal, AIC -9693.48
+	power_load_sigma = 0.23256 # lognormal, AIC -9693.48
+	power_load_lb = 0.3388
 	power_load_ub = 1.0
 	power_load_factor = min(np.random.lognormal(power_load_mu, power_load_sigma, size=None), power_load_ub)
 	power_load_factor = max(power_load_factor, power_load_lb)
 	object_load.multiplyLoadFactor(power_load_factor)
 
-	water_demand_scale = 1./0.986
+	water_demand_scale = np.exp(0.0144362) # exponential, AIC = 582.27
 	water_demand_lb = 0.256
 	water_demand_ub = 4.21
 	water_demand_factor = min(water_demand_lb+np.random.exponential(water_demand_scale, size=None), water_demand_ub)

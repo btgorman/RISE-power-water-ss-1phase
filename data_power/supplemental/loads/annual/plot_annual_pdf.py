@@ -264,6 +264,7 @@ hour_mults = []
 winter_mults = []
 summer_mults = []
 equinox_mults = []
+i = 1
 
 for week in range(1, len(week_load_scalar)+1):
 	for day in range(1, len(day_load_scalar)+1):
@@ -289,6 +290,9 @@ for week in range(1, len(week_load_scalar)+1):
 
 			gamma = gamma*0.01
 			hour_mults.append(alpha*beta*gamma)
+			if week == len(week_load_scalar): # used this to create 8760 data points
+				if day == len(day_load_scalar):
+					hour_mults.append(alpha*beta*gamma)
 
 for i in range(0, len(hour_mults)):
 	if i <= 8*24*len(day_load_scalar) or i > 43*24*len(day_load_scalar):
@@ -298,54 +302,54 @@ for i in range(0, len(hour_mults)):
 	else:
 		equinox_mults.append(hour_mults[i])
 
-count, bins, ignored = plt.hist([winter_mults, summer_mults, equinox_mults], 50, rwidth=1., stacked=True, label=['winter', 'summer', 'spring or fall'])
+count, bins, ignored = plt.hist([winter_mults, summer_mults, equinox_mults], 50, rwidth=1., stacked=True, label=['winter', 'summer', 'spring/fall'])
 sumcount = sum(count[-1]) * math.fabs(bins[0] - bins[1])
 
 x = np.arange(0.0, 1.0, 0.02)
 x = [i for i in x if i >= min(hour_mults)]
 x = np.array([i for i in x if i <= max(hour_mults)]) # for non-exponential distribution
 
-# weib_shape = 1./0.20784994
-# weib_scale = np.exp(-0.399369)
-# plt.plot(x, weibull_pdf(x, weib_scale, weib_shape) * sumcount, color="teal", label="weibull, AIC -9329.38")
+# weib_shape = 1./0.20772381
+# weib_scale = np.exp(-0.399517)
+# plt.plot(x, weibull_pdf(x, weib_scale, weib_shape) * sumcount, color="teal", label="weibull")
 
-lnorm_mu = -0.5138005
-lnorm_sigma = 0.2327611
-plt.plot(x, lognormal_pdf(x, lnorm_mu, lnorm_sigma) * sumcount, label="lognormal, AIC -9651.11")
+lnorm_mu = -0.5138546
+lnorm_sigma = 0.23256321
+plt.plot(x, lognormal_pdf(x, lnorm_mu, lnorm_sigma) * sumcount, label="lognormal")
 
-# exp_rate = 1./np.exp(-1.2886227)
+# exp_rate = 1./np.exp(-0.4872712)
 # exp_x = np.array([i for i in x if i <= max(x)-min(hour_mults)])
-# plt.plot(exp_x + min(hour_mults), exponential_pdf(exp_x, exp_rate) * sumcount, label="exponential, AIC -5039.66")
+# plt.plot(exp_x + min(hour_mults), exponential_pdf(exp_x, exp_rate) * sumcount, label="exponential")
 
-# frech_shape = 1./0.22285012
-# frech_scale = np.exp(-0.6312738)
+# frech_shape = 1./0.22268866
+# frech_scale = np.exp(-0.6312278)
 # frech_loc = -0.
-# plt.plot(x, frechet_pdf(x, frech_loc, frech_scale, frech_shape) * sumcount, label="frechet, AIC -8520.87")
+# plt.plot(x, frechet_pdf(x, frech_loc, frech_scale, frech_shape) * sumcount, label="frechet")
 
-# llog_shape = 1./0.13933323
-# llog_scale = np.exp(-0.596069)
-# plt.plot(x, loglogistic_pdf(x, llog_scale, llog_shape) * sumcount, label="log-logistic, AIC -9013.92")
+# llog_shape = 1./0.13919554
+# llog_scale = np.exp(-0.5096652)
+# plt.plot(x, loglogistic_pdf(x, llog_scale, llog_shape) * sumcount, label="log-logistic")
 
-# sev_mu = 0.68587809
-# sev_sigma = 0.13706715
-# plt.plot(x, sev_pdf(x, sev_mu, sev_sigma) * sumcount, label="sev, AIC -8134.44")
+# sev_mu = 0.68575934
+# sev_sigma = 0.13699434
+# plt.plot(x, sev_pdf(x, sev_mu, sev_sigma) * sumcount, label="sev")
 
-# norm_mu = 0.61439957
-# norm_sigma = 0.14054943
-# plt.plot(x, normal_pdf(x, norm_mu, norm_sigma) * sumcount, label="normal, AIC -9487.79")
+# norm_mu = 0.61433908
+# norm_sigma = 0.14042541
+# plt.plot(x, normal_pdf(x, norm_mu, norm_sigma) * sumcount, label="normal")
 
-# lev_mu = 0.54590407
-# lev_sigma = 0.12268245
-# plt.plot(x, lev_pdf(x, lev_mu, lev_sigma) * sumcount, color="red", label="lev, AIC -9428.09")
+# lev_mu = 0.5459069
+# lev_sigma = 0.12258021
+# plt.plot(x, lev_pdf(x, lev_mu, lev_sigma) * sumcount, color="red", label="lev")
 
-# log_location = 0.61025576
-# log_scale = 0.08402914
-# plt.plot(x, logistic_pdf(x, log_location, log_scale) * sumcount, label="logistic, AIC -8861.96")
+# log_location = 0.61019505
+# log_scale = 0.08393966
+# plt.plot(x, logistic_pdf(x, log_location, log_scale) * sumcount, label="logistic")
 
-plt.xticks(fontsize="x-large")
-plt.xlabel("Power load factors throughout the year", fontsize="x-large")
-plt.yticks(fontsize="x-large")
-plt.ylabel("Frequency", fontsize="x-large")
-plt.title("Histogram and PDF for hourly power loads", fontsize="x-large")
-plt.legend(fontsize="x-large")
+arialfont = {'fontname': 'Arial'}
+plt.xticks(fontsize="large", **arialfont)
+plt.xlabel("Power load factors throughout the year", fontsize="x-large", **arialfont)
+plt.yticks(fontsize="large", **arialfont)
+plt.ylabel("Frequency", fontsize="x-large", ** arialfont)
+plt.legend(fontsize="large", loc=1)
 plt.show()
