@@ -384,27 +384,31 @@ def main(dss_debug, write_cols):
 
 	# SIM STEP 2: SET GENERATOR DISPATCH
 	# ----------------------------------
-	base_export = 0.0 # kW 
-	export = base_export
+	base_exports = 2000.0 # kW
+	new_exports = 0.0
+	exports = base_exports
 	losses = 0.0 # kW
 	counter = 1
+
 	while True:
-		grb_solvers.power_dispatch(object_load, object_generator, losses, export)
+		grb_solvers.power_dispatch(object_load, object_generator, losses, exports)
 		new_loss = run_OpenDSS(0, True)
-		for row in object_directconnection.matrix:
-			if row[ODC.DirectConnection.TERMINAL_1_ID] < 1:
-				new_export = -row[ODC.DirectConnection.REAL_POWER_1]
-			elif row[ODC.DirectConnection.TERMINAL_2_ID] < 1:
-				new_export = -row[ODC.DirectConnection.REAL_POWER_2]
+		if counter > 1:
+			for row in object_directconnection.matrix:
+				if row[ODC.DirectConnection.TERMINAL_1_ID] < 1:
+					new_exports = -row[ODC.DirectConnection.REAL_POWER_1]
+				elif row[ODC.DirectConnection.TERMINAL_2_ID] < 1:
+					new_exports = -row[ODC.DirectConnection.REAL_POWER_2]
 		counter += 1
-		if math.fabs(losses - new_loss) > 0.5 or math.fabs(new_export - base_export) > 1.0 and counter < 10:
-			print(counter)
+		if math.fabs(losses - new_loss) > 0.5 or math.fabs(base_exports - new_exports) > 1.0 and counter < 10:
+			if counter > 9:
+				print('Dispatcher - Losses/Exports did not converge')
+				sys.exit(0)
 			losses = new_loss
-			export += float((base_export - new_export))
+			if counter > 1:
+				exports += float((base_exports - new_exports))
 		else:
 			break
-
-	print('')
 
 	# SIM STEP 3: RUN POWER-WATER SIMULATION
 	# --------------------------------------
