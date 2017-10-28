@@ -331,6 +331,8 @@ def main(dss_debug, write_cols):
 		variant_currents = automation.VARIANT()
 		variant_powers = automation.VARIANT()
 
+		print(dssCkt.TotalPower)
+
 		for object in object_list:
 			object.readAllDSSOutputs(dssCkt, dssActvElem, dssActvBus, variant_buses, variant_voltages_mag, variant_voltages_pu, variant_currents, variant_powers)
 

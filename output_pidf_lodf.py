@@ -45,6 +45,7 @@ def main(dss_debug, write_cols):
 	csv_linecode = pd.read_csv('./data_power/network-power/1201linecode.csv', sep=',', header=1, index_col=None, dtype=np.float64)
 	csv_bus = pd.read_csv('./data_power/network-power/1300bus.csv', sep=',', header=1, index_col=None, dtype=np.float64)
 	csv_vsource = pd.read_csv('./data_power/network-power/1301vsource.csv', sep=',', header=1, index_col=None, dtype=np.float64)
+	# this uses a custom generator data file
 	csv_generator = pd.read_csv('./data_power/network-power/1302generator_ptdf.csv', sep=',', header=1, index_col=None, dtype=np.float64)
 	csv_load = pd.read_csv('./data_power/network-power/1303load.csv', sep=',', header=1, index_col=None, dtype=np.float64)
 	csv_solarpv = pd.read_csv('./data_power/network-power/1304solarpv.csv', sep=',', header=1, index_col=None, dtype=np.float64)
@@ -55,7 +56,6 @@ def main(dss_debug, write_cols):
 	csv_twowindingtransformer = pd.read_csv('./data_power/network-power/1403twowindingtransformer.csv', sep=',', header=1, index_col=None, dtype=np.float64)
 	csv_capacitor = pd.read_csv('./data_power/network-power/1404capacitor.csv', sep=',', header=1, index_col=None, dtype=np.float64)
 	csv_reactor = pd.read_csv('./data_power/network-power/1405reactor.csv', sep=',', header=1, index_col=None, dtype=np.float64)
-	# csv_allcolumns= pd.read_csv('./data_power/network-power/allcolumns.csv', sep=',', header=1, index_col=None, dtype=np.float64)
 
 	csv_pumpload = pd.read_csv('./data_interconnection/network-interconnection/9000pump-load.csv', sep=',', header=1, index_col=None, dtype=np.float64)
 	csv_tankgenerator = pd.read_csv('./data_interconnection/network-interconnection/9001tank-generator.csv', sep=',', header=1, index_col=None, dtype=np.float64)
@@ -183,25 +183,44 @@ def main(dss_debug, write_cols):
 	# --------------------------------------
 	generator_id = np.array(object_generator.matrix[:, ODC.Generator.ID], copy=True)
 	cable_id = np.array(object_cable.matrix[:, ODC.Load.ID], copy=True)
-	matrix = np.empty([len(generator_id),len(cable_id)], dtype=np.float64)
+	matrix_pidf = np.empty([len(generator_id),len(cable_id)], dtype=np.float64)
+	matrix_lodf = np.zeros([len(cable_id),len(cable_id)], dtype=np.float64)
 
 	run_OpenDSS(dss_debug, False)
+	cable_id_base = np.array(object_cable.matrix[:, ODC.Cable.ID], copy=True)
 	cable_current_base = np.array(object_cable.matrix[:, ODC.Cable.A_1_CURRENT], copy=True)
 
 	countcount = 0
+	val = 0.
 	for row in object_generator.matrix:
+		dispatch_delta = 0.2
 		object_generator.matrix[:, ODC.Generator.REAL_GENERATION] = 0.5 * object_generator.matrix[:, ODC.Generator.REAL_GENERATION_MAX_RATING]
-		row[ODC.Generator.REAL_GENERATION] = 0.7 * row[ODC.Generator.REAL_GENERATION_MAX_RATING]
-		val = 1. / (0.2 * row[ODC.Generator.REAL_GENERATION_MAX_RATING])
+		row[ODC.Generator.REAL_GENERATION] = (0.5 + dispatch_delta) * row[ODC.Generator.REAL_GENERATION_MAX_RATING]
+		val = 1. / (dispatch_delta * row[ODC.Generator.REAL_GENERATION_MAX_RATING])
 		run_OpenDSS(dss_debug, False)
-		if countcount < 3:
-			print(object_cable.matrix[:, ODC.Cable.A_1_CURRENT] - cable_current_base)
-			print(val)
-		matrix[countcount, :] = (np.array(object_cable.matrix[:, ODC.Cable.A_1_CURRENT], copy=True) - cable_current_base) * val
+		matrix_pidf[countcount, :] = (np.array(object_cable.matrix[:, ODC.Cable.A_1_CURRENT], copy=True) - cable_current_base) * val
 		countcount += 1
+	object_generator.matrix[:, ODC.Generator.REAL_GENERATION] = 0.5 * object_generator.matrix[:, ODC.Generator.REAL_GENERATION_MAX_RATING]
 
-	matrixdf = pd.DataFrame(matrix, index=generator_id, columns=cable_id)
-	matrixdf.to_csv('ptdf_currents.csv') # rows = gen ids, columns = cable ids, indices = change in amperage per kW
+	countcount = 0
+	val = 0.
+	for row in object_cable.matrix:
+		object_cable.matrix[:, ODC.Cable.OPERATIONAL_STATUS_A] = 1.0
+		row[ODC.Cable.OPERATIONAL_STATUS_A] = 0.0
+		for rowiter in range(0, len(cable_id)):
+			if row[ODC.Cable.ID] == cable_id_base[rowiter]:
+				val = 1. / cable_current_base[rowiter]
+			elif rowiter == len(cable_id):
+				print('error!')
+				break
+		run_OpenDSS(dss_debug, False)
+		matrix_lodf[countcount, :] = (np.array(object_cable.matrix[:, ODC.Cable.A_1_CURRENT], copy=True) - cable_current_base) * val
+		countcount +=1
+
+	df_pidf = pd.DataFrame(matrix_pidf, index=generator_id, columns=cable_id)
+	df_pidf.to_csv('pidf_currents.csv') # rows = gen ids, columns = cable ids, indices = change in amperage per kW
+	df_lodf = pd.DataFrame(matrix_lodf, index=cable_id, columns=cable_id)
+	df_lodf.to_csv('lodf_currents.csv') # rows, columns = cable ids, indices = change in amperage per change in line distribution
 
 	# END
 	# ---
