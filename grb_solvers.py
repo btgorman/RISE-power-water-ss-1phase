@@ -16,7 +16,9 @@ GEN_PRIORITY_KEY = {122: 1, 222: 1, 322: 1, 422: 1, 522: 1, 622: 1,
 
 GEN_PRIORITY_COUNT = {1: 6, 2: 2, 3: 1, 4: 4, 5: 4, 6: 3, 7: 3, 8: 5, 9: 4}
 
-def power_dispatch(object_load, object_generator, losses, export):
+NUMBER_OF_MINUTES = 10
+
+def power_dispatch(object_load, object_generator, losses, exports):
 	mx_dispatch = {1: 0., 2: 0., 3: 0., 4: 0., 5: 0., 6: 0., 7: 0., 8: 0., 9: 0.}
 	mx_reserve = {1: 0., 2: 0., 3: 0., 4: 0., 5: 0., 6: 0., 7: 0., 8: 0., 9: 0.}
 	dispatch_factor = {1: 0., 2: 0., 3: 0., 4: 0., 5: 0., 6: 0., 7: 0., 8: 0., 9: 0.}
@@ -27,7 +29,6 @@ def power_dispatch(object_load, object_generator, losses, export):
 		mx_dispatch[GEN_PRIORITY_KEY[int(row[ODC.Generator.ID])]] += row[ODC.Generator.REAL_GENERATION_MAX_RATING]
 		mx_reserve[GEN_PRIORITY_KEY[int(row[ODC.Generator.ID])]] += row[ODC.Generator.RAMP_RATE]
 	SUM_LOAD = float(sum(object_load.matrix[:, ODC.Load.REAL_LOAD]))
-	NUMBER_OF_MINUTES = 10
 
 	try:
 		# Model
@@ -68,8 +69,8 @@ def power_dispatch(object_load, object_generator, losses, export):
 		m.setObjective(1*uc_1 + 2*uc_2 + 3*uc_3 + 4*uc_4 + 5*uc_5 + 6*uc_6 + 7*uc_7 + 8*uc_8 + 9*uc_9, GRB.MINIMIZE)
 
 		# Constraint - Loads = Gen
-		m.addConstr((SUM_LOAD+losses+export) - 0.01 <= uc_1*gf_1*mx_dispatch[1] + uc_2*gf_2*mx_dispatch[2] + uc_3*gf_3*mx_dispatch[3] + uc_4*gf_4*mx_dispatch[4] + uc_5*gf_5*mx_dispatch[5] + uc_6*gf_6*mx_dispatch[6] + uc_7*gf_7*mx_dispatch[7] + uc_8*gf_8*mx_dispatch[8] + uc_9*gf_9*mx_dispatch[9], 'system_load_1')
-		m.addConstr((SUM_LOAD+losses+export) + 0.01 >= uc_1*gf_1*mx_dispatch[1] + uc_2*gf_2*mx_dispatch[2] + uc_3*gf_3*mx_dispatch[3] + uc_4*gf_4*mx_dispatch[4] + uc_5*gf_5*mx_dispatch[5] + uc_6*gf_6*mx_dispatch[6] + uc_7*gf_7*mx_dispatch[7] + uc_8*gf_8*mx_dispatch[8] + uc_9*gf_9*mx_dispatch[9], 'system_load_2')
+		m.addConstr((SUM_LOAD+losses+exports) - 0.01 <= uc_1*gf_1*mx_dispatch[1] + uc_2*gf_2*mx_dispatch[2] + uc_3*gf_3*mx_dispatch[3] + uc_4*gf_4*mx_dispatch[4] + uc_5*gf_5*mx_dispatch[5] + uc_6*gf_6*mx_dispatch[6] + uc_7*gf_7*mx_dispatch[7] + uc_8*gf_8*mx_dispatch[8] + uc_9*gf_9*mx_dispatch[9], 'system_load_1')
+		m.addConstr((SUM_LOAD+losses+exports) + 0.01 >= uc_1*gf_1*mx_dispatch[1] + uc_2*gf_2*mx_dispatch[2] + uc_3*gf_3*mx_dispatch[3] + uc_4*gf_4*mx_dispatch[4] + uc_5*gf_5*mx_dispatch[5] + uc_6*gf_6*mx_dispatch[6] + uc_7*gf_7*mx_dispatch[7] + uc_8*gf_8*mx_dispatch[8] + uc_9*gf_9*mx_dispatch[9], 'system_load_2')
 
 		# Constraint - Minimum required reserve for CAISO
 		m.addConstr(ra_1 + ra_2 + ra_3 + ra_4 + ra_5 + ra_6 + ra_7 + ra_8 + ra_9 >= uc_1*gf_1*mx_dispatch[1]*0.05 + (uc_2*gf_2*mx_dispatch[2] + uc_3*gf_3*mx_dispatch[3] + uc_4*gf_4*mx_dispatch[4] + uc_5*gf_5*mx_dispatch[5] + uc_6*gf_6*mx_dispatch[6] + uc_7*gf_7*mx_dispatch[7] + uc_8*gf_8*mx_dispatch[8] + uc_9*gf_9*mx_dispatch[9])*0.07, 'net_reserves')
@@ -152,4 +153,136 @@ def power_dispatch(object_load, object_generator, losses, export):
 			row[ODC.Generator.OPERATIONAL_STATUS] = operational_status[GEN_PRIORITY_KEY[int(row[ODC.Generator.ID])]]
 
 	except gurobipy.GurobiError:
-		print('Gurobi error reported')
+		print('Gurobi error reported in power dispatch')
+
+def contingency_response(object_load, object_generator, losses, exports):
+	# todo
+
+	uc_g = {}
+	r_g = {}
+	P_g = {}
+	P_g_min = {}
+	P_g_max = {}
+	for row in object_generator.matrix:
+		uc_g[int(row[ODC.Generator.ID])] = row[ODC.Generator.OPERATIONAL_STATUS]
+		r_g[int(row[ODC.Generator.ID])] = row[ODC.Generator.RAMP_RATE]
+		P_g[int(row[ODC.Generator.ID])] = row[ODC.Generator.REAL_GENERATION]
+		P_g_min[int(row[ODC.Generator.ID])] = row[ODC.Generator.REAL_GENERATION_MIN_RATING]
+		P_g_max[int(row[ODC.Generator.ID])] = row[ODC.Generator.REAL_GENERATION_MAX_RATING]
+		if int(row[ODC.Generator.ID] == 1: # combustion turbines
+			uc_g[int(row[ODC.Generator.ID])] = 1.0
+
+	SUM_LOAD = float(sum(object_load.matrix[:, ODC.Load.REAL_LOAD]))
+
+	try:
+		m = gurobipy.Model('mip1')
+		
+		slack = m.addVar(lb=0.0, vtype=GRB.CONTINUOUS, name='power_slack')
+
+		r_101 = m.addVar(vtype=GRB.CONTINUOUS, name='r_101')
+		r_201 = m.addVar(vtype=GRB.CONTINUOUS, name='r_201')
+		r_301 = m.addVar(vtype=GRB.CONTINUOUS, name='r_301')
+		r_401 = m.addVar(vtype=GRB.CONTINUOUS, name='r_401')
+		r_102 = m.addVar(vtype=GRB.CONTINUOUS, name='r_102')
+		r_202 = m.addVar(vtype=GRB.CONTINUOUS, name='r_202')
+		r_302 = m.addVar(vtype=GRB.CONTINUOUS, name='r_302')
+		r_402 = m.addVar(vtype=GRB.CONTINUOUS, name='r_402')
+		r_107 = m.addVar(vtype=GRB.CONTINUOUS, name='r_107')
+		r_207 = m.addVar(vtype=GRB.CONTINUOUS, name='r_207')
+		r_307 = m.addVar(vtype=GRB.CONTINUOUS, name='r_307')
+		r_113 = m.addVar(vtype=GRB.CONTINUOUS, name='r_113')
+		r_213 = m.addVar(vtype=GRB.CONTINUOUS, name='r_213')
+		r_313 = m.addVar(vtype=GRB.CONTINUOUS, name='r_313')
+		r_115 = m.addVar(vtype=GRB.CONTINUOUS, name='r_115')
+		r_215 = m.addVar(vtype=GRB.CONTINUOUS, name='r_215')
+		r_315 = m.addVar(vtype=GRB.CONTINUOUS, name='r_315')
+		r_415 = m.addVar(vtype=GRB.CONTINUOUS, name='r_415')
+		r_515 = m.addVar(vtype=GRB.CONTINUOUS, name='r_515')
+		r_615 = m.addVar(vtype=GRB.CONTINUOUS, name='r_615')
+		r_116 = m.addVar(vtype=GRB.CONTINUOUS, name='r_116')
+		r_118 = m.addVar(vtype=GRB.CONTINUOUS, name='r_118')
+		r_121 = m.addVar(vtype=GRB.CONTINUOUS, name='r_121')
+		r_122 = m.addVar(vtype=GRB.CONTINUOUS, name='r_122')
+		r_222 = m.addVar(vtype=GRB.CONTINUOUS, name='r_222')
+		r_322 = m.addVar(vtype=GRB.CONTINUOUS, name='r_322')
+		r_422 = m.addVar(vtype=GRB.CONTINUOUS, name='r_422')
+		r_522 = m.addVar(vtype=GRB.CONTINUOUS, name='r_522')
+		r_622 = m.addVar(vtype=GRB.CONTINUOUS, name='r_622')
+		r_123 = m.addVar(vtype=GRB.CONTINUOUS, name='r_123')
+		r_223 = m.addVar(vtype=GRB.CONTINUOUS, name='r_223')
+		r_323 = m.addVar(vtype=GRB.CONTINUOUS, name='r_323')
+
+		m.setObjective(slack, GRB.MINIMIZE)
+
+		m.addConstr(SUM_LOAD+losses+exports - slack <= )
+		m.addConstr(SUM_LOAD+losses+exports + slack >= )
+
+		m.addConstr(r_101 >= uc_g[101] * (NUMBER_OF_MINUTES * -r_g[101]))
+		m.addConstr(r_201 >= uc_g[201] * (NUMBER_OF_MINUTES * -r_g[201]))
+		m.addConstr(r_301 >= uc_g[301] * (NUMBER_OF_MINUTES * -r_g[301]))
+		m.addConstr(r_401 >= uc_g[401] * (NUMBER_OF_MINUTES * -r_g[401]))
+		m.addConstr(r_102 >= uc_g[102] * (NUMBER_OF_MINUTES * -r_g[102]))
+		m.addConstr(r_202 >= uc_g[202] * (NUMBER_OF_MINUTES * -r_g[202]))
+		m.addConstr(r_302 >= uc_g[302] * (NUMBER_OF_MINUTES * -r_g[302]))
+		m.addConstr(r_402 >= uc_g[402] * (NUMBER_OF_MINUTES * -r_g[402]))
+		m.addConstr(r_107 >= uc_g[107] * (NUMBER_OF_MINUTES * -r_g[107]))
+		m.addConstr(r_207 >= uc_g[207] * (NUMBER_OF_MINUTES * -r_g[207]))
+		m.addConstr(r_307 >= uc_g[307] * (NUMBER_OF_MINUTES * -r_g[307]))
+		m.addConstr(r_113 >= uc_g[113] * (NUMBER_OF_MINUTES * -r_g[113]))
+		m.addConstr(r_213 >= uc_g[213] * (NUMBER_OF_MINUTES * -r_g[213]))
+		m.addConstr(r_313 >= uc_g[313] * (NUMBER_OF_MINUTES * -r_g[313]))
+		m.addConstr(r_115 >= uc_g[115] * (NUMBER_OF_MINUTES * -r_g[115]))
+		m.addConstr(r_215 >= uc_g[215] * (NUMBER_OF_MINUTES * -r_g[215]))
+		m.addConstr(r_315 >= uc_g[315] * (NUMBER_OF_MINUTES * -r_g[315]))
+		m.addConstr(r_415 >= uc_g[415] * (NUMBER_OF_MINUTES * -r_g[415]))
+		m.addConstr(r_515 >= uc_g[515] * (NUMBER_OF_MINUTES * -r_g[515]))
+		m.addConstr(r_615 >= uc_g[615] * (NUMBER_OF_MINUTES * -r_g[615]))
+		m.addConstr(r_116 >= uc_g[116] * (NUMBER_OF_MINUTES * -r_g[116]))
+		m.addConstr(r_118 >= uc_g[118] * (NUMBER_OF_MINUTES * -r_g[118]))
+		m.addConstr(r_121 >= uc_g[121] * (NUMBER_OF_MINUTES * -r_g[121]))
+		m.addConstr(r_122 >= uc_g[122] * (NUMBER_OF_MINUTES * -r_g[122]))
+		m.addConstr(r_222 >= uc_g[222] * (NUMBER_OF_MINUTES * -r_g[222]))
+		m.addConstr(r_322 >= uc_g[322] * (NUMBER_OF_MINUTES * -r_g[322]))
+		m.addConstr(r_422 >= uc_g[422] * (NUMBER_OF_MINUTES * -r_g[422]))
+		m.addConstr(r_522 >= uc_g[522] * (NUMBER_OF_MINUTES * -r_g[522]))
+		m.addConstr(r_622 >= uc_g[622] * (NUMBER_OF_MINUTES * -r_g[622]))
+		m.addConstr(r_123 >= uc_g[123] * (NUMBER_OF_MINUTES * -r_g[123]))
+		m.addConstr(r_223 >= uc_g[223] * (NUMBER_OF_MINUTES * -r_g[223]))
+		m.addConstr(r_323 >= uc_g[323] * (NUMBER_OF_MINUTES * -r_g[323]))
+
+		m.addConstr(r_101 <= uc_g[101] * (NUMBER_OF_MINUTES * r_g[101]))
+		m.addConstr(r_201 <= uc_g[201] * (NUMBER_OF_MINUTES * r_g[201]))
+		m.addConstr(r_301 <= uc_g[301] * (NUMBER_OF_MINUTES * r_g[301]))
+		m.addConstr(r_401 <= uc_g[401] * (NUMBER_OF_MINUTES * r_g[401]))
+		m.addConstr(r_102 <= uc_g[102] * (NUMBER_OF_MINUTES * r_g[102]))
+		m.addConstr(r_202 <= uc_g[202] * (NUMBER_OF_MINUTES * r_g[202]))
+		m.addConstr(r_302 <= uc_g[302] * (NUMBER_OF_MINUTES * r_g[302]))
+		m.addConstr(r_402 <= uc_g[402] * (NUMBER_OF_MINUTES * r_g[402]))
+		m.addConstr(r_107 <= uc_g[107] * (NUMBER_OF_MINUTES * r_g[107]))
+		m.addConstr(r_207 <= uc_g[207] * (NUMBER_OF_MINUTES * r_g[207]))
+		m.addConstr(r_307 <= uc_g[307] * (NUMBER_OF_MINUTES * r_g[307]))
+		m.addConstr(r_113 <= uc_g[113] * (NUMBER_OF_MINUTES * r_g[113]))
+		m.addConstr(r_213 <= uc_g[213] * (NUMBER_OF_MINUTES * r_g[213]))
+		m.addConstr(r_313 <= uc_g[313] * (NUMBER_OF_MINUTES * r_g[313]))
+		m.addConstr(r_115 <= uc_g[115] * (NUMBER_OF_MINUTES * r_g[115]))
+		m.addConstr(r_215 <= uc_g[215] * (NUMBER_OF_MINUTES * r_g[215]))
+		m.addConstr(r_315 <= uc_g[315] * (NUMBER_OF_MINUTES * r_g[315]))
+		m.addConstr(r_415 <= uc_g[415] * (NUMBER_OF_MINUTES * r_g[415]))
+		m.addConstr(r_515 <= uc_g[515] * (NUMBER_OF_MINUTES * r_g[515]))
+		m.addConstr(r_615 <= uc_g[615] * (NUMBER_OF_MINUTES * r_g[615]))
+		m.addConstr(r_116 <= uc_g[116] * (NUMBER_OF_MINUTES * r_g[116]))
+		m.addConstr(r_118 <= uc_g[118] * (NUMBER_OF_MINUTES * r_g[118]))
+		m.addConstr(r_121 <= uc_g[121] * (NUMBER_OF_MINUTES * r_g[121]))
+		m.addConstr(r_122 <= uc_g[122] * (NUMBER_OF_MINUTES * r_g[122]))
+		m.addConstr(r_222 <= uc_g[222] * (NUMBER_OF_MINUTES * r_g[222]))
+		m.addConstr(r_322 <= uc_g[322] * (NUMBER_OF_MINUTES * r_g[322]))
+		m.addConstr(r_422 <= uc_g[422] * (NUMBER_OF_MINUTES * r_g[422]))
+		m.addConstr(r_522 <= uc_g[522] * (NUMBER_OF_MINUTES * r_g[522]))
+		m.addConstr(r_622 <= uc_g[622] * (NUMBER_OF_MINUTES * r_g[622]))
+		m.addConstr(r_123 <= uc_g[123] * (NUMBER_OF_MINUTES * r_g[123]))
+		m.addConstr(r_223 <= uc_g[223] * (NUMBER_OF_MINUTES * r_g[223]))
+		m.addConstr(r_323 <= uc_g[323] * (NUMBER_OF_MINUTES * r_g[323]))
+
+
+	except gurobipy.GurobiError:
+		print('Gurobi error reported in contignency response')
