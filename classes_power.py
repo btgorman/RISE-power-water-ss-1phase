@@ -18,6 +18,8 @@ import numpy as np
 import pandas as pd
 import math, random
 
+SQRTTHREE = math.sqrt(3.)
+
 class TemperatureDerating:
 	condmult = 1.0
 	loadmult = 1.0
@@ -1065,10 +1067,15 @@ class Load: #errors -1225 to -1249
 			print('Error: #-1237')
 			return -1237
 
-	def multiplyLoadFactor(self, load_factor):
+	def multiplyLoadFactor(self, real_load_factor, reactive_load_factor):
 		try:
-			self.matrix[:, Load.REAL_LOAD] = self.matrix[:, Load.REAL_LOAD_MAX] * load_factor
-			self.matrix[:, Load.REACTIVE_LOAD] = self.matrix[:, Load.REACTIVE_LOAD_MAX] * load_factor
+			if real_load_factor < 0. or real_load_factor > 1. or reactive_load_factor < 0. or reactive_load_factor > 1.:
+				print('Error: #-1238')
+			self.matrix[:, Load.REAL_LOAD] = self.matrix[:, Load.REAL_LOAD_MAX] * real_load_factor
+			if reactive_load_factor == 0.:
+				self.matrix[:, Load.REACTIVE_LOAD] = self.matrix[:, Load.REACTIVE_LOAD_MAX] * real_load_factor
+			else:
+				self.matrix[:, Load.REACTIVE_LOAD] = self.matrix[:, Load.REAL_LOAD] * (math.sqrt(1.0**2 - reactive_load_factor**2) / reactive_load_factor)
 		except:
 			print('Error: #-1238')
 			return -1238
@@ -1672,7 +1679,12 @@ class Cable: #errors -1425 to -1449
 				var_bus = list(dssActvElem.BusNames)
 				var_curr = list(dssActvElem.CurrentsMagAng)
 				var_pow = list(dssActvElem.Powers)
-				norm_amps_inv = 1.0 / dssActvElem.NormalAmps
+				emerg_amps = dssActvElem.NormalAmps
+				if emerg_amps < 700.:
+					volt_ll = 138. # kV
+				else:
+					volt_ll = 230. # kV
+				emerg_power = emerg_amps * volt_ll # kW
 				num_phases = dssActvElem.NumPhases
 				num_conds = dssActvElem.NumConductors
 
@@ -1701,7 +1713,12 @@ class Cable: #errors -1425 to -1449
 
 				row[Cable.REAL_POWER_LOSSES] = math.fabs(row[Cable.REAL_POWER_1] + row[Cable.REAL_POWER_2])
 				row[Cable.REACTIVE_POWER_LOSSES] = math.fabs(row[Cable.REACTIVE_POWER_1] + row[Cable.REACTIVE_POWER_2])
-				row[Cable.A_PU_CAPACITY] = 0.5 * (row[Cable.A_1_CURRENT] + row[Cable.A_2_CURRENT]) * norm_amps_inv
+				# row[Cable.A_PU_CAPACITY] = 0.5 * (row[Cable.A_1_CURRENT] + row[Cable.A_2_CURRENT]) / emerg_amps
+				try:
+					power_sign = (row[Cable.REAL_POWER_2] - row[Cable.REAL_POWER_1]) / math.fabs(row[Cable.REAL_POWER_2] - row[Cable.REAL_POWER_1])
+				except:
+					power_sign = 0.
+				row[Cable.A_PU_CAPACITY] = power_sign * math.sqrt((0.5*(row[Cable.REAL_POWER_2] - row[Cable.REAL_POWER_1]))**2 + (0.5*(row[Cable.REACTIVE_POWER_2] - row[Cable.REACTIVE_POWER_1]))**2) / emerg_power
 			return 0
 		except:
 			print('Error: #-1429')

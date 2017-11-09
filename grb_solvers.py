@@ -156,7 +156,6 @@ def power_dispatch(object_load, object_generator, losses, exports):
 		print('Gurobi error reported in power dispatch')
 
 def contingency_response(object_load, object_generator, losses, exports):
-	# todo
 
 	uc_g = {}
 	r_g = {}
@@ -164,12 +163,12 @@ def contingency_response(object_load, object_generator, losses, exports):
 	P_g_min = {}
 	P_g_max = {}
 	for row in object_generator.matrix:
-		uc_g[int(row[ODC.Generator.ID])] = row[ODC.Generator.OPERATIONAL_STATUS]
+		uc_g[int(row[ODC.Generator.ID])] = row[ODC.Generator.OPERATIONAL_STATUS] * row[ODC.Generator.FUNCTIONAL_STATUS]
 		r_g[int(row[ODC.Generator.ID])] = row[ODC.Generator.RAMP_RATE]
 		P_g[int(row[ODC.Generator.ID])] = row[ODC.Generator.REAL_GENERATION]
 		P_g_min[int(row[ODC.Generator.ID])] = row[ODC.Generator.REAL_GENERATION_MIN_RATING]
 		P_g_max[int(row[ODC.Generator.ID])] = row[ODC.Generator.REAL_GENERATION_MAX_RATING]
-		if int(row[ODC.Generator.ID] == 1: # combustion turbines
+		if int(row[ODC.Generator.ID]) == 101 or int(row[ODC.Generator.ID]) == 201 or int(row[ODC.Generator.ID]) == 102 or int(row[ODC.Generator.ID]) == 202: # combustion turbines
 			uc_g[int(row[ODC.Generator.ID])] = 1.0
 
 	SUM_LOAD = float(sum(object_load.matrix[:, ODC.Load.REAL_LOAD]))
@@ -214,8 +213,8 @@ def contingency_response(object_load, object_generator, losses, exports):
 
 		m.setObjective(slack, GRB.MINIMIZE)
 
-		m.addConstr(SUM_LOAD+losses+exports - slack <= )
-		m.addConstr(SUM_LOAD+losses+exports + slack >= )
+		m.addConstr(SUM_LOAD+losses+exports - slack <= uc_g[101]*(P_g[101] + r_101) + uc_g[201]*(P_g[201] + r_201) + uc_g[301]*(P_g[301] + r_301) + uc_g[401]*(P_g[401] + r_401) + uc_g[102]*(P_g[102] + r_102) + uc_g[202]*(P_g[202] + r_202) + uc_g[302]*(P_g[302] + r_302) + uc_g[402]*(P_g[402] + r_402) + uc_g[107]*(P_g[107] + r_107) + uc_g[207]*(P_g[207] + r_207) + uc_g[307]*(P_g[307] + r_307) + uc_g[113]*(P_g[113] + r_113) + uc_g[213]*(P_g[213] + r_213) + uc_g[313]*(P_g[313] + r_313) + uc_g[115]*(P_g[115] + r_115) + uc_g[215]*(P_g[215] + r_215) + uc_g[315]*(P_g[315] + r_315) + uc_g[415]*(P_g[415] + r_415) + uc_g[515]*(P_g[515] + r_515) + uc_g[615]*(P_g[615] + r_615) + uc_g[116]*(P_g[116] + r_116) + uc_g[118]*(P_g[118] + r_118) + uc_g[121]*(P_g[121] + r_121) + uc_g[122]*(P_g[122] + r_122) + uc_g[222]*(P_g[222] + r_222) + uc_g[322]*(P_g[322] + r_322) + uc_g[422]*(P_g[422] + r_422) + uc_g[522]*(P_g[522] + r_522) + uc_g[622]*(P_g[622] + r_622) + uc_g[123]*(P_g[123] + r_123) + uc_g[223]*(P_g[223] + r_223) + uc_g[323]*(P_g[323] + r_323))
+		m.addConstr(SUM_LOAD+losses+exports + slack >= uc_g[101]*(P_g[101] + r_101) + uc_g[201]*(P_g[201] + r_201) + uc_g[301]*(P_g[301] + r_301) + uc_g[401]*(P_g[401] + r_401) + uc_g[102]*(P_g[102] + r_102) + uc_g[202]*(P_g[202] + r_202) + uc_g[302]*(P_g[302] + r_302) + uc_g[402]*(P_g[402] + r_402) + uc_g[107]*(P_g[107] + r_107) + uc_g[207]*(P_g[207] + r_207) + uc_g[307]*(P_g[307] + r_307) + uc_g[113]*(P_g[113] + r_113) + uc_g[213]*(P_g[213] + r_213) + uc_g[313]*(P_g[313] + r_313) + uc_g[115]*(P_g[115] + r_115) + uc_g[215]*(P_g[215] + r_215) + uc_g[315]*(P_g[315] + r_315) + uc_g[415]*(P_g[415] + r_415) + uc_g[515]*(P_g[515] + r_515) + uc_g[615]*(P_g[615] + r_615) + uc_g[116]*(P_g[116] + r_116) + uc_g[118]*(P_g[118] + r_118) + uc_g[121]*(P_g[121] + r_121) + uc_g[122]*(P_g[122] + r_122) + uc_g[222]*(P_g[222] + r_222) + uc_g[322]*(P_g[322] + r_322) + uc_g[422]*(P_g[422] + r_422) + uc_g[522]*(P_g[522] + r_522) + uc_g[622]*(P_g[622] + r_622) + uc_g[123]*(P_g[123] + r_123) + uc_g[223]*(P_g[223] + r_223) + uc_g[323]*(P_g[323] + r_323))
 
 		m.addConstr(r_101 >= uc_g[101] * (NUMBER_OF_MINUTES * -r_g[101]))
 		m.addConstr(r_201 >= uc_g[201] * (NUMBER_OF_MINUTES * -r_g[201]))
@@ -282,6 +281,72 @@ def contingency_response(object_load, object_generator, losses, exports):
 		m.addConstr(r_123 <= uc_g[123] * (NUMBER_OF_MINUTES * r_g[123]))
 		m.addConstr(r_223 <= uc_g[223] * (NUMBER_OF_MINUTES * r_g[223]))
 		m.addConstr(r_323 <= uc_g[323] * (NUMBER_OF_MINUTES * r_g[323]))
+
+		m.addConstr(P[101] + r_101 >= uc_g[101] * P_g_min[101])
+		m.addConstr(P[201] + r_201 >= uc_g[201] * P_g_min[201])
+		m.addConstr(P[301] + r_301 >= uc_g[301] * P_g_min[301])
+		m.addConstr(P[401] + r_401 >= uc_g[401] * P_g_min[401])
+		m.addConstr(P[102] + r_102 >= uc_g[102] * P_g_min[102])
+		m.addConstr(P[202] + r_202 >= uc_g[202] * P_g_min[202])
+		m.addConstr(P[302] + r_302 >= uc_g[302] * P_g_min[302])
+		m.addConstr(P[402] + r_402 >= uc_g[402] * P_g_min[402])
+		m.addConstr(P[107] + r_107 >= uc_g[107] * P_g_min[107])
+		m.addConstr(P[207] + r_207 >= uc_g[207] * P_g_min[207])
+		m.addConstr(P[307] + r_307 >= uc_g[307] * P_g_min[307])
+		m.addConstr(P[113] + r_113 >= uc_g[113] * P_g_min[113])
+		m.addConstr(P[213] + r_213 >= uc_g[213] * P_g_min[213])
+		m.addConstr(P[313] + r_313 >= uc_g[313] * P_g_min[313])
+		m.addConstr(P[115] + r_115 >= uc_g[115] * P_g_min[115])
+		m.addConstr(P[215] + r_215 >= uc_g[215] * P_g_min[215])
+		m.addConstr(P[315] + r_315 >= uc_g[315] * P_g_min[315])
+		m.addConstr(P[415] + r_415 >= uc_g[415] * P_g_min[415])
+		m.addConstr(P[515] + r_515 >= uc_g[515] * P_g_min[515])
+		m.addConstr(P[615] + r_615 >= uc_g[615] * P_g_min[615])
+		m.addConstr(P[116] + r_116 >= uc_g[116] * P_g_min[116])
+		m.addConstr(P[118] + r_118 >= uc_g[118] * P_g_min[118])
+		m.addConstr(P[121] + r_121 >= uc_g[121] * P_g_min[121])
+		m.addConstr(P[122] + r_122 >= uc_g[122] * P_g_min[122])
+		m.addConstr(P[222] + r_222 >= uc_g[222] * P_g_min[222])
+		m.addConstr(P[322] + r_322 >= uc_g[322] * P_g_min[322])
+		m.addConstr(P[422] + r_422 >= uc_g[422] * P_g_min[422])
+		m.addConstr(P[522] + r_522 >= uc_g[522] * P_g_min[522])
+		m.addConstr(P[622] + r_622 >= uc_g[622] * P_g_min[622])
+		m.addConstr(P[123] + r_123 >= uc_g[123] * P_g_min[123])
+		m.addConstr(P[223] + r_223 >= uc_g[223] * P_g_min[223])
+		m.addConstr(P[323] + r_323 >= uc_g[323] * P_g_min[323])
+
+		m.addConstr(P[101] + r_101 <= uc_g[101] * P_g_max[101])
+		m.addConstr(P[201] + r_201 <= uc_g[201] * P_g_max[201])
+		m.addConstr(P[301] + r_301 <= uc_g[301] * P_g_max[301])
+		m.addConstr(P[401] + r_401 <= uc_g[401] * P_g_max[401])
+		m.addConstr(P[102] + r_102 <= uc_g[102] * P_g_max[102])
+		m.addConstr(P[202] + r_202 <= uc_g[202] * P_g_max[202])
+		m.addConstr(P[302] + r_302 <= uc_g[302] * P_g_max[302])
+		m.addConstr(P[402] + r_402 <= uc_g[402] * P_g_max[402])
+		m.addConstr(P[107] + r_107 <= uc_g[107] * P_g_max[107])
+		m.addConstr(P[207] + r_207 <= uc_g[207] * P_g_max[207])
+		m.addConstr(P[307] + r_307 <= uc_g[307] * P_g_max[307])
+		m.addConstr(P[113] + r_113 <= uc_g[113] * P_g_max[113])
+		m.addConstr(P[213] + r_213 <= uc_g[213] * P_g_max[213])
+		m.addConstr(P[313] + r_313 <= uc_g[313] * P_g_max[313])
+		m.addConstr(P[115] + r_115 <= uc_g[115] * P_g_max[115])
+		m.addConstr(P[215] + r_215 <= uc_g[215] * P_g_max[215])
+		m.addConstr(P[315] + r_315 <= uc_g[315] * P_g_max[315])
+		m.addConstr(P[415] + r_415 <= uc_g[415] * P_g_max[415])
+		m.addConstr(P[515] + r_515 <= uc_g[515] * P_g_max[515])
+		m.addConstr(P[615] + r_615 <= uc_g[615] * P_g_max[615])
+		m.addConstr(P[116] + r_116 <= uc_g[116] * P_g_max[116])
+		m.addConstr(P[118] + r_118 <= uc_g[118] * P_g_max[118])
+		m.addConstr(P[121] + r_121 <= uc_g[121] * P_g_max[121])
+		m.addConstr(P[122] + r_122 <= uc_g[122] * P_g_max[122])
+		m.addConstr(P[222] + r_222 <= uc_g[222] * P_g_max[222])
+		m.addConstr(P[322] + r_322 <= uc_g[322] * P_g_max[322])
+		m.addConstr(P[422] + r_422 <= uc_g[422] * P_g_max[422])
+		m.addConstr(P[522] + r_522 <= uc_g[522] * P_g_max[522])
+		m.addConstr(P[622] + r_622 <= uc_g[622] * P_g_max[622])
+		m.addConstr(P[123] + r_123 <= uc_g[123] * P_g_max[123])
+		m.addConstr(P[223] + r_223 <= uc_g[223] * P_g_max[223])
+		m.addConstr(P[323] + r_323 <= uc_g[323] * P_g_max[323])
 
 
 	except gurobipy.GurobiError:

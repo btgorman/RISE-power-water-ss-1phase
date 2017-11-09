@@ -1,4 +1,4 @@
 INPUT,INPUT,INPUT,INPUT,INPUT,INPUT,INPUT,INPUT,INPUT,INPUT,INPUT,RELIABILITY,RELIABILITY,CONTROL,CONTROL,CONTROL,CONTROL,CONTROL,OUTPUT,OUTPUT,OUTPUT,OUTPUT,OUTPUT,OUTPUT,OUTPUT,OUTPUT,OUTPUT,OUTPUT,OUTPUT,OUTPUT
 ID,type,terminal_1_ID,terminal_2_ID,functional_status,a,nominal_LL_voltage,reactive_power_min_rating,reactive_power_max_rating,wiring,number_of_stages,angle_delta_limit,max_PU_capacity,stage_one,stage_two,stage_three,stage_four,stage_five,a_1_current,a_1_current_angle,a_2_current,a_2_current_angle,real_power_1,reactive_power_1,real_power_2,reactive_power_2,real_power_losses,reactive_power_losses,angle_delta,PU_capacity
-14,1404,14,0,1,1,230,-16666.66667,66666.66667,1,5,30,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0
-6,1404,6,0,1,1,138,-33333.33333,0,1,4,30,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+14,1404,14,0,1,1,230,-16666.66667,66666.66667,1,5,30,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+6,1404,6,0,1,1,138,-33333.33333,0,1,2,30,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0

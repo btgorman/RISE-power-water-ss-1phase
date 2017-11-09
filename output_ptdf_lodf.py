@@ -32,6 +32,8 @@ import win32com.client
 # sys.argv = ['makepy', 'OpenDSSEngine.DSS']
 # makepy.main()
 
+ticker = 0
+
 def main(dss_debug, write_cols):
 	os_username = os.getlogin()
 
@@ -138,13 +140,16 @@ def main(dss_debug, write_cols):
 		for object in object_list:
 			object.readAllDSSOutputs(dssCkt, dssActvElem, dssActvBus, variant_buses, variant_voltages_mag, variant_voltages_pu, variant_currents, variant_powers)
 
+		global ticker
 		if solverFlag == False:
-			# dssText.Command = 'Save Circuit'
-			# dssText.Command = 'Export Summary (summary.csv)'
-			# dssText.Command = 'Export Currents (currents.csv)'
-			# dssText.Command = 'Export Voltages (voltages.csv)'
-			# dssText.Command = 'Export Overloads (overloads.csv)'
-			# dssText.Command = 'Export Powers kVA (powers.csv)'
+			if ticker == 0:
+				dssText.Command = 'Save Circuit'
+				dssText.Command = 'Export Summary (summary.csv)'
+				dssText.Command = 'Export Currents (currents.csv)'
+				dssText.Command = 'Export Voltages (voltages.csv)'
+				dssText.Command = 'Export Overloads (overloads.csv)'
+				dssText.Command = 'Export Powers kVA (powers.csv)'
+				ticker += 1
 
 			input_list_continuous = []
 			input_list_categorical = []
@@ -172,53 +177,81 @@ def main(dss_debug, write_cols):
 
 	# SIM STEP 1: SET LOAD CURVES
 	# ------------------------------
-	power_load_factor = 0.5
-	object_load.multiplyLoadFactor(power_load_factor)
+	# ensures power factor of 0.95
+	power_factor_factor = (math.sqrt(1.0**2 - 0.95**2) / 0.95)
+	real_load_factor = 0.5
+	reactive_load_factor = 0.0
+	object_load.multiplyLoadFactor(real_load_factor, power_factor_factor)
 
 	# SIM STEP 2: SET GENERATOR DISPATCH
 	# ----------------------------------
 	object_generator.matrix[:, ODC.Generator.REAL_GENERATION] = 0.5 * object_generator.matrix[:, ODC.Generator.REAL_GENERATION_MAX_RATING]
+	# almost zeros out reactive power in the network
+	object_generator.matrix[:, ODC.Generator.REACTIVE_GENERATION] = object_generator.matrix[:, ODC.Generator.REAL_GENERATION] * power_factor_factor * 0.8467
 
 	# SIM STEP 3: RUN POWER-WATER SIMULATION
 	# --------------------------------------
 	generator_id = np.array(object_generator.matrix[:, ODC.Generator.ID], copy=True)
 	cable_id = np.array(object_cable.matrix[:, ODC.Load.ID], copy=True)
-	matrix_pidf = np.empty([len(generator_id),len(cable_id)], dtype=np.float64)
+	matrix_ptdf = np.empty([len(generator_id),len(cable_id)], dtype=np.float64)
 	matrix_lodf = np.zeros([len(cable_id),len(cable_id)], dtype=np.float64)
 
+	############################### fix A1CURRENT and A2CURRENT
 	run_OpenDSS(dss_debug, False)
 	cable_id_base = np.array(object_cable.matrix[:, ODC.Cable.ID], copy=True)
-	cable_current_base = np.array(object_cable.matrix[:, ODC.Cable.A_1_CURRENT], copy=True)
+	cable_real_power_base = np.array(0.5*(object_cable.matrix[:, ODC.Cable.REAL_POWER_2] - object_cable.matrix[:, ODC.Cable.REAL_POWER_1]), copy=True)
+	cable_real_power_base_sign = cable_real_power_base / np.absolute(cable_real_power_base)
+	cable_reactive_power_base = np.array(0.5*(object_cable.matrix[:, ODC.Cable.REACTIVE_POWER_2] - object_cable.matrix[:, ODC.Cable.REACTIVE_POWER_1]), copy=True)
+	cable_power_base = cable_real_power_base_sign * np.sqrt(cable_real_power_base**2 + cable_reactive_power_base**2)
 
 	countcount = 0
 	val = 0.
 	for row in object_generator.matrix:
+		# incremetal value 20%
 		dispatch_delta = 0.2
+		# set all generators to 50%
 		object_generator.matrix[:, ODC.Generator.REAL_GENERATION] = 0.5 * object_generator.matrix[:, ODC.Generator.REAL_GENERATION_MAX_RATING]
+		# increment generator by value 20%
 		row[ODC.Generator.REAL_GENERATION] = (0.5 + dispatch_delta) * row[ODC.Generator.REAL_GENERATION_MAX_RATING]
+		# 1./ 20% kW
 		val = 1. / (dispatch_delta * row[ODC.Generator.REAL_GENERATION_MAX_RATING])
+		# simulate increment
 		run_OpenDSS(dss_debug, False)
-		matrix_pidf[countcount, :] = (np.array(object_cable.matrix[:, ODC.Cable.A_1_CURRENT], copy=True) - cable_current_base) * val
+		cable_real_power = np.array(0.5*(object_cable.matrix[:, ODC.Cable.REAL_POWER_2] - object_cable.matrix[:, ODC.Cable.REAL_POWER_1]), copy=True)
+		cable_real_power_sign = cable_real_power / np.absolute(cable_real_power)
+		cable_reactive_power = np.array(0.5*(object_cable.matrix[:, ODC.Cable.REACTIVE_POWER_2] - object_cable.matrix[:, ODC.Cable.REACTIVE_POWER_1]), copy=True)
+		matrix_ptdf[countcount, :] = (cable_real_power_sign * np.sqrt(cable_real_power**2 + cable_reactive_power**2) - cable_power_base) * val
 		countcount += 1
 	object_generator.matrix[:, ODC.Generator.REAL_GENERATION] = 0.5 * object_generator.matrix[:, ODC.Generator.REAL_GENERATION_MAX_RATING]
 
 	countcount = 0
 	val = 0.
 	for row in object_cable.matrix:
+		# set all cables to operational
 		object_cable.matrix[:, ODC.Cable.OPERATIONAL_STATUS_A] = 1.0
+		# set 1 cable to non-operational
 		row[ODC.Cable.OPERATIONAL_STATUS_A] = 0.0
+		# find base power of non-operational cable
 		for rowiter in range(0, len(cable_id)):
 			if row[ODC.Cable.ID] == cable_id_base[rowiter]:
-				val = 1. / cable_current_base[rowiter]
+				val = 1. / cable_power_base[rowiter]
+				if row[ODC.Cable.ID] == 24.0:
+					print(cable_power_base[rowiter])
 			elif rowiter == len(cable_id):
 				print('error!')
 				break
+		# simulate single cable outage
 		run_OpenDSS(dss_debug, False)
-		matrix_lodf[countcount, :] = (np.array(object_cable.matrix[:, ODC.Cable.A_1_CURRENT], copy=True) - cable_current_base) * val
+		cable_real_power = np.array(0.5*(object_cable.matrix[:, ODC.Cable.REAL_POWER_2] - object_cable.matrix[:, ODC.Cable.REAL_POWER_1]), copy=True)
+		cable_real_power_sign = cable_real_power / np.absolute(cable_real_power)
+		cable_reactive_power = np.array(0.5*(object_cable.matrix[:, ODC.Cable.REACTIVE_POWER_2] - object_cable.matrix[:, ODC.Cable.REACTIVE_POWER_1]), copy=True)
+		matrix_lodf[countcount, :] = (cable_real_power_sign * np.sqrt(cable_real_power**2 + cable_reactive_power**2) - cable_power_base) * val
+		if row[ODC.Cable.ID] == 24.0: # 12 or 24
+			print(cable_real_power_sign * np.sqrt(cable_real_power**2 + cable_reactive_power**2))
 		countcount +=1
 
-	df_pidf = pd.DataFrame(matrix_pidf, index=generator_id, columns=cable_id)
-	df_pidf.to_csv('pidf_currents.csv') # rows = gen ids, columns = cable ids, indices = change in amperage per kW
+	df_ptdf = pd.DataFrame(matrix_ptdf, index=generator_id, columns=cable_id)
+	df_ptdf.to_csv('ptdf_currents.csv') # rows = gen ids, columns = cable ids, indices = change in amperage per kW
 	df_lodf = pd.DataFrame(matrix_lodf, index=cable_id, columns=cable_id)
 	df_lodf.to_csv('lodf_currents.csv') # rows, columns = cable ids, indices = change in amperage per change in line distribution
 
