@@ -656,8 +656,8 @@ class Generator: #errors -1200 to -1224
 	MIN_PU_VOLTAGE = 16
 	MAX_PU_VOLTAGE = 17
 	OPERATIONAL_STATUS = 18 # switch
-	REAL_GENERATION_CONTROL = 19 # stochastic
-	REACTIVE_GENERATION_CONTROL = 20 # stochastic
+	REAL_GENERATION_CONTROL = 19 # stochastic TODO unused
+	REACTIVE_GENERATION_CONTROL = 20 # stochastic TODO unused
 	A_PU_VOLTAGE = 21
 	A_VOLTAGE = 22
 	A_VOLTAGE_ANGLE = 23
@@ -701,15 +701,15 @@ class Generator: #errors -1200 to -1224
 				elif num_phases == 1:
 					num_kv = num_kv / math.sqrt(3.0)
 
-				if row[Generator.REAL_GENERATION_CONTROL] > row[Generator.REAL_GENERATION_MAX_RATING]:
-					row[Generator.REAL_GENERATION_CONTROL] = row[Generator.REAL_GENERATION_MAX_RATING]
-				elif row[Generator.REAL_GENERATION_CONTROL] < row[Generator.REAL_GENERATION_MIN_RATING]:
-					row[Generator.REAL_GENERATION_CONTROL] = row[Generator.REAL_GENERATION_MIN_RATING]
+				if row[Generator.REAL_GENERATION] > row[Generator.REAL_GENERATION_MAX_RATING]:
+					row[Generator.REAL_GENERATION] = row[Generator.REAL_GENERATION_MAX_RATING]
+				elif row[Generator.REAL_GENERATION] < row[Generator.REAL_GENERATION_MIN_RATING]:
+					row[Generator.REAL_GENERATION] = row[Generator.REAL_GENERATION_MIN_RATING]
 
-				if row[Generator.REACTIVE_GENERATION_CONTROL] > row[Generator.REACTIVE_GENERATION_MAX_RATING]:
-					row[Generator.REACTIVE_GENERATION_CONTROL] = row[Generator.REACTIVE_GENERATION_MAX_RATING]
-				elif row[Generator.REACTIVE_GENERATION_CONTROL] < row[Generator.REACTIVE_GENERATION_MIN_RATING]:
-					row[Generator.REACTIVE_GENERATION_CONTROL] = row[Generator.REACTIVE_GENERATION_MIN_RATING]
+				if row[Generator.REACTIVE_GENERATION] > row[Generator.REACTIVE_GENERATION_MAX_RATING]:
+					row[Generator.REACTIVE_GENERATION] = row[Generator.REACTIVE_GENERATION_MAX_RATING]
+				elif row[Generator.REACTIVE_GENERATION] < row[Generator.REACTIVE_GENERATION_MIN_RATING]:
+					row[Generator.REACTIVE_GENERATION] = row[Generator.REACTIVE_GENERATION_MIN_RATING]
 
 				busid = int(row[Generator.ID]) % 100
 				str_self_name = str(int(row[Generator.TYPE])) + '_' + str(int(row[Generator.ID]))
@@ -926,6 +926,16 @@ class Load: #errors -1225 to -1249
 								if pump_row[interconn_dict['pump'].classValue('FUNCTIONAL_STATUS')]*pump_row[interconn_dict['pump'].classValue('OPERATIONAL_STATUS')] != 0.0:
 									interconn_demand += pump_row[interconn_dict['pump'].classValue('POWER')]
 									# TO DO: verify that interonn_demand is in kW
+
+				if row[Load.REAL_LOAD] < 0.0:
+					row[Load.REAL_LOAD] = 0.0
+				elif row[Load.REAL_LOAD] > row[Load.REAL_LOAD_MAX]:
+					row[Load.REAL_LOAD] = row[Load.REAL_LOAD_MAX]
+
+				if row[Load.REACTIVE_LOAD] < 0.0:
+					row[Load.REACTIVE_LOAD] = 0.0
+				elif row[Load.REACTIVE_LOAD] > row[Load.REACTIVE_LOAD_MAX]:
+					row[Load.REACTIVE_LOAD] = row[Load.REACTIVE_LOAD_MAX]
 
 				if debug == 1:
 					if row[Load.MODEL] == 8.0:

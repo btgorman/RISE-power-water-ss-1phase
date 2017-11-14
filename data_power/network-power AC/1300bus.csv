@@ -1,0 +1,2 @@
+INPUT,INPUT,INPUT,INPUT,INPUT,RELIABLITY,RELIABLITY,CONTROL,OUTPUT,OUTPUT,OUTPUT
+ID,type,functional_status,nominal_LL_voltage,a,min_PU_voltage,max_PU_voltage,operational_status,a_PU_voltage,a_voltage,a_voltage_angle
