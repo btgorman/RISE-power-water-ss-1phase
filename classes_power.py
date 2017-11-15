@@ -1080,7 +1080,7 @@ class Load: #errors -1225 to -1249
 	def multiplyLoadFactor(self, real_load_factor, reactive_load_factor):
 		try:
 			if real_load_factor < 0. or real_load_factor > 1. or reactive_load_factor < 0. or reactive_load_factor > 1.:
-				print('Error: #-1238')
+				print('Error: #DirectConnection')
 			self.matrix[:, Load.REAL_LOAD] = self.matrix[:, Load.REAL_LOAD_MAX] * real_load_factor
 			if reactive_load_factor == 0.:
 				self.matrix[:, Load.REACTIVE_LOAD] = self.matrix[:, Load.REACTIVE_LOAD_MAX] * real_load_factor
@@ -1666,6 +1666,9 @@ class Cable: #errors -1425 to -1449
 					if row[Cable.A] == 1.0 and row[Cable.FUNCTIONAL_STATUS_A]*row[Cable.OPERATIONAL_STATUS_A] == 0.0:
 						print('Open \'Line.{}\' Term=1 1'.format(str_self_name))
 						print('Open \'Line.{}\' Term=2 1'.format(str_self_name))
+					elif row[Cable.A] == 1.0 and row[Cable.FUNCTIONAL_STATUS_A]*row[Cable.OPERATIONAL_STATUS_A] == 1.0:
+						print('Close \'Line.{}\' Term=1 1'.format(str_self_name))
+						print('Close \'Line.{}\' Term=2 1'.format(str_self_name))
 
 				dss.Command = 'New \'Line.{}\' Bus1=\'{}{}\' Bus2=\'{}{}\' LineCode=\'{}\' Length=\'{:f}\' Units=\'{}\''.format(
 					str_self_name, str_term1_name, str_bus_conn, str_term2_name,
@@ -1673,6 +1676,9 @@ class Cable: #errors -1425 to -1449
 				if row[Cable.A] == 1.0 and row[Cable.FUNCTIONAL_STATUS_A]*row[Cable.OPERATIONAL_STATUS_A] == 0.0:
 					dss.Command = 'Open \'Line.{}\' Term=1 1'.format(str_self_name)
 					dss.Command = 'Open \'Line.{}\' Term=2 1'.format(str_self_name)
+				elif row[Cable.A] == 1.0 and row[Cable.FUNCTIONAL_STATUS_A]*row[Cable.OPERATIONAL_STATUS_A] == 1.0:
+					dss.Command = 'Close \'Line.{}\' Term=1 1'.format(str_self_name)
+					dss.Command = 'Close \'Line.{}\' Term=2 1'.format(str_self_name)
 			return 0
 		except:
 			print('Error: #-1425')
@@ -1728,7 +1734,10 @@ class Cable: #errors -1425 to -1449
 					power_sign = (row[Cable.REAL_POWER_2] - row[Cable.REAL_POWER_1]) / math.fabs(row[Cable.REAL_POWER_2] - row[Cable.REAL_POWER_1])
 				except:
 					power_sign = 0.
-				row[Cable.A_PU_CAPACITY] = power_sign * math.sqrt((0.5*(row[Cable.REAL_POWER_2] - row[Cable.REAL_POWER_1]))**2 + (0.5*(row[Cable.REACTIVE_POWER_2] - row[Cable.REACTIVE_POWER_1]))**2) / emerg_power
+				if emerg_power != 0.0:
+					row[Cable.A_PU_CAPACITY] = power_sign * math.sqrt((0.5*(row[Cable.REAL_POWER_2] - row[Cable.REAL_POWER_1]))**2 + (0.5*(row[Cable.REACTIVE_POWER_2] - row[Cable.REACTIVE_POWER_1]))**2) / emerg_power
+				else:
+					row[Cable.A_PU_CAPACITY] = 0.0
 			return 0
 		except:
 			print('Error: #-1429')

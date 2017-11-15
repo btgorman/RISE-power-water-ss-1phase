@@ -142,12 +142,12 @@ def main(dss_debug, write_cols):
 		global counter
 		if solverFlag == False:
 			if counter == 0:
-				# dssText.Command = 'Save Circuit'
-				# dssText.Command = 'Export Summary (summary.csv)'
-				# dssText.Command = 'Export Currents (currents.csv)'
-				# dssText.Command = 'Export Voltages (voltages.csv)'
-				# dssText.Command = 'Export Overloads (overloads.csv)'
-				# dssText.Command = 'Export Powers kVA (powers.csv)'
+				dssText.Command = 'Save Circuit'
+				dssText.Command = 'Export Summary (summary.csv)'
+				dssText.Command = 'Export Currents (currents.csv)'
+				dssText.Command = 'Export Voltages (voltages.csv)'
+				dssText.Command = 'Export Overloads (overloads.csv)'
+				dssText.Command = 'Export Powers kVA (powers.csv)'
 				counter += 1
 
 			input_list_continuous = []
@@ -178,7 +178,7 @@ def main(dss_debug, write_cols):
 	# ------------------------------
 	# ensures power factor of 0.95
 	power_factor_factor = (math.sqrt(1.0**2 - 0.95**2) / 0.95)
-	real_load_factor = 0.5
+	real_load_factor = 0.2
 	reactive_load_factor = 0.0
 	object_load.multiplyLoadFactor(real_load_factor*1.15, power_factor_factor)
 
@@ -208,6 +208,8 @@ def main(dss_debug, write_cols):
 		dispatch_delta = 0.2
 		# set all generators to 50%
 		object_generator.matrix[:, ODC.Generator.REAL_GENERATION] = real_load_factor * object_generator.matrix[:, ODC.Generator.REAL_GENERATION_MAX_RATING]
+		if row[ODC.Generator.ID] == 113.0:
+			temp = row[ODC.Generator.REAL_GENERATION]
 		# increment generator by value 20%
 		row[ODC.Generator.REAL_GENERATION] = (real_load_factor + dispatch_delta) * row[ODC.Generator.REAL_GENERATION_MAX_RATING]
 		# 1./ 20% kW
@@ -230,8 +232,6 @@ def main(dss_debug, write_cols):
 		for rowiter in range(0, len(cable_id)):
 			if row[ODC.Cable.ID] == cable_id_base[rowiter]:
 				val = 1. / math.fabs(cable_real_power_base[rowiter])
-				val1 = 1. / cable_real_power_base[rowiter]
-			elif rowiter == len(cable_id):
 				print('error!')
 				break
 		# simulate single cable outage
@@ -239,10 +239,6 @@ def main(dss_debug, write_cols):
 		cable_real_power = np.array(0.5*(object_cable.matrix[:, ODC.Cable.REAL_POWER_2] - object_cable.matrix[:, ODC.Cable.REAL_POWER_1]), copy=True)
 		matrix_lodf[countcount, :] = (cable_real_power - cable_real_power_base) * val
 		matrix_lodf[countcount, countcount] = matrix_lodf[countcount, countcount]
-		if countcount == 0:
-			print(1./val1)
-			print(cable_real_power)
-			print(matrix_lodf[countcount, :])
 		countcount +=1
 
 	df_ptdf = pd.DataFrame(matrix_ptdf, index=generator_id, columns=cable_id)
