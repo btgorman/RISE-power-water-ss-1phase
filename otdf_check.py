@@ -174,9 +174,9 @@ def main(dss_debug, write_cols):
 	# ------------------------------
 	# ensures power factor of 0.95
 	power_factor_factor = (math.sqrt(1.0**2 - 0.95**2) / 0.95)
-	real_load_factor = 0.3
+	real_load_factor = 0.5
 	reactive_load_factor = 0.0
-	object_load.multiplyLoadFactor(real_load_factor*1.15, power_factor_factor)
+	object_load.multiplyLoadFactor(real_load_factor, power_factor_factor)
 
 	# SIM STEP 2: SET GENERATOR DISPATCH
 	# ----------------------------------
@@ -231,21 +231,25 @@ def main(dss_debug, write_cols):
 	# 			print(min((branch_delta - delta*lodf_estimator)/(0.5* branch_real_power+branch_real_power_base)))
 	# 			print('')
 	# 			countcount +=1
-
+	
 	countcount = 0
+	delta_percent = 0.5
 	lodf_estimator = np.array(object_cable.matrix[:, ODC.Cable.ID], copy=True)*0
 	ptdf_estimator = np.array(object_cable.matrix[:, ODC.Cable.ID], copy=True)*0
 	for cable in object_cable.matrix:
-		if cable[ODC.Cable.ID] == 33.0: #100.0:
+		if cable[ODC.Cable.ID] != 100.0:
+			object_generator.matrix[:, ODC.Generator.REAL_GENERATION] = real_load_factor * object_generator.matrix[:, ODC.Generator.REAL_GENERATION_MAX_RATING]
 			object_cable.matrix[:, ODC.Cable.OPERATIONAL_STATUS_A] = 1.0
 			cable[ODC.Cable.OPERATIONAL_STATUS_A] = 0.0
 			run_OpenDSS(dss_debug, False)
 			branch_real_power_line_base = np.array(0.5*(object_cable.matrix[:, ODC.Cable.REAL_POWER_2] - object_cable.matrix[:, ODC.Cable.REAL_POWER_1]), copy=True)
+			print(cable[ODC.Cable.ID])
 
+			maxerror = 0.0
 			for gen in object_generator.matrix:
-				delta = 0.3 * gen[ODC.Generator.REAL_GENERATION_MAX_RATING]
+				delta_kw = delta_percent * gen[ODC.Generator.REAL_GENERATION_MAX_RATING]
 				object_generator.matrix[:, ODC.Generator.REAL_GENERATION] = real_load_factor * object_generator.matrix[:, ODC.Generator.REAL_GENERATION_MAX_RATING]
-				gen[ODC.Generator.REAL_GENERATION] += delta
+				gen[ODC.Generator.REAL_GENERATION] += delta_kw
 				run_OpenDSS(dss_debug, False)
 				branch_real_power = np.array(0.5*(object_cable.matrix[:, ODC.Cable.REAL_POWER_2] - object_cable.matrix[:, ODC.Cable.REAL_POWER_1]), copy=True)
 				branch_delta = branch_real_power - branch_real_power_line_base
@@ -256,8 +260,10 @@ def main(dss_debug, write_cols):
 				otdf_val = ptdf_tab.loc[int(gen[ODC.Generator.ID])][str(int(cable[ODC.Cable.ID]))]
 
 				if countcount >= 0:
-					print(max(np.absolute(branch_delta - delta*(ptdf_estimator + lodf_val*lodf_estimator*otdf_val))))
-					countcount += 1
+					maxerror = max(maxerror, max(np.absolute(branch_delta - delta_kw*(ptdf_estimator + lodf_val*lodf_estimator*otdf_val))))
+				countcount += 1
+			print(maxerror)
+			print('')
 
 
 	# for b in range(0, branches):

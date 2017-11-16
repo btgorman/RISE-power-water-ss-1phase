@@ -1666,9 +1666,6 @@ class Cable: #errors -1425 to -1449
 					if row[Cable.A] == 1.0 and row[Cable.FUNCTIONAL_STATUS_A]*row[Cable.OPERATIONAL_STATUS_A] == 0.0:
 						print('Open \'Line.{}\' Term=1 1'.format(str_self_name))
 						print('Open \'Line.{}\' Term=2 1'.format(str_self_name))
-					elif row[Cable.A] == 1.0 and row[Cable.FUNCTIONAL_STATUS_A]*row[Cable.OPERATIONAL_STATUS_A] == 1.0:
-						print('Close \'Line.{}\' Term=1 1'.format(str_self_name))
-						print('Close \'Line.{}\' Term=2 1'.format(str_self_name))
 
 				dss.Command = 'New \'Line.{}\' Bus1=\'{}{}\' Bus2=\'{}{}\' LineCode=\'{}\' Length=\'{:f}\' Units=\'{}\''.format(
 					str_self_name, str_term1_name, str_bus_conn, str_term2_name,
@@ -1676,9 +1673,6 @@ class Cable: #errors -1425 to -1449
 				if row[Cable.A] == 1.0 and row[Cable.FUNCTIONAL_STATUS_A]*row[Cable.OPERATIONAL_STATUS_A] == 0.0:
 					dss.Command = 'Open \'Line.{}\' Term=1 1'.format(str_self_name)
 					dss.Command = 'Open \'Line.{}\' Term=2 1'.format(str_self_name)
-				elif row[Cable.A] == 1.0 and row[Cable.FUNCTIONAL_STATUS_A]*row[Cable.OPERATIONAL_STATUS_A] == 1.0:
-					dss.Command = 'Close \'Line.{}\' Term=1 1'.format(str_self_name)
-					dss.Command = 'Close \'Line.{}\' Term=2 1'.format(str_self_name)
 			return 0
 		except:
 			print('Error: #-1425')
