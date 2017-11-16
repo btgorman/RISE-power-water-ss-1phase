@@ -1725,7 +1725,7 @@ class Cable: #errors -1425 to -1449
 
 				row[Cable.REAL_POWER_LOSSES] = math.fabs(row[Cable.REAL_POWER_1] + row[Cable.REAL_POWER_2])
 				row[Cable.REACTIVE_POWER_LOSSES] = math.fabs(row[Cable.REACTIVE_POWER_1] + row[Cable.REACTIVE_POWER_2])
-				if emerg_power != 0.0:
+				if row[Cable.NORMAL_RATING]*row[Cable.MAX_PU_CAPACITY] != 0.0:
 					row[Cable.A_PU_CAPACITY] = 0.5*(row[Cable.REAL_POWER_2] - row[Cable.REAL_POWER_1]) / (row[Cable.NORMAL_RATING]*row[Cable.MAX_PU_CAPACITY])
 				else:
 					row[Cable.A_PU_CAPACITY] = 0.0
