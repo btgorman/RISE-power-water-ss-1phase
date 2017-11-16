@@ -1,5 +1,6 @@
 import classes_power as ODC
 import numpy as np
+import pandas as pd
 
 import gurobipy
 from gurobipy import GRB
@@ -155,7 +156,10 @@ def power_dispatch(object_load, object_generator, losses, exports):
 	except gurobipy.GurobiError:
 		print('Gurobi error reported in power dispatch')
 
-def contingency_response(object_load, object_generator, losses, exports):
+def contingency_response(object_load, object_generator, object_cable, losses, exports):
+
+	ptdf_tab = pd.DataFrame.from_csv('tables\ptdf.csv', header=0, index_col=0)
+	lodf_tab = pd.DataFrame.from_csv('tables\lodf.csv', header=0, index_col=0)
 
 	uc_g = {}
 	r_g = {}
@@ -168,8 +172,27 @@ def contingency_response(object_load, object_generator, losses, exports):
 		P_g[int(row[ODC.Generator.ID])] = row[ODC.Generator.REAL_GENERATION]
 		P_g_min[int(row[ODC.Generator.ID])] = row[ODC.Generator.REAL_GENERATION_MIN_RATING]
 		P_g_max[int(row[ODC.Generator.ID])] = row[ODC.Generator.REAL_GENERATION_MAX_RATING]
-		if int(row[ODC.Generator.ID]) == 101 or int(row[ODC.Generator.ID]) == 201 or int(row[ODC.Generator.ID]) == 102 or int(row[ODC.Generator.ID]) == 202: # combustion turbines
-			uc_g[int(row[ODC.Generator.ID])] = 1.0
+
+	outage_id = -1
+	outage_count = 0
+	outage_sign = 0
+
+	P_b = {}
+	P_b_min = {}
+	P_b_max = {}
+	for row in object_cable.matrix:
+		P_b[int(row[ODC.Cable.ID])] = 0.5 * (row[ODC.Cable.REAL_POWER_2] - row[ODC.Cable.REAL_POWER_1])
+		P_b_min[int(row[ODC.Cable.ID])] = -row[ODC.Cable.NORMAL_RATING] * row[ODC.Cable.MAX_PU_CAPACITY]
+		P_b_max[int(row[ODC.Cable.ID])] = row[ODC.Cable.NORMAL_RATING] * row[ODC.Cable.MAX_PU_CAPACITY]
+		if row[ODC.Cable.OPERATIONAL_STATUS_A] == 0.0:
+			outage_id = int(row[ODC.Cable.OPERATIONAL_STATUS_A])
+			outage_sign = -lodf_tab[outage_id][str(outage_id)]
+			outage_count += 1
+	if outage_id = -1:
+		outage_id = 1
+	if outage_count > 1:
+		print('grb_solvers.py Error: More than one line outage!')
+
 
 	SUM_LOAD = float(sum(object_load.matrix[:, ODC.Load.REAL_LOAD]))
 
@@ -178,12 +201,17 @@ def contingency_response(object_load, object_generator, losses, exports):
 		
 		slack = m.addVar(lb=0.0, vtype=GRB.CONTINUOUS, name='power_slack')
 
-		r_101 = m.addVar(vtype=GRB.CONTINUOUS, name='r_101')
-		r_201 = m.addVar(vtype=GRB.CONTINUOUS, name='r_201')
+		uc_101 = m.addVar(lb=0.0, ub=1.0, vtype=GRB.BINARY, name='uc_101') # combustion turbine with fast start capability
+		uc_201 = m.addVar(lb=0.0, ub=1.0, vtype=GRB.BINARY, name='uc_201') # combustion turbine with fast start capability
+		uc_102 = m.addVar(lb=0.0, ub=1.0, vtype=GRB.BINARY, name='uc_102') # combustion turbine with fast start capability
+		uc_202 = m.addVar(lb=0.0, ub=1.0, vtype=GRB.BINARY, name='uc_202') # combustion turbine with fast start capability
+
+		r_101 = m.addVar(vtype=GRB.CONTINUOUS, name='r_101') # combustion turbine with fast start capability
+		r_201 = m.addVar(vtype=GRB.CONTINUOUS, name='r_201') # combustion turbine with fast start capability
 		r_301 = m.addVar(vtype=GRB.CONTINUOUS, name='r_301')
 		r_401 = m.addVar(vtype=GRB.CONTINUOUS, name='r_401')
-		r_102 = m.addVar(vtype=GRB.CONTINUOUS, name='r_102')
-		r_202 = m.addVar(vtype=GRB.CONTINUOUS, name='r_202')
+		r_102 = m.addVar(vtype=GRB.CONTINUOUS, name='r_102') # combustion turbine with fast start capability
+		r_202 = m.addVar(vtype=GRB.CONTINUOUS, name='r_202') # combustion turbine with fast start capability
 		r_302 = m.addVar(vtype=GRB.CONTINUOUS, name='r_302')
 		r_402 = m.addVar(vtype=GRB.CONTINUOUS, name='r_402')
 		r_107 = m.addVar(vtype=GRB.CONTINUOUS, name='r_107')
@@ -213,15 +241,16 @@ def contingency_response(object_load, object_generator, losses, exports):
 
 		m.setObjective(slack, GRB.MINIMIZE)
 
-		m.addConstr(SUM_LOAD+losses+exports - slack <= uc_g[101]*(P_g[101] + r_101) + uc_g[201]*(P_g[201] + r_201) + uc_g[301]*(P_g[301] + r_301) + uc_g[401]*(P_g[401] + r_401) + uc_g[102]*(P_g[102] + r_102) + uc_g[202]*(P_g[202] + r_202) + uc_g[302]*(P_g[302] + r_302) + uc_g[402]*(P_g[402] + r_402) + uc_g[107]*(P_g[107] + r_107) + uc_g[207]*(P_g[207] + r_207) + uc_g[307]*(P_g[307] + r_307) + uc_g[113]*(P_g[113] + r_113) + uc_g[213]*(P_g[213] + r_213) + uc_g[313]*(P_g[313] + r_313) + uc_g[115]*(P_g[115] + r_115) + uc_g[215]*(P_g[215] + r_215) + uc_g[315]*(P_g[315] + r_315) + uc_g[415]*(P_g[415] + r_415) + uc_g[515]*(P_g[515] + r_515) + uc_g[615]*(P_g[615] + r_615) + uc_g[116]*(P_g[116] + r_116) + uc_g[118]*(P_g[118] + r_118) + uc_g[121]*(P_g[121] + r_121) + uc_g[122]*(P_g[122] + r_122) + uc_g[222]*(P_g[222] + r_222) + uc_g[322]*(P_g[322] + r_322) + uc_g[422]*(P_g[422] + r_422) + uc_g[522]*(P_g[522] + r_522) + uc_g[622]*(P_g[622] + r_622) + uc_g[123]*(P_g[123] + r_123) + uc_g[223]*(P_g[223] + r_223) + uc_g[323]*(P_g[323] + r_323))
-		m.addConstr(SUM_LOAD+losses+exports + slack >= uc_g[101]*(P_g[101] + r_101) + uc_g[201]*(P_g[201] + r_201) + uc_g[301]*(P_g[301] + r_301) + uc_g[401]*(P_g[401] + r_401) + uc_g[102]*(P_g[102] + r_102) + uc_g[202]*(P_g[202] + r_202) + uc_g[302]*(P_g[302] + r_302) + uc_g[402]*(P_g[402] + r_402) + uc_g[107]*(P_g[107] + r_107) + uc_g[207]*(P_g[207] + r_207) + uc_g[307]*(P_g[307] + r_307) + uc_g[113]*(P_g[113] + r_113) + uc_g[213]*(P_g[213] + r_213) + uc_g[313]*(P_g[313] + r_313) + uc_g[115]*(P_g[115] + r_115) + uc_g[215]*(P_g[215] + r_215) + uc_g[315]*(P_g[315] + r_315) + uc_g[415]*(P_g[415] + r_415) + uc_g[515]*(P_g[515] + r_515) + uc_g[615]*(P_g[615] + r_615) + uc_g[116]*(P_g[116] + r_116) + uc_g[118]*(P_g[118] + r_118) + uc_g[121]*(P_g[121] + r_121) + uc_g[122]*(P_g[122] + r_122) + uc_g[222]*(P_g[222] + r_222) + uc_g[322]*(P_g[322] + r_322) + uc_g[422]*(P_g[422] + r_422) + uc_g[522]*(P_g[522] + r_522) + uc_g[622]*(P_g[622] + r_622) + uc_g[123]*(P_g[123] + r_123) + uc_g[223]*(P_g[223] + r_223) + uc_g[323]*(P_g[323] + r_323))
+		m.addConstr(SUM_LOAD+losses+exports - slack <= uc_101*(P_g[101] + r_101) + uc_201*(P_g[201] + r_201) + uc_g[301]*(P_g[301] + r_301) + uc_g[401]*(P_g[401] + r_401) + uc_102*(P_g[102] + r_102) + uc_202*(P_g[202] + r_202) + uc_g[302]*(P_g[302] + r_302) + uc_g[402]*(P_g[402] + r_402) + uc_g[107]*(P_g[107] + r_107) + uc_g[207]*(P_g[207] + r_207) + uc_g[307]*(P_g[307] + r_307) + uc_g[113]*(P_g[113] + r_113) + uc_g[213]*(P_g[213] + r_213) + uc_g[313]*(P_g[313] + r_313) + uc_g[115]*(P_g[115] + r_115) + uc_g[215]*(P_g[215] + r_215) + uc_g[315]*(P_g[315] + r_315) + uc_g[415]*(P_g[415] + r_415) + uc_g[515]*(P_g[515] + r_515) + uc_g[615]*(P_g[615] + r_615) + uc_g[116]*(P_g[116] + r_116) + uc_g[118]*(P_g[118] + r_118) + uc_g[121]*(P_g[121] + r_121) + uc_g[122]*(P_g[122] + r_122) + uc_g[222]*(P_g[222] + r_222) + uc_g[322]*(P_g[322] + r_322) + uc_g[422]*(P_g[422] + r_422) + uc_g[522]*(P_g[522] + r_522) + uc_g[622]*(P_g[622] + r_622) + uc_g[123]*(P_g[123] + r_123) + uc_g[223]*(P_g[223] + r_223) + uc_g[323]*(P_g[323] + r_323))
+		m.addConstr(SUM_LOAD+losses+exports + slack >= uc_101*(P_g[101] + r_101) + uc_201*(P_g[201] + r_201) + uc_g[301]*(P_g[301] + r_301) + uc_g[401]*(P_g[401] + r_401) + uc_102*(P_g[102] + r_102) + uc_202*(P_g[202] + r_202) + uc_g[302]*(P_g[302] + r_302) + uc_g[402]*(P_g[402] + r_402) + uc_g[107]*(P_g[107] + r_107) + uc_g[207]*(P_g[207] + r_207) + uc_g[307]*(P_g[307] + r_307) + uc_g[113]*(P_g[113] + r_113) + uc_g[213]*(P_g[213] + r_213) + uc_g[313]*(P_g[313] + r_313) + uc_g[115]*(P_g[115] + r_115) + uc_g[215]*(P_g[215] + r_215) + uc_g[315]*(P_g[315] + r_315) + uc_g[415]*(P_g[415] + r_415) + uc_g[515]*(P_g[515] + r_515) + uc_g[615]*(P_g[615] + r_615) + uc_g[116]*(P_g[116] + r_116) + uc_g[118]*(P_g[118] + r_118) + uc_g[121]*(P_g[121] + r_121) + uc_g[122]*(P_g[122] + r_122) + uc_g[222]*(P_g[222] + r_222) + uc_g[322]*(P_g[322] + r_322) + uc_g[422]*(P_g[422] + r_422) + uc_g[522]*(P_g[522] + r_522) + uc_g[622]*(P_g[622] + r_622) + uc_g[123]*(P_g[123] + r_123) + uc_g[223]*(P_g[223] + r_223) + uc_g[323]*(P_g[323] + r_323))
 
-		m.addConstr(r_101 >= uc_g[101] * (NUMBER_OF_MINUTES * -r_g[101]))
-		m.addConstr(r_201 >= uc_g[201] * (NUMBER_OF_MINUTES * -r_g[201]))
+		# Re-dispatch must be greater than 10-minutes of ramping down
+		m.addConstr(r_101 >= uc_101 * (NUMBER_OF_MINUTES * -r_g[101]))
+		m.addConstr(r_201 >= uc_201 * (NUMBER_OF_MINUTES * -r_g[201]))
 		m.addConstr(r_301 >= uc_g[301] * (NUMBER_OF_MINUTES * -r_g[301]))
 		m.addConstr(r_401 >= uc_g[401] * (NUMBER_OF_MINUTES * -r_g[401]))
-		m.addConstr(r_102 >= uc_g[102] * (NUMBER_OF_MINUTES * -r_g[102]))
-		m.addConstr(r_202 >= uc_g[202] * (NUMBER_OF_MINUTES * -r_g[202]))
+		m.addConstr(r_102 >= uc_102 * (NUMBER_OF_MINUTES * -r_g[102]))
+		m.addConstr(r_202 >= uc_202 * (NUMBER_OF_MINUTES * -r_g[202]))
 		m.addConstr(r_302 >= uc_g[302] * (NUMBER_OF_MINUTES * -r_g[302]))
 		m.addConstr(r_402 >= uc_g[402] * (NUMBER_OF_MINUTES * -r_g[402]))
 		m.addConstr(r_107 >= uc_g[107] * (NUMBER_OF_MINUTES * -r_g[107]))
@@ -249,12 +278,13 @@ def contingency_response(object_load, object_generator, losses, exports):
 		m.addConstr(r_223 >= uc_g[223] * (NUMBER_OF_MINUTES * -r_g[223]))
 		m.addConstr(r_323 >= uc_g[323] * (NUMBER_OF_MINUTES * -r_g[323]))
 
-		m.addConstr(r_101 <= uc_g[101] * (NUMBER_OF_MINUTES * r_g[101]))
-		m.addConstr(r_201 <= uc_g[201] * (NUMBER_OF_MINUTES * r_g[201]))
+		# Re-dispatch must be less than 10-minutes of ramping up
+		m.addConstr(r_101 <= uc_101 * (NUMBER_OF_MINUTES * r_g[101]))
+		m.addConstr(r_201 <= uc_201 * (NUMBER_OF_MINUTES * r_g[201]))
 		m.addConstr(r_301 <= uc_g[301] * (NUMBER_OF_MINUTES * r_g[301]))
 		m.addConstr(r_401 <= uc_g[401] * (NUMBER_OF_MINUTES * r_g[401]))
-		m.addConstr(r_102 <= uc_g[102] * (NUMBER_OF_MINUTES * r_g[102]))
-		m.addConstr(r_202 <= uc_g[202] * (NUMBER_OF_MINUTES * r_g[202]))
+		m.addConstr(r_102 <= uc_102 * (NUMBER_OF_MINUTES * r_g[102]))
+		m.addConstr(r_202 <= uc_202 * (NUMBER_OF_MINUTES * r_g[202]))
 		m.addConstr(r_302 <= uc_g[302] * (NUMBER_OF_MINUTES * r_g[302]))
 		m.addConstr(r_402 <= uc_g[402] * (NUMBER_OF_MINUTES * r_g[402]))
 		m.addConstr(r_107 <= uc_g[107] * (NUMBER_OF_MINUTES * r_g[107]))
@@ -282,71 +312,174 @@ def contingency_response(object_load, object_generator, losses, exports):
 		m.addConstr(r_223 <= uc_g[223] * (NUMBER_OF_MINUTES * r_g[223]))
 		m.addConstr(r_323 <= uc_g[323] * (NUMBER_OF_MINUTES * r_g[323]))
 
-		m.addConstr(P[101] + r_101 >= uc_g[101] * P_g_min[101])
-		m.addConstr(P[201] + r_201 >= uc_g[201] * P_g_min[201])
-		m.addConstr(P[301] + r_301 >= uc_g[301] * P_g_min[301])
-		m.addConstr(P[401] + r_401 >= uc_g[401] * P_g_min[401])
-		m.addConstr(P[102] + r_102 >= uc_g[102] * P_g_min[102])
-		m.addConstr(P[202] + r_202 >= uc_g[202] * P_g_min[202])
-		m.addConstr(P[302] + r_302 >= uc_g[302] * P_g_min[302])
-		m.addConstr(P[402] + r_402 >= uc_g[402] * P_g_min[402])
-		m.addConstr(P[107] + r_107 >= uc_g[107] * P_g_min[107])
-		m.addConstr(P[207] + r_207 >= uc_g[207] * P_g_min[207])
-		m.addConstr(P[307] + r_307 >= uc_g[307] * P_g_min[307])
-		m.addConstr(P[113] + r_113 >= uc_g[113] * P_g_min[113])
-		m.addConstr(P[213] + r_213 >= uc_g[213] * P_g_min[213])
-		m.addConstr(P[313] + r_313 >= uc_g[313] * P_g_min[313])
-		m.addConstr(P[115] + r_115 >= uc_g[115] * P_g_min[115])
-		m.addConstr(P[215] + r_215 >= uc_g[215] * P_g_min[215])
-		m.addConstr(P[315] + r_315 >= uc_g[315] * P_g_min[315])
-		m.addConstr(P[415] + r_415 >= uc_g[415] * P_g_min[415])
-		m.addConstr(P[515] + r_515 >= uc_g[515] * P_g_min[515])
-		m.addConstr(P[615] + r_615 >= uc_g[615] * P_g_min[615])
-		m.addConstr(P[116] + r_116 >= uc_g[116] * P_g_min[116])
-		m.addConstr(P[118] + r_118 >= uc_g[118] * P_g_min[118])
-		m.addConstr(P[121] + r_121 >= uc_g[121] * P_g_min[121])
-		m.addConstr(P[122] + r_122 >= uc_g[122] * P_g_min[122])
-		m.addConstr(P[222] + r_222 >= uc_g[222] * P_g_min[222])
-		m.addConstr(P[322] + r_322 >= uc_g[322] * P_g_min[322])
-		m.addConstr(P[422] + r_422 >= uc_g[422] * P_g_min[422])
-		m.addConstr(P[522] + r_522 >= uc_g[522] * P_g_min[522])
-		m.addConstr(P[622] + r_622 >= uc_g[622] * P_g_min[622])
-		m.addConstr(P[123] + r_123 >= uc_g[123] * P_g_min[123])
-		m.addConstr(P[223] + r_223 >= uc_g[223] * P_g_min[223])
-		m.addConstr(P[323] + r_323 >= uc_g[323] * P_g_min[323])
+		# Re-dispatch must be greater than minimum generation		
+		m.addConstr(P_g[101] + r_101 >= uc_101 * P_g_min[101])
+		m.addConstr(P_g[201] + r_201 >= uc_201 * P_g_min[201])
+		m.addConstr(P_g[301] + r_301 >= uc_g[301] * P_g_min[301])
+		m.addConstr(P_g[401] + r_401 >= uc_g[401] * P_g_min[401])
+		m.addConstr(P_g[102] + r_102 >= uc_102 * P_g_min[102])
+		m.addConstr(P_g[202] + r_202 >= uc_202 * P_g_min[202])
+		m.addConstr(P_g[302] + r_302 >= uc_g[302] * P_g_min[302])
+		m.addConstr(P_g[402] + r_402 >= uc_g[402] * P_g_min[402])
+		m.addConstr(P_g[107] + r_107 >= uc_g[107] * P_g_min[107])
+		m.addConstr(P_g[207] + r_207 >= uc_g[207] * P_g_min[207])
+		m.addConstr(P_g[307] + r_307 >= uc_g[307] * P_g_min[307])
+		m.addConstr(P_g[113] + r_113 >= uc_g[113] * P_g_min[113])
+		m.addConstr(P_g[213] + r_213 >= uc_g[213] * P_g_min[213])
+		m.addConstr(P_g[313] + r_313 >= uc_g[313] * P_g_min[313])
+		m.addConstr(P_g[115] + r_115 >= uc_g[115] * P_g_min[115])
+		m.addConstr(P_g[215] + r_215 >= uc_g[215] * P_g_min[215])
+		m.addConstr(P_g[315] + r_315 >= uc_g[315] * P_g_min[315])
+		m.addConstr(P_g[415] + r_415 >= uc_g[415] * P_g_min[415])
+		m.addConstr(P_g[515] + r_515 >= uc_g[515] * P_g_min[515])
+		m.addConstr(P_g[615] + r_615 >= uc_g[615] * P_g_min[615])
+		m.addConstr(P_g[116] + r_116 >= uc_g[116] * P_g_min[116])
+		m.addConstr(P_g[118] + r_118 >= uc_g[118] * P_g_min[118])
+		m.addConstr(P_g[121] + r_121 >= uc_g[121] * P_g_min[121])
+		m.addConstr(P_g[122] + r_122 >= uc_g[122] * P_g_min[122])
+		m.addConstr(P_g[222] + r_222 >= uc_g[222] * P_g_min[222])
+		m.addConstr(P_g[322] + r_322 >= uc_g[322] * P_g_min[322])
+		m.addConstr(P_g[422] + r_422 >= uc_g[422] * P_g_min[422])
+		m.addConstr(P_g[522] + r_522 >= uc_g[522] * P_g_min[522])
+		m.addConstr(P_g[622] + r_622 >= uc_g[622] * P_g_min[622])
+		m.addConstr(P_g[123] + r_123 >= uc_g[123] * P_g_min[123])
+		m.addConstr(P_g[223] + r_223 >= uc_g[223] * P_g_min[223])
+		m.addConstr(P_g[323] + r_323 >= uc_g[323] * P_g_min[323])
 
-		m.addConstr(P[101] + r_101 <= uc_g[101] * P_g_max[101])
-		m.addConstr(P[201] + r_201 <= uc_g[201] * P_g_max[201])
-		m.addConstr(P[301] + r_301 <= uc_g[301] * P_g_max[301])
-		m.addConstr(P[401] + r_401 <= uc_g[401] * P_g_max[401])
-		m.addConstr(P[102] + r_102 <= uc_g[102] * P_g_max[102])
-		m.addConstr(P[202] + r_202 <= uc_g[202] * P_g_max[202])
-		m.addConstr(P[302] + r_302 <= uc_g[302] * P_g_max[302])
-		m.addConstr(P[402] + r_402 <= uc_g[402] * P_g_max[402])
-		m.addConstr(P[107] + r_107 <= uc_g[107] * P_g_max[107])
-		m.addConstr(P[207] + r_207 <= uc_g[207] * P_g_max[207])
-		m.addConstr(P[307] + r_307 <= uc_g[307] * P_g_max[307])
-		m.addConstr(P[113] + r_113 <= uc_g[113] * P_g_max[113])
-		m.addConstr(P[213] + r_213 <= uc_g[213] * P_g_max[213])
-		m.addConstr(P[313] + r_313 <= uc_g[313] * P_g_max[313])
-		m.addConstr(P[115] + r_115 <= uc_g[115] * P_g_max[115])
-		m.addConstr(P[215] + r_215 <= uc_g[215] * P_g_max[215])
-		m.addConstr(P[315] + r_315 <= uc_g[315] * P_g_max[315])
-		m.addConstr(P[415] + r_415 <= uc_g[415] * P_g_max[415])
-		m.addConstr(P[515] + r_515 <= uc_g[515] * P_g_max[515])
-		m.addConstr(P[615] + r_615 <= uc_g[615] * P_g_max[615])
-		m.addConstr(P[116] + r_116 <= uc_g[116] * P_g_max[116])
-		m.addConstr(P[118] + r_118 <= uc_g[118] * P_g_max[118])
-		m.addConstr(P[121] + r_121 <= uc_g[121] * P_g_max[121])
-		m.addConstr(P[122] + r_122 <= uc_g[122] * P_g_max[122])
-		m.addConstr(P[222] + r_222 <= uc_g[222] * P_g_max[222])
-		m.addConstr(P[322] + r_322 <= uc_g[322] * P_g_max[322])
-		m.addConstr(P[422] + r_422 <= uc_g[422] * P_g_max[422])
-		m.addConstr(P[522] + r_522 <= uc_g[522] * P_g_max[522])
-		m.addConstr(P[622] + r_622 <= uc_g[622] * P_g_max[622])
-		m.addConstr(P[123] + r_123 <= uc_g[123] * P_g_max[123])
-		m.addConstr(P[223] + r_223 <= uc_g[223] * P_g_max[223])
-		m.addConstr(P[323] + r_323 <= uc_g[323] * P_g_max[323])
+		# Re-dispatch must be less than maximum generation
+		m.addConstr(P_g[101] + r_101 <= uc_101 * P_g_max[101])
+		m.addConstr(P_g[201] + r_201 <= uc_201 * P_g_max[201])
+		m.addConstr(P_g[301] + r_301 <= uc_g[301] * P_g_max[301])
+		m.addConstr(P_g[401] + r_401 <= uc_g[401] * P_g_max[401])
+		m.addConstr(P_g[102] + r_102 <= uc_102 * P_g_max[102])
+		m.addConstr(P_g[202] + r_202 <= uc_202 * P_g_max[202])
+		m.addConstr(P_g[302] + r_302 <= uc_g[302] * P_g_max[302])
+		m.addConstr(P_g[402] + r_402 <= uc_g[402] * P_g_max[402])
+		m.addConstr(P_g[107] + r_107 <= uc_g[107] * P_g_max[107])
+		m.addConstr(P_g[207] + r_207 <= uc_g[207] * P_g_max[207])
+		m.addConstr(P_g[307] + r_307 <= uc_g[307] * P_g_max[307])
+		m.addConstr(P_g[113] + r_113 <= uc_g[113] * P_g_max[113])
+		m.addConstr(P_g[213] + r_213 <= uc_g[213] * P_g_max[213])
+		m.addConstr(P_g[313] + r_313 <= uc_g[313] * P_g_max[313])
+		m.addConstr(P_g[115] + r_115 <= uc_g[115] * P_g_max[115])
+		m.addConstr(P_g[215] + r_215 <= uc_g[215] * P_g_max[215])
+		m.addConstr(P_g[315] + r_315 <= uc_g[315] * P_g_max[315])
+		m.addConstr(P_g[415] + r_415 <= uc_g[415] * P_g_max[415])
+		m.addConstr(P_g[515] + r_515 <= uc_g[515] * P_g_max[515])
+		m.addConstr(P_g[615] + r_615 <= uc_g[615] * P_g_max[615])
+		m.addConstr(P_g[116] + r_116 <= uc_g[116] * P_g_max[116])
+		m.addConstr(P_g[118] + r_118 <= uc_g[118] * P_g_max[118])
+		m.addConstr(P_g[121] + r_121 <= uc_g[121] * P_g_max[121])
+		m.addConstr(P_g[122] + r_122 <= uc_g[122] * P_g_max[122])
+		m.addConstr(P_g[222] + r_222 <= uc_g[222] * P_g_max[222])
+		m.addConstr(P_g[322] + r_322 <= uc_g[322] * P_g_max[322])
+		m.addConstr(P_g[422] + r_422 <= uc_g[422] * P_g_max[422])
+		m.addConstr(P_g[522] + r_522 <= uc_g[522] * P_g_max[522])
+		m.addConstr(P_g[622] + r_622 <= uc_g[622] * P_g_max[622])
+		m.addConstr(P_g[123] + r_123 <= uc_g[123] * P_g_max[123])
+		m.addConstr(P_g[223] + r_223 <= uc_g[223] * P_g_max[223])
+		m.addConstr(P_g[323] + r_323 <= uc_g[323] * P_g_max[323])
+
+		# Branches must be less than maximum thermal limit
+		m.addConstr(P_b[1] + uc_101*r_101*(ptdf_tab[101]['1'] + outage_sign * lodf_tab[outage_id]['1'] * ptdf_tab[101][str(outage_id)]) +
+			uc_201*r_201*(ptdf_tab[201]['1'] + outage_sign * lodf_tab[outage_id]['1'] * ptdf_tab[201][str(outage_id)]) +
+			uc_g[301]*r_301*(ptdf_tab[301]['1'] + outage_sign * lodf_tab[outage_id]['1'] * ptdf_tab[301][str(outage_id)]) +
+			uc_g[401]*r_401*(ptdf_tab[401]['1'] + outage_sign * lodf_tab[outage_id]['1'] * ptdf_tab[401][str(outage_id)]) +
+			uc_102*r_102*(ptdf_tab[102]['1'] + outage_sign * lodf_tab[outage_id]['1'] * ptdf_tab[102][str(outage_id)]) +
+			uc_202*r_202*(ptdf_tab[202]['1'] + outage_sign * lodf_tab[outage_id]['1'] * ptdf_tab[202][str(outage_id)]) +
+			uc_g[302]*r_302*(ptdf_tab[302]['1'] + outage_sign * lodf_tab[outage_id]['1'] * ptdf_tab[302][str(outage_id)]) +
+			uc_g[402]*r_402*(ptdf_tab[402]['1'] + outage_sign * lodf_tab[outage_id]['1'] * ptdf_tab[402][str(outage_id)]) +
+			uc_g[107]*r_107*(ptdf_tab[107]['1'] + outage_sign * lodf_tab[outage_id]['1'] * ptdf_tab[107][str(outage_id)]) +
+			uc_g[207]*r_207*(ptdf_tab[207]['1'] + outage_sign * lodf_tab[outage_id]['1'] * ptdf_tab[207][str(outage_id)]) +
+			uc_g[307]*r_307*(ptdf_tab[307]['1'] + outage_sign * lodf_tab[outage_id]['1'] * ptdf_tab[307][str(outage_id)]) +
+			uc_g[113]*r_113*(ptdf_tab[113]['1'] + outage_sign * lodf_tab[outage_id]['1'] * ptdf_tab[113][str(outage_id)]) +
+			uc_g[213]*r_213*(ptdf_tab[213]['1'] + outage_sign * lodf_tab[outage_id]['1'] * ptdf_tab[213][str(outage_id)]) +
+			uc_g[313]*r_313*(ptdf_tab[313]['1'] + outage_sign * lodf_tab[outage_id]['1'] * ptdf_tab[313][str(outage_id)]) +
+			uc_g[115]*r_115*(ptdf_tab[115]['1'] + outage_sign * lodf_tab[outage_id]['1'] * ptdf_tab[115][str(outage_id)]) +
+			uc_g[215]*r_215*(ptdf_tab[215]['1'] + outage_sign * lodf_tab[outage_id]['1'] * ptdf_tab[215][str(outage_id)]) +
+			uc_g[315]*r_315*(ptdf_tab[315]['1'] + outage_sign * lodf_tab[outage_id]['1'] * ptdf_tab[315][str(outage_id)]) +
+			uc_g[415]*r_415*(ptdf_tab[415]['1'] + outage_sign * lodf_tab[outage_id]['1'] * ptdf_tab[415][str(outage_id)]) +
+			uc_g[515]*r_515*(ptdf_tab[515]['1'] + outage_sign * lodf_tab[outage_id]['1'] * ptdf_tab[515][str(outage_id)]) +
+			uc_g[615]*r_615*(ptdf_tab[615]['1'] + outage_sign * lodf_tab[outage_id]['1'] * ptdf_tab[615][str(outage_id)]) +
+			uc_g[116]*r_116*(ptdf_tab[116]['1'] + outage_sign * lodf_tab[outage_id]['1'] * ptdf_tab[116][str(outage_id)]) +
+			uc_g[118]*r_118*(ptdf_tab[118]['1'] + outage_sign * lodf_tab[outage_id]['1'] * ptdf_tab[118][str(outage_id)]) +
+			uc_g[121]*r_121*(ptdf_tab[121]['1'] + outage_sign * lodf_tab[outage_id]['1'] * ptdf_tab[121][str(outage_id)]) +
+			uc_g[122]*r_122*(ptdf_tab[122]['1'] + outage_sign * lodf_tab[outage_id]['1'] * ptdf_tab[122][str(outage_id)]) +
+			uc_g[222]*r_222*(ptdf_tab[222]['1'] + outage_sign * lodf_tab[outage_id]['1'] * ptdf_tab[222][str(outage_id)]) +
+			uc_g[322]*r_322*(ptdf_tab[322]['1'] + outage_sign * lodf_tab[outage_id]['1'] * ptdf_tab[322][str(outage_id)]) +
+			uc_g[422]*r_422*(ptdf_tab[422]['1'] + outage_sign * lodf_tab[outage_id]['1'] * ptdf_tab[422][str(outage_id)]) +
+			uc_g[522]*r_522*(ptdf_tab[522]['1'] + outage_sign * lodf_tab[outage_id]['1'] * ptdf_tab[522][str(outage_id)]) +
+			uc_g[622]*r_622*(ptdf_tab[622]['1'] + outage_sign * lodf_tab[outage_id]['1'] * ptdf_tab[622][str(outage_id)]) +
+			uc_g[123]*r_123*(ptdf_tab[123]['1'] + outage_sign * lodf_tab[outage_id]['1'] * ptdf_tab[123][str(outage_id)]) +
+			uc_g[223]*r_223*(ptdf_tab[223]['1'] + outage_sign * lodf_tab[outage_id]['1'] * ptdf_tab[223][str(outage_id)]) +
+			uc_g[323]*r_323*(ptdf_tab[323]['1'] + outage_sign * lodf_tab[outage_id]['1'] * ptdf_tab[323][str(outage_id)]) <= P_b_max[1])
+
+		m.addConstr(P_b[2] + uc_101*r_101*(ptdf_tab[101]['2'] + outage_sign * lodf_tab[outage_id]['2'] * ptdf_tab[101][str(outage_id)]) +
+			uc_201*r_201*(ptdf_tab[201]['2'] + outage_sign * lodf_tab[outage_id]['2'] * ptdf_tab[201][str(outage_id)]) +
+			uc_g[301]*r_301*(ptdf_tab[301]['2'] + outage_sign * lodf_tab[outage_id]['2'] * ptdf_tab[301][str(outage_id)]) +
+			uc_g[401]*r_401*(ptdf_tab[401]['2'] + outage_sign * lodf_tab[outage_id]['2'] * ptdf_tab[401][str(outage_id)]) +
+			uc_102*r_102*(ptdf_tab[102]['2'] + outage_sign * lodf_tab[outage_id]['2'] * ptdf_tab[102][str(outage_id)]) +
+			uc_202*r_202*(ptdf_tab[202]['2'] + outage_sign * lodf_tab[outage_id]['2'] * ptdf_tab[202][str(outage_id)]) +
+			uc_g[302]*r_302*(ptdf_tab[302]['2'] + outage_sign * lodf_tab[outage_id]['2'] * ptdf_tab[302][str(outage_id)]) +
+			uc_g[402]*r_402*(ptdf_tab[402]['2'] + outage_sign * lodf_tab[outage_id]['2'] * ptdf_tab[402][str(outage_id)]) +
+			uc_g[107]*r_107*(ptdf_tab[107]['2'] + outage_sign * lodf_tab[outage_id]['2'] * ptdf_tab[107][str(outage_id)]) +
+			uc_g[207]*r_207*(ptdf_tab[207]['2'] + outage_sign * lodf_tab[outage_id]['2'] * ptdf_tab[207][str(outage_id)]) +
+			uc_g[307]*r_307*(ptdf_tab[307]['2'] + outage_sign * lodf_tab[outage_id]['2'] * ptdf_tab[307][str(outage_id)]) +
+			uc_g[113]*r_113*(ptdf_tab[113]['2'] + outage_sign * lodf_tab[outage_id]['2'] * ptdf_tab[113][str(outage_id)]) +
+			uc_g[213]*r_213*(ptdf_tab[213]['2'] + outage_sign * lodf_tab[outage_id]['2'] * ptdf_tab[213][str(outage_id)]) +
+			uc_g[313]*r_313*(ptdf_tab[313]['2'] + outage_sign * lodf_tab[outage_id]['2'] * ptdf_tab[313][str(outage_id)]) +
+			uc_g[115]*r_115*(ptdf_tab[115]['2'] + outage_sign * lodf_tab[outage_id]['2'] * ptdf_tab[115][str(outage_id)]) +
+			uc_g[215]*r_215*(ptdf_tab[215]['2'] + outage_sign * lodf_tab[outage_id]['2'] * ptdf_tab[215][str(outage_id)]) +
+			uc_g[315]*r_315*(ptdf_tab[315]['2'] + outage_sign * lodf_tab[outage_id]['2'] * ptdf_tab[315][str(outage_id)]) +
+			uc_g[415]*r_415*(ptdf_tab[415]['2'] + outage_sign * lodf_tab[outage_id]['2'] * ptdf_tab[415][str(outage_id)]) +
+			uc_g[515]*r_515*(ptdf_tab[515]['2'] + outage_sign * lodf_tab[outage_id]['2'] * ptdf_tab[515][str(outage_id)]) +
+			uc_g[615]*r_615*(ptdf_tab[615]['2'] + outage_sign * lodf_tab[outage_id]['2'] * ptdf_tab[615][str(outage_id)]) +
+			uc_g[116]*r_116*(ptdf_tab[116]['2'] + outage_sign * lodf_tab[outage_id]['2'] * ptdf_tab[116][str(outage_id)]) +
+			uc_g[118]*r_118*(ptdf_tab[118]['2'] + outage_sign * lodf_tab[outage_id]['2'] * ptdf_tab[118][str(outage_id)]) +
+			uc_g[121]*r_121*(ptdf_tab[121]['2'] + outage_sign * lodf_tab[outage_id]['2'] * ptdf_tab[121][str(outage_id)]) +
+			uc_g[122]*r_122*(ptdf_tab[122]['2'] + outage_sign * lodf_tab[outage_id]['2'] * ptdf_tab[122][str(outage_id)]) +
+			uc_g[222]*r_222*(ptdf_tab[222]['2'] + outage_sign * lodf_tab[outage_id]['2'] * ptdf_tab[222][str(outage_id)]) +
+			uc_g[322]*r_322*(ptdf_tab[322]['2'] + outage_sign * lodf_tab[outage_id]['2'] * ptdf_tab[322][str(outage_id)]) +
+			uc_g[422]*r_422*(ptdf_tab[422]['2'] + outage_sign * lodf_tab[outage_id]['2'] * ptdf_tab[422][str(outage_id)]) +
+			uc_g[522]*r_522*(ptdf_tab[522]['2'] + outage_sign * lodf_tab[outage_id]['2'] * ptdf_tab[522][str(outage_id)]) +
+			uc_g[622]*r_622*(ptdf_tab[622]['2'] + outage_sign * lodf_tab[outage_id]['2'] * ptdf_tab[622][str(outage_id)]) +
+			uc_g[123]*r_123*(ptdf_tab[123]['2'] + outage_sign * lodf_tab[outage_id]['2'] * ptdf_tab[123][str(outage_id)]) +
+			uc_g[223]*r_223*(ptdf_tab[223]['2'] + outage_sign * lodf_tab[outage_id]['2'] * ptdf_tab[223][str(outage_id)]) +
+			uc_g[323]*r_323*(ptdf_tab[323]['2'] + outage_sign * lodf_tab[outage_id]['2'] * ptdf_tab[323][str(outage_id)]) <= P_b_max[2])
+
+		m.addConstr(P_b[3] + uc_101*r_101*(ptdf_tab[101]['3'] + outage_sign * lodf_tab[outage_id]['3'] * ptdf_tab[101][str(outage_id)]) +
+			uc_201*r_201*(ptdf_tab[201]['3'] + outage_sign * lodf_tab[outage_id]['3'] * ptdf_tab[201][str(outage_id)]) +
+			uc_g[301]*r_301*(ptdf_tab[301]['3'] + outage_sign * lodf_tab[outage_id]['3'] * ptdf_tab[301][str(outage_id)]) +
+			uc_g[401]*r_401*(ptdf_tab[401]['3'] + outage_sign * lodf_tab[outage_id]['3'] * ptdf_tab[401][str(outage_id)]) +
+			uc_102*r_102*(ptdf_tab[102]['3'] + outage_sign * lodf_tab[outage_id]['3'] * ptdf_tab[102][str(outage_id)]) +
+			uc_202*r_202*(ptdf_tab[202]['3'] + outage_sign * lodf_tab[outage_id]['3'] * ptdf_tab[202][str(outage_id)]) +
+			uc_g[302]*r_302*(ptdf_tab[302]['3'] + outage_sign * lodf_tab[outage_id]['3'] * ptdf_tab[302][str(outage_id)]) +
+			uc_g[402]*r_402*(ptdf_tab[402]['3'] + outage_sign * lodf_tab[outage_id]['3'] * ptdf_tab[402][str(outage_id)]) +
+			uc_g[107]*r_107*(ptdf_tab[107]['3'] + outage_sign * lodf_tab[outage_id]['3'] * ptdf_tab[107][str(outage_id)]) +
+			uc_g[207]*r_207*(ptdf_tab[207]['3'] + outage_sign * lodf_tab[outage_id]['3'] * ptdf_tab[207][str(outage_id)]) +
+			uc_g[307]*r_307*(ptdf_tab[307]['3'] + outage_sign * lodf_tab[outage_id]['3'] * ptdf_tab[307][str(outage_id)]) +
+			uc_g[113]*r_113*(ptdf_tab[113]['3'] + outage_sign * lodf_tab[outage_id]['3'] * ptdf_tab[113][str(outage_id)]) +
+			uc_g[213]*r_213*(ptdf_tab[213]['3'] + outage_sign * lodf_tab[outage_id]['3'] * ptdf_tab[213][str(outage_id)]) +
+			uc_g[313]*r_313*(ptdf_tab[313]['3'] + outage_sign * lodf_tab[outage_id]['3'] * ptdf_tab[313][str(outage_id)]) +
+			uc_g[115]*r_115*(ptdf_tab[115]['3'] + outage_sign * lodf_tab[outage_id]['3'] * ptdf_tab[115][str(outage_id)]) +
+			uc_g[215]*r_215*(ptdf_tab[215]['3'] + outage_sign * lodf_tab[outage_id]['3'] * ptdf_tab[215][str(outage_id)]) +
+			uc_g[315]*r_315*(ptdf_tab[315]['3'] + outage_sign * lodf_tab[outage_id]['3'] * ptdf_tab[315][str(outage_id)]) +
+			uc_g[415]*r_415*(ptdf_tab[415]['3'] + outage_sign * lodf_tab[outage_id]['3'] * ptdf_tab[415][str(outage_id)]) +
+			uc_g[515]*r_515*(ptdf_tab[515]['3'] + outage_sign * lodf_tab[outage_id]['3'] * ptdf_tab[515][str(outage_id)]) +
+			uc_g[615]*r_615*(ptdf_tab[615]['3'] + outage_sign * lodf_tab[outage_id]['3'] * ptdf_tab[615][str(outage_id)]) +
+			uc_g[116]*r_116*(ptdf_tab[116]['3'] + outage_sign * lodf_tab[outage_id]['3'] * ptdf_tab[116][str(outage_id)]) +
+			uc_g[118]*r_118*(ptdf_tab[118]['3'] + outage_sign * lodf_tab[outage_id]['3'] * ptdf_tab[118][str(outage_id)]) +
+			uc_g[121]*r_121*(ptdf_tab[121]['3'] + outage_sign * lodf_tab[outage_id]['3'] * ptdf_tab[121][str(outage_id)]) +
+			uc_g[122]*r_122*(ptdf_tab[122]['3'] + outage_sign * lodf_tab[outage_id]['3'] * ptdf_tab[122][str(outage_id)]) +
+			uc_g[222]*r_222*(ptdf_tab[222]['3'] + outage_sign * lodf_tab[outage_id]['3'] * ptdf_tab[222][str(outage_id)]) +
+			uc_g[322]*r_322*(ptdf_tab[322]['3'] + outage_sign * lodf_tab[outage_id]['3'] * ptdf_tab[322][str(outage_id)]) +
+			uc_g[422]*r_422*(ptdf_tab[422]['3'] + outage_sign * lodf_tab[outage_id]['3'] * ptdf_tab[422][str(outage_id)]) +
+			uc_g[522]*r_522*(ptdf_tab[522]['3'] + outage_sign * lodf_tab[outage_id]['3'] * ptdf_tab[522][str(outage_id)]) +
+			uc_g[622]*r_622*(ptdf_tab[622]['3'] + outage_sign * lodf_tab[outage_id]['3'] * ptdf_tab[622][str(outage_id)]) +
+			uc_g[123]*r_123*(ptdf_tab[123]['3'] + outage_sign * lodf_tab[outage_id]['3'] * ptdf_tab[123][str(outage_id)]) +
+			uc_g[223]*r_223*(ptdf_tab[223]['3'] + outage_sign * lodf_tab[outage_id]['3'] * ptdf_tab[223][str(outage_id)]) +
+			uc_g[323]*r_323*(ptdf_tab[323]['3'] + outage_sign * lodf_tab[outage_id]['3'] * ptdf_tab[323][str(outage_id)]) <= P_b_max[3])
+
 
 
 	except gurobipy.GurobiError:

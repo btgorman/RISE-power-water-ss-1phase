@@ -297,17 +297,15 @@ class LineCode: #errors -1125 to -1149
 	ID = 0
 	TYPE = 1
 	KRON_REDUCTION = 2
-	NORMAL_AMPS = 3
-	NUMBER_OF_PHASES = 4
-	R0_SCALAR = 5
-	R1_SCALAR = 6
-	X0_SCALAR = 7
-	X1_SCALAR = 8
-	C0_SCALAR = 9
-	C1_SCALAR = 10
-	B0_SCALAR = 11
-	B1_SCALAR = 12
-	MAX_PU_CAPACITY = 13
+	NUMBER_OF_PHASES = 3
+	R0_SCALAR = 4
+	R1_SCALAR = 5
+	X0_SCALAR = 6
+	X1_SCALAR = 7
+	C0_SCALAR = 8
+	C1_SCALAR = 9
+	B0_SCALAR = 10
+	B1_SCALAR = 11
 	UNITS = 'kft'
 
 	def __init__(self, dframe):
@@ -348,14 +346,14 @@ class LineCode: #errors -1125 to -1149
 						row[LineCode.R0_SCALAR], row[LineCode.R1_SCALAR], row[LineCode.X0_SCALAR], row[LineCode.X1_SCALAR])
 
 				if debug == 1:
-					print('New \'LineCode.{}\' Nphases=\'{}\' {} Units=\'{}\' Normamps=\'{:f}\' Emergamps=\'{:f}\' Kron=\'{}\''.format(
+					print('New \'LineCode.{}\' Nphases=\'{}\' {} Units=\'{}\' Kron=\'{}\''.format(
 					str_self_name, int(row[LineCode.NUMBER_OF_PHASES]), str_impedance, LineCode.UNITS,
-					row[LineCode.NORMAL_AMPS], row[LineCode.NORMAL_AMPS]*row[LineCode.MAX_PU_CAPACITY], neutral_reduce))
+					neutral_reduce))
 					print('\n')
 
-				dss.Command = 'New \'LineCode.{}\' Nphases=\'{}\' {} Units=\'{}\' Normamps=\'{:f}\' Emergamps=\'{:f}\' Kron=\'{}\''.format(
+				dss.Command = 'New \'LineCode.{}\' Nphases=\'{}\' {} Units=\'{}\' Kron=\'{}\''.format(
 					str_self_name, int(row[LineCode.NUMBER_OF_PHASES]), str_impedance, LineCode.UNITS,
-					row[LineCode.NORMAL_AMPS], row[LineCode.NORMAL_AMPS]*row[LineCode.MAX_PU_CAPACITY], neutral_reduce)
+					neutral_reduce)
 			return 0
 		except:
 			print('Error: #-1125')
@@ -1606,19 +1604,21 @@ class Cable: #errors -1425 to -1449
 	LENGTH = 6
 	LINECODE_ID = 7
 	ANGLE_DELTA_LIMIT = 8
-	OPERATIONAL_STATUS_A = 9 # switch
-	A_1_CURRENT = 10
-	A_1_CURRENT_ANGLE = 11
-	A_2_CURRENT = 12
-	A_2_CURRENT_ANGLE = 13
-	A_PU_CAPACITY = 14
-	REAL_POWER_1 = 15
-	REACTIVE_POWER_1 = 16
-	REAL_POWER_2 = 17
-	REACTIVE_POWER_2 = 18
-	REAL_POWER_LOSSES = 19
-	REACTIVE_POWER_LOSSES = 20
-	ANGLE_DELTA = 21
+	NORMAL_RATING = 9
+	MAX_PU_CAPACITY = 10
+	OPERATIONAL_STATUS_A = 1 # switch
+	A_1_CURRENT = 12
+	A_1_CURRENT_ANGLE = 13
+	A_2_CURRENT = 14
+	A_2_CURRENT_ANGLE = 15
+	A_PU_CAPACITY = 16
+	REAL_POWER_1 = 17
+	REACTIVE_POWER_1 = 18
+	REAL_POWER_2 = 19
+	REACTIVE_POWER_2 = 20
+	REAL_POWER_LOSSES = 21
+	REACTIVE_POWER_LOSSES = 22
+	ANGLE_DELTA = 23
 	UNITS = 'ft'
 
 	def __init__(self, dframe):
@@ -1659,17 +1659,25 @@ class Cable: #errors -1425 to -1449
 				elif row[Cable.TERMINAL_2_ID] < 1:
 					str_term2_name = 'sourcebus'
 
+				if row[Cable.NORMAL_RATING] <= 100000.0:
+					normal_amps = row[Cable.NORMAL_RATING] / 138.0
+				else:
+					normal_amps = row[Cable.NORMAL_RATING] / 230.0
+				emerg_amps = normal_amps * row[Cable.MAX_PU_CAPACITY]
+
 				if debug == 1:
-					print('New \'Line.{}\' Bus1=\'{}{}\' Bus2=\'{}{}\' LineCode=\'{}\' Length=\'{:f}\' Units=\'{}\'\n'.format(
+					print('New \'Line.{}\' Bus1=\'{}{}\' Bus2=\'{}{}\' LineCode=\'{}\' Length=\'{:f}\' Units=\'{}\' Normamps=\'{:f}\' Emergamps=\'{:f}\'\n'.format(
 					str_self_name, str_term1_name, str_bus_conn, str_term2_name,
-					str_bus_conn, str_linec_name, row[Cable.LENGTH], Cable.UNITS))
+					str_bus_conn, str_linec_name, row[Cable.LENGTH], Cable.UNITS,
+					normal_amps, emerg_amps))
 					if row[Cable.A] == 1.0 and row[Cable.FUNCTIONAL_STATUS_A]*row[Cable.OPERATIONAL_STATUS_A] == 0.0:
 						print('Open \'Line.{}\' Term=1 1'.format(str_self_name))
 						print('Open \'Line.{}\' Term=2 1'.format(str_self_name))
 
-				dss.Command = 'New \'Line.{}\' Bus1=\'{}{}\' Bus2=\'{}{}\' LineCode=\'{}\' Length=\'{:f}\' Units=\'{}\''.format(
+				dss.Command = 'New \'Line.{}\' Bus1=\'{}{}\' Bus2=\'{}{}\' LineCode=\'{}\' Length=\'{:f}\' Units=\'{}\' Normamps=\'{:f}\' Emergamps=\'{:f}\''.format(
 					str_self_name, str_term1_name, str_bus_conn, str_term2_name,
-					str_bus_conn, str_linec_name, row[Cable.LENGTH], Cable.UNITS)
+					str_bus_conn, str_linec_name, row[Cable.LENGTH], Cable.UNITS,
+					normal_amps, emerg_amps)
 				if row[Cable.A] == 1.0 and row[Cable.FUNCTIONAL_STATUS_A]*row[Cable.OPERATIONAL_STATUS_A] == 0.0:
 					dss.Command = 'Open \'Line.{}\' Term=1 1'.format(str_self_name)
 					dss.Command = 'Open \'Line.{}\' Term=2 1'.format(str_self_name)
@@ -1689,12 +1697,6 @@ class Cable: #errors -1425 to -1449
 				var_bus = list(dssActvElem.BusNames)
 				var_curr = list(dssActvElem.CurrentsMagAng)
 				var_pow = list(dssActvElem.Powers)
-				emerg_amps = dssActvElem.NormalAmps
-				if emerg_amps < 700.:
-					volt_ll = 138. # kV
-				else:
-					volt_ll = 230. # kV
-				emerg_power = emerg_amps * volt_ll # kW
 				num_phases = dssActvElem.NumPhases
 				num_conds = dssActvElem.NumConductors
 
@@ -1723,13 +1725,8 @@ class Cable: #errors -1425 to -1449
 
 				row[Cable.REAL_POWER_LOSSES] = math.fabs(row[Cable.REAL_POWER_1] + row[Cable.REAL_POWER_2])
 				row[Cable.REACTIVE_POWER_LOSSES] = math.fabs(row[Cable.REACTIVE_POWER_1] + row[Cable.REACTIVE_POWER_2])
-				# row[Cable.A_PU_CAPACITY] = 0.5 * (row[Cable.A_1_CURRENT] + row[Cable.A_2_CURRENT]) / emerg_amps
-				try:
-					power_sign = (row[Cable.REAL_POWER_2] - row[Cable.REAL_POWER_1]) / math.fabs(row[Cable.REAL_POWER_2] - row[Cable.REAL_POWER_1])
-				except:
-					power_sign = 0.
 				if emerg_power != 0.0:
-					row[Cable.A_PU_CAPACITY] = power_sign * math.sqrt((0.5*(row[Cable.REAL_POWER_2] - row[Cable.REAL_POWER_1]))**2 + (0.5*(row[Cable.REACTIVE_POWER_2] - row[Cable.REACTIVE_POWER_1]))**2) / emerg_power
+					row[Cable.A_PU_CAPACITY] = 0.5*(row[Cable.REAL_POWER_2] - row[Cable.REAL_POWER_1]) / (row[Cable.NORMAL_RATING]*row[Cable.MAX_PU_CAPACITY])
 				else:
 					row[Cable.A_PU_CAPACITY] = 0.0
 			return 0

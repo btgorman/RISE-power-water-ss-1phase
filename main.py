@@ -331,8 +331,6 @@ def main(dss_debug, write_cols):
 		variant_currents = automation.VARIANT()
 		variant_powers = automation.VARIANT()
 
-		print(dssCkt.TotalPower)
-
 		for object in object_list:
 			object.readAllDSSOutputs(dssCkt, dssActvElem, dssActvBus, variant_buses, variant_voltages_mag, variant_voltages_pu, variant_currents, variant_powers)
 
@@ -376,6 +374,7 @@ def main(dss_debug, write_cols):
 	power_load_ub = 1.0
 	power_load_factor = min(np.random.lognormal(power_load_mu, power_load_sigma, size=None), power_load_ub)
 	power_load_factor = max(power_load_factor, power_load_lb)
+	power_load = 0.5
 	power_factor = 0.0 # MW / MVAR
 	object_load.multiplyLoadFactor(power_load_factor, power_factor)
 
@@ -419,6 +418,9 @@ def main(dss_debug, write_cols):
 	input_list_continuous1, input_list_categorical1, _, input_tensor_continuous1, input_tensor_categorical1, _ = run_EPANET()
 	_, _, output_list, _, _, output_tensor = run_OpenDSS(dss_debug, False)
 	_, _, output_list1, _, _, output_tensor1 = run_EPANET()
+
+	print(0.5*(object_cable.matrix[:, ODC.Cable.REAL_POWER_2] - object_cable.matrix[:, ODC.Cable.REAL_POWER_1])*0.001)
+	print(object_cable.matrix[:, ODC.Cable.A_PU_CAPACITY])
 
 	# RESULTS STEP 1: FORMAT INPUT/OUTPUT TENSORS
 	# -------------------------------------------
