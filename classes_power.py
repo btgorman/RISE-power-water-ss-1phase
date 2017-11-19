@@ -699,15 +699,20 @@ class Generator: #errors -1200 to -1224
 				elif num_phases == 1:
 					num_kv = num_kv / math.sqrt(3.0)
 
-				if row[Generator.REAL_GENERATION] > row[Generator.REAL_GENERATION_MAX_RATING]:
-					row[Generator.REAL_GENERATION] = row[Generator.REAL_GENERATION_MAX_RATING]
-				elif row[Generator.REAL_GENERATION] < row[Generator.REAL_GENERATION_MIN_RATING]:
-					row[Generator.REAL_GENERATION] = row[Generator.REAL_GENERATION_MIN_RATING]
+				if row[Generator.OPERATIONAL_STATUS] == 0.0 or row[Generator.REAL_GENERATION] == 0.0:
+					row[Generator.REAL_GENERATION] = 0.0
+					row[Generator.REACTIVE_GENERATION] = 0.0
+					row[Generator.OPERATIONAL_STATUS] = 0.0
+				else:	
+					if row[Generator.REAL_GENERATION] > row[Generator.REAL_GENERATION_MAX_RATING]:
+						row[Generator.REAL_GENERATION] = row[Generator.REAL_GENERATION_MAX_RATING]
+					elif row[Generator.REAL_GENERATION] < row[Generator.REAL_GENERATION_MIN_RATING]:
+						row[Generator.REAL_GENERATION] = row[Generator.REAL_GENERATION_MIN_RATING]
 
-				if row[Generator.REACTIVE_GENERATION] > row[Generator.REACTIVE_GENERATION_MAX_RATING]:
-					row[Generator.REACTIVE_GENERATION] = row[Generator.REACTIVE_GENERATION_MAX_RATING]
-				elif row[Generator.REACTIVE_GENERATION] < row[Generator.REACTIVE_GENERATION_MIN_RATING]:
-					row[Generator.REACTIVE_GENERATION] = row[Generator.REACTIVE_GENERATION_MIN_RATING]
+					if row[Generator.REACTIVE_GENERATION] > row[Generator.REACTIVE_GENERATION_MAX_RATING]:
+						row[Generator.REACTIVE_GENERATION] = row[Generator.REACTIVE_GENERATION_MAX_RATING]
+					elif row[Generator.REACTIVE_GENERATION] < row[Generator.REACTIVE_GENERATION_MIN_RATING]:
+						row[Generator.REACTIVE_GENERATION] = row[Generator.REACTIVE_GENERATION_MIN_RATING]
 
 				busid = int(row[Generator.ID]) % 100
 				str_self_name = str(int(row[Generator.TYPE])) + '_' + str(int(row[Generator.ID]))

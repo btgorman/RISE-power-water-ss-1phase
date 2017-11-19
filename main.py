@@ -335,12 +335,12 @@ def main(dss_debug, write_cols):
 			object.readAllDSSOutputs(dssCkt, dssActvElem, dssActvBus, variant_buses, variant_voltages_mag, variant_voltages_pu, variant_currents, variant_powers)
 
 		if solverFlag == False:
-			dssText.Command = 'Save Circuit'
-			dssText.Command = 'Export Summary (summary.csv)'
-			dssText.Command = 'Export Currents (currents.csv)'
-			dssText.Command = 'Export Voltages (voltages.csv)'
-			dssText.Command = 'Export Overloads (overloads.csv)'
-			dssText.Command = 'Export Powers kVA (powers.csv)'
+			# dssText.Command = 'Save Circuit'
+			# dssText.Command = 'Export Summary (summary.csv)'
+			# dssText.Command = 'Export Currents (currents.csv)'
+			# dssText.Command = 'Export Voltages (voltages.csv)'
+			# dssText.Command = 'Export Overloads (overloads.csv)'
+			# dssText.Command = 'Export Powers kVA (powers.csv)'
 
 			input_list_continuous = []
 			input_list_categorical = []
@@ -374,12 +374,14 @@ def main(dss_debug, write_cols):
 	power_load_ub = 1.0
 	power_load_factor = min(np.random.lognormal(power_load_mu, power_load_sigma, size=None), power_load_ub)
 	power_load_factor = max(power_load_factor, power_load_lb)
-	# power_load_factor = 0.3968309696
-	# power_load_factor = 0.3388
-	power_load_factor = 0.396
-	# power_load_factor = 0.39
+	# power_load_factor = 0.7347408693 # dispatcher fails to converge
+	power_load_factor = 1.0
+	print(power_load_factor)
 	power_factor = 0.0
 	object_load.multiplyLoadFactor(power_load_factor, power_factor)
+	for load in object_load.matrix:
+		if load[ODC.Load.ID] == 4.0 or load[ODC.Load.ID] == 20.0:
+			load[ODC.Load.REAL_LOAD] = load[ODC.Load.REAL_LOAD_MAX]
 
 	water_demand_scale = np.exp(0.0144362) # exponential, AIC = 582.27
 	water_demand_lb = 0.256
@@ -399,48 +401,52 @@ def main(dss_debug, write_cols):
 		grb_solvers.power_dispatch(object_load, object_generator, losses, exports)
 		new_loss = run_OpenDSS(0, True)
 		counter += 1
-		if math.fabs(losses - new_loss) > 0.5 or math.fabs(base_exports - new_exports) > 1.0 and counter < 10:
-			if counter > 9:
+		if math.fabs(losses - new_loss) > 1.0 or math.fabs(base_exports - new_exports) > 1.0 and counter < 50:
+			if counter > 49:
 				print('Dispatcher - Losses/Exports did not converge')
 				sys.exit(0)
-			losses = new_loss
-			if counter > 1:
-				exports += float((base_exports - new_exports))
+			losses += 0.8*(new_loss - losses)
+			# if counter > 1:
+			# 	exports += float((base_exports - new_exports))
 		else:
 			break
 
-	print(object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS] * object_generator.matrix[:, ODC.Generator.ID])
 	print('exports #1', 0.5 * (object_cable.matrix[33, ODC.Cable.REAL_POWER_2] - object_cable.matrix[33, ODC.Cable.REAL_POWER_1]))
-
-	for row in object_generator.matrix:
-		if row[ODC.Generator.OPERATIONAL_STATUS] == 1.0:
-			row[ODC.Generator.OPERATIONAL_STATUS] = 0.0
-			print(row[ODC.Generator.REAL_GENERATION])
-			break
 	print('')
 
-	losses = 0.0
-	base_exports = 0.0
-	new_exports = 0.0
-	export = 0.0
-	counter = 1
-	while True:
-		grb_solvers.contingency_response(object_load, object_generator, object_cable, losses, exports)
-		new_loss = run_OpenDSS(0, True)
-		counter +=1
-		if math.fabs(losses - new_loss) > 0.5 or math.fabs(base_exports - new_exports) > 1.0 and counter < 10:
-			if counter > 9:
-				print('Contingency Response - Losses/Exports did not converge')
-				sys.exit(0)
-			losses = new_loss
-			if counter > 1:
-				exports += float((base_exports - new_exports))
-		else:
-			break
+	counter = 0
+	for row in object_generator.matrix:
+		if row[ODC.Generator.REAL_GENERATION] != 0.0:
+			if counter == 4: # 4 5 6 # 4
+				print('generator', row[ODC.Generator.ID], 'is offline!')
+				row[ODC.Generator.REAL_GENERATION] = 0.0
+				row[ODC.Generator.OPERATIONAL_STATUS] = 0.0
+				break
+			counter += 1
 
-	print(power_load_factor)
+	counter = 0
+	for row in object_cable.matrix:
+		if row[ODC.Cable.ID] != 10.0 or row[ODC.Cable.ID] != 100:
+			if counter == 17: # 12, 17
+				print('cable', row[ODC.Cable.ID], 'is offline!')
+				row[ODC.Cable.OPERATIONAL_STATUS_A] = 0.0
+				break
+		counter += 1
+
+	run_OpenDSS(0, True)
+	branch_id_to_check = 34
+	print('branch id', object_cable.matrix[branch_id_to_check-1, ODC.Cable.ID])
+	print('branch',object_cable.matrix[branch_id_to_check-1, ODC.Cable.ID],'has power',0.5*(object_cable.matrix[branch_id_to_check-1, ODC.Cable.REAL_POWER_2] - object_cable.matrix[branch_id_to_check-1, ODC.Cable.REAL_POWER_1]))
+	print('max line load pt1', max(np.absolute(object_cable.matrix[:, ODC.Cable.A_PU_CAPACITY])))
+	print(object_cable.matrix[:, ODC.Cable.A_PU_CAPACITY])
+
+	grb_solvers.contingency_response(object_load, object_generator, object_cable, losses, exports)
+	
+	run_OpenDSS(0, True)
+	print('branch',object_cable.matrix[branch_id_to_check-1, ODC.Cable.ID],'has power',0.5*(object_cable.matrix[branch_id_to_check-1, ODC.Cable.REAL_POWER_2] - object_cable.matrix[branch_id_to_check-1, ODC.Cable.REAL_POWER_1]))
 	print('exports #2', 0.5 * (object_cable.matrix[33, ODC.Cable.REAL_POWER_2] - object_cable.matrix[33, ODC.Cable.REAL_POWER_1]))
-
+	print('max line load pt2', max(np.absolute(object_cable.matrix[:, ODC.Cable.A_PU_CAPACITY])))
+	print('')
 
 	# SIM STEP 3: RUN POWER-WATER SIMULATION
 	# --------------------------------------

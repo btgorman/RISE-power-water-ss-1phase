@@ -189,27 +189,39 @@ def main(dss_debug, write_cols):
 	lodf_tab = pd.DataFrame.from_csv('tables\lodf.csv', header=0, index_col=0)
 	ptdf_tab = pd.DataFrame.from_csv('tables\ptdf.csv', header=0, index_col=0)
 
+	ptdf_gen_id_check = 323.0
+	for gen in object_generator.matrix:
+		if gen[ODC.Generator.ID] == ptdf_gen_id_check:
+			gen[ODC.Generator.REAL_GENERATION] = gen[ODC.Generator.REAL_GENERATION_MAX_RATING]
 	run_OpenDSS(dss_debug, False)
 	branch_id_base = object_cable.matrix[:, ODC.Cable.ID]
 	branch_real_power_base = np.array(0.5*(object_cable.matrix[:, ODC.Cable.REAL_POWER_2] - object_cable.matrix[:, ODC.Cable.REAL_POWER_1]), copy=True)
+	est_branch_power_base = 0.5 * (object_cable.matrix[1-1, ODC.Cable.REAL_POWER_2] - object_cable.matrix[1-1, ODC.Cable.REAL_POWER_1])
 
-	# countcount = 0
-	# ptdf_estimator = np.array(object_cable.matrix[:, ODC.Cable.ID], copy=True)*0
-	# for gen in object_generator.matrix:
-	# 	delta = 0.3 * gen[ODC.Generator.REAL_GENERATION_MAX_RATING]
-	# 	object_generator.matrix[:, ODC.Generator.REAL_GENERATION] = real_load_factor * object_generator.matrix[:, ODC.Generator.REAL_GENERATION_MAX_RATING]
-	# 	gen[ODC.Generator.REAL_GENERATION] += delta
-	# 	run_OpenDSS(dss_debug, False)
-	# 	branch_real_power = np.array(0.5*(object_cable.matrix[:, ODC.Cable.REAL_POWER_2] - object_cable.matrix[:, ODC.Cable.REAL_POWER_1]), copy=True)
-	# 	branch_delta = branch_real_power - branch_real_power_base
+	countcount = 0
+	ptdf_estimator = np.array(object_cable.matrix[:, ODC.Cable.ID], copy=True)*0
+	for gen in object_generator.matrix:
+		if gen[ODC.Generator.ID] == ptdf_gen_id_check:
+			delta = -13330. #0.3 * gen[ODC.Generator.REAL_GENERATION_MAX_RATING]
+			print('projected delta is', delta)
+			print('actual delta is', max(gen[ODC.Generator.REAL_GENERATION_MIN_RATING]-gen[ODC.Generator.REAL_GENERATION], delta))
+			object_generator.matrix[:, ODC.Generator.REAL_GENERATION] = real_load_factor * object_generator.matrix[:, ODC.Generator.REAL_GENERATION_MAX_RATING]
+			gen[ODC.Generator.REAL_GENERATION] = gen[ODC.Generator.REAL_GENERATION_MAX_RATING]
+			gen[ODC.Generator.REAL_GENERATION] += delta
+			run_OpenDSS(dss_debug, False)
+			branch_real_power = np.array(0.5*(object_cable.matrix[:, ODC.Cable.REAL_POWER_2] - object_cable.matrix[:, ODC.Cable.REAL_POWER_1]), copy=True)
+			branch_delta = branch_real_power - branch_real_power_base
 
-	# 	ptdf_estimator = np.array(ptdf_tab.loc[int(gen[ODC.Generator.ID])])
-	# 	if countcount >= 0:
-	# 		print(max(np.absolute(branch_delta - delta*ptdf_estimator)))
-	# 		print(max((branch_delta - delta*lodf_estimator)/(0.5* branch_real_power+branch_real_power_base)))
-	# 		print(min((branch_delta - delta*lodf_estimator)/(0.5* branch_real_power+branch_real_power_base)))
-	# 		print('')
-	# 		countcount += 1
+			ptdf_estimator = np.array(ptdf_tab.loc[int(gen[ODC.Generator.ID])])
+			est_branch_power = 0.5 * (object_cable.matrix[1-1, ODC.Cable.REAL_POWER_2] - object_cable.matrix[1-1, ODC.Cable.REAL_POWER_1])
+			if countcount >= 0:
+				print(gen[ODC.Generator.ID])
+				print(max(np.absolute(branch_delta - delta*ptdf_estimator)))
+				print('branch 1 base', est_branch_power_base)
+				print('branch 1 new', est_branch_power)
+				print('branch 1 error', est_branch_power - (est_branch_power_base + delta*ptdf_tab.loc[int(ptdf_gen_id_check)]['1']))
+				print('')
+				countcount += 1
 
 	# countcount = 0
 	# lodf_estimator = np.array(object_cable.matrix[:, ODC.Cable.ID], copy=True)*0
@@ -232,38 +244,38 @@ def main(dss_debug, write_cols):
 	# 			print('')
 	# 			countcount +=1
 	
-	countcount = 0
-	delta_percent = 0.5
-	lodf_estimator = np.array(object_cable.matrix[:, ODC.Cable.ID], copy=True)*0
-	ptdf_estimator = np.array(object_cable.matrix[:, ODC.Cable.ID], copy=True)*0
-	for cable in object_cable.matrix:
-		if cable[ODC.Cable.ID] != 100.0:
-			object_generator.matrix[:, ODC.Generator.REAL_GENERATION] = real_load_factor * object_generator.matrix[:, ODC.Generator.REAL_GENERATION_MAX_RATING]
-			object_cable.matrix[:, ODC.Cable.OPERATIONAL_STATUS_A] = 1.0
-			cable[ODC.Cable.OPERATIONAL_STATUS_A] = 0.0
-			run_OpenDSS(dss_debug, False)
-			branch_real_power_line_base = np.array(0.5*(object_cable.matrix[:, ODC.Cable.REAL_POWER_2] - object_cable.matrix[:, ODC.Cable.REAL_POWER_1]), copy=True)
-			print(cable[ODC.Cable.ID])
+	# countcount = 0
+	# delta_percent = 0.5
+	# lodf_estimator = np.array(object_cable.matrix[:, ODC.Cable.ID], copy=True)*0
+	# ptdf_estimator = np.array(object_cable.matrix[:, ODC.Cable.ID], copy=True)*0
+	# for cable in object_cable.matrix:
+	# 	if cable[ODC.Cable.ID] != 100.0:
+	# 		object_generator.matrix[:, ODC.Generator.REAL_GENERATION] = real_load_factor * object_generator.matrix[:, ODC.Generator.REAL_GENERATION_MAX_RATING]
+	# 		object_cable.matrix[:, ODC.Cable.OPERATIONAL_STATUS_A] = 1.0
+	# 		cable[ODC.Cable.OPERATIONAL_STATUS_A] = 0.0
+	# 		run_OpenDSS(dss_debug, False)
+	# 		branch_real_power_line_base = np.array(0.5*(object_cable.matrix[:, ODC.Cable.REAL_POWER_2] - object_cable.matrix[:, ODC.Cable.REAL_POWER_1]), copy=True)
+	# 		print(cable[ODC.Cable.ID])
 
-			maxerror = 0.0
-			for gen in object_generator.matrix:
-				delta_kw = delta_percent * gen[ODC.Generator.REAL_GENERATION_MAX_RATING]
-				object_generator.matrix[:, ODC.Generator.REAL_GENERATION] = real_load_factor * object_generator.matrix[:, ODC.Generator.REAL_GENERATION_MAX_RATING]
-				gen[ODC.Generator.REAL_GENERATION] += delta_kw
-				run_OpenDSS(dss_debug, False)
-				branch_real_power = np.array(0.5*(object_cable.matrix[:, ODC.Cable.REAL_POWER_2] - object_cable.matrix[:, ODC.Cable.REAL_POWER_1]), copy=True)
-				branch_delta = branch_real_power - branch_real_power_line_base
+	# 		maxerror = 0.0
+	# 		for gen in object_generator.matrix:
+	# 			delta_kw = delta_percent * gen[ODC.Generator.REAL_GENERATION_MAX_RATING]
+	# 			object_generator.matrix[:, ODC.Generator.REAL_GENERATION] = real_load_factor * object_generator.matrix[:, ODC.Generator.REAL_GENERATION_MAX_RATING]
+	# 			gen[ODC.Generator.REAL_GENERATION] += delta_kw
+	# 			run_OpenDSS(dss_debug, False)
+	# 			branch_real_power = np.array(0.5*(object_cable.matrix[:, ODC.Cable.REAL_POWER_2] - object_cable.matrix[:, ODC.Cable.REAL_POWER_1]), copy=True)
+	# 			branch_delta = branch_real_power - branch_real_power_line_base
 
-				ptdf_estimator = np.array(ptdf_tab.loc[int(gen[ODC.Generator.ID])])
-				lodf_estimator = np.array(lodf_tab.loc[int(cable[ODC.Cable.ID])])
-				lodf_val = - lodf_tab.loc[int(cable[ODC.Cable.ID])][str(int(cable[ODC.Cable.ID]))]
-				otdf_val = ptdf_tab.loc[int(gen[ODC.Generator.ID])][str(int(cable[ODC.Cable.ID]))]
+	# 			ptdf_estimator = np.array(ptdf_tab.loc[int(gen[ODC.Generator.ID])])
+	# 			lodf_estimator = np.array(lodf_tab.loc[int(cable[ODC.Cable.ID])])
+	# 			lodf_val = - lodf_tab.loc[int(cable[ODC.Cable.ID])][str(int(cable[ODC.Cable.ID]))]
+	# 			otdf_val = ptdf_tab.loc[int(gen[ODC.Generator.ID])][str(int(cable[ODC.Cable.ID]))]
 
-				if countcount >= 0:
-					maxerror = max(maxerror, max(np.absolute(branch_delta - delta_kw*(ptdf_estimator + lodf_val*lodf_estimator*otdf_val))))
-				countcount += 1
-			print(maxerror)
-			print('')
+	# 			if countcount >= 0:
+	# 				maxerror = max(maxerror, max(np.absolute(branch_delta - delta_kw*(ptdf_estimator + lodf_val*lodf_estimator*otdf_val))))
+	# 			countcount += 1
+	# 		print(maxerror)
+	# 		print('')
 
 
 	# for b in range(0, branches):
