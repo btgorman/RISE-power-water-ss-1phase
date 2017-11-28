@@ -19,6 +19,8 @@ GEN_PRIORITY_KEY = {122: 1, 222: 1, 322: 1, 422: 1, 522: 1, 622: 1,
 GEN_PRIORITY_COUNT = {1: 6, 2: 2, 3: 1, 4: 4, 5: 4, 6: 3, 7: 3, 8: 5, 9: 4}
 
 NUMBER_OF_MINUTES = 10
+EXTRA_RESERVE_MARGIN = 0.1 # 8%
+EXTRA_RESERVE_MARGIN += 1.0
 
 # Unit commitment is a variable
 def power_dispatch(object_load, object_generator, losses, exports):
@@ -76,18 +78,18 @@ def power_dispatch(object_load, object_generator, losses, exports):
 		m.addConstr((SUM_LOAD+losses+exports) + 0.01 >= uc_1*gf_1*mx_dispatch[1] + uc_2*gf_2*mx_dispatch[2] + uc_3*gf_3*mx_dispatch[3] + uc_4*gf_4*mx_dispatch[4] + uc_5*gf_5*mx_dispatch[5] + uc_6*gf_6*mx_dispatch[6] + uc_7*gf_7*mx_dispatch[7] + uc_8*gf_8*mx_dispatch[8] + uc_9*gf_9*mx_dispatch[9], 'system_load_2')
 
 		# Constraint - Minimum required reserve for CAISO
-		m.addConstr(ra_1 + ra_2 + ra_3 + ra_4 + ra_5 + ra_6 + ra_7 + ra_8 + ra_9 >= uc_1*gf_1*mx_dispatch[1]*0.05 + (uc_2*gf_2*mx_dispatch[2] + uc_3*gf_3*mx_dispatch[3] + uc_4*gf_4*mx_dispatch[4] + uc_5*gf_5*mx_dispatch[5] + uc_6*gf_6*mx_dispatch[6] + uc_7*gf_7*mx_dispatch[7] + uc_8*gf_8*mx_dispatch[8] + uc_9*gf_9*mx_dispatch[9])*0.07, 'net_reserves')
+		m.addConstr(ra_1 + ra_2 + ra_3 + ra_4 + ra_5 + ra_6 + ra_7 + ra_8 + ra_9 >= EXTRA_RESERVE_MARGIN * (uc_1*gf_1*mx_dispatch[1]*0.05 + (uc_2*gf_2*mx_dispatch[2] + uc_3*gf_3*mx_dispatch[3] + uc_4*gf_4*mx_dispatch[4] + uc_5*gf_5*mx_dispatch[5] + uc_6*gf_6*mx_dispatch[6] + uc_7*gf_7*mx_dispatch[7] + uc_8*gf_8*mx_dispatch[8] + uc_9*gf_9*mx_dispatch[9])*0.07), 'net_reserves')
 
 		# Constraint - Minimum required reserve for largest unit
-		m.addConstr(GEN_PRIORITY_COUNT[1]*(ra_2 + ra_3 + ra_4 + ra_5 + ra_6 + ra_7 + ra_8 + ra_9) + (GEN_PRIORITY_COUNT[1] - 1) * ra_1 >= uc_1*gf_1*mx_dispatch[1], 'reserve_req_1')
-		m.addConstr(GEN_PRIORITY_COUNT[2]*(ra_1 + ra_3 + ra_4 + ra_5 + ra_6 + ra_7 + ra_8 + ra_9) + (GEN_PRIORITY_COUNT[2] - 1) * ra_2 >= uc_2*gf_2*mx_dispatch[2], 'reserve_req_2')
-		m.addConstr(GEN_PRIORITY_COUNT[3]*(ra_1 + ra_2 + ra_4 + ra_5 + ra_6 + ra_7 + ra_8 + ra_9) + (GEN_PRIORITY_COUNT[3] - 1) * ra_3 >= uc_3*gf_3*mx_dispatch[3], 'reserve_req_3')
-		m.addConstr(GEN_PRIORITY_COUNT[4]*(ra_1 + ra_2 + ra_3 + ra_5 + ra_6 + ra_7 + ra_8 + ra_9) + (GEN_PRIORITY_COUNT[4] - 1) * ra_4 >= uc_4*gf_4*mx_dispatch[4], 'reserve_req_4')
-		m.addConstr(GEN_PRIORITY_COUNT[5]*(ra_1 + ra_2 + ra_3 + ra_4 + ra_6 + ra_7 + ra_8 + ra_9) + (GEN_PRIORITY_COUNT[5] - 1) * ra_5 >= uc_5*gf_5*mx_dispatch[5], 'reserve_req_5')
-		m.addConstr(GEN_PRIORITY_COUNT[6]*(ra_1 + ra_2 + ra_3 + ra_4 + ra_5 + ra_7 + ra_8 + ra_9) + (GEN_PRIORITY_COUNT[6] - 1) * ra_6 >= uc_6*gf_6*mx_dispatch[6], 'reserve_req_6')
-		m.addConstr(GEN_PRIORITY_COUNT[7]*(ra_1 + ra_2 + ra_3 + ra_4 + ra_5 + ra_6 + ra_8 + ra_9) + (GEN_PRIORITY_COUNT[7] - 1) * ra_7 >= uc_7*gf_7*mx_dispatch[7], 'reserve_req_7')
-		m.addConstr(GEN_PRIORITY_COUNT[8]*(ra_1 + ra_2 + ra_3 + ra_4 + ra_5 + ra_6 + ra_7 + ra_9) + (GEN_PRIORITY_COUNT[8] - 1) * ra_8 >= uc_8*gf_8*mx_dispatch[8], 'reserve_req_8')
-		m.addConstr(GEN_PRIORITY_COUNT[9]*(ra_1 + ra_2 + ra_3 + ra_4 + ra_5 + ra_6 + ra_7 + ra_8) + (GEN_PRIORITY_COUNT[9] - 1) * ra_9 >= uc_9*gf_9*mx_dispatch[9], 'reserve_req_9')
+		m.addConstr(GEN_PRIORITY_COUNT[1]*(ra_2 + ra_3 + ra_4 + ra_5 + ra_6 + ra_7 + ra_8 + ra_9) + (GEN_PRIORITY_COUNT[1] - 1) * ra_1 >= EXTRA_RESERVE_MARGIN * (uc_1*gf_1*mx_dispatch[1]), 'reserve_req_1')
+		m.addConstr(GEN_PRIORITY_COUNT[2]*(ra_1 + ra_3 + ra_4 + ra_5 + ra_6 + ra_7 + ra_8 + ra_9) + (GEN_PRIORITY_COUNT[2] - 1) * ra_2 >= EXTRA_RESERVE_MARGIN * (uc_2*gf_2*mx_dispatch[2]), 'reserve_req_2')
+		m.addConstr(GEN_PRIORITY_COUNT[3]*(ra_1 + ra_2 + ra_4 + ra_5 + ra_6 + ra_7 + ra_8 + ra_9) + (GEN_PRIORITY_COUNT[3] - 1) * ra_3 >= EXTRA_RESERVE_MARGIN * (uc_3*gf_3*mx_dispatch[3]), 'reserve_req_3')
+		m.addConstr(GEN_PRIORITY_COUNT[4]*(ra_1 + ra_2 + ra_3 + ra_5 + ra_6 + ra_7 + ra_8 + ra_9) + (GEN_PRIORITY_COUNT[4] - 1) * ra_4 >= EXTRA_RESERVE_MARGIN * (uc_4*gf_4*mx_dispatch[4]), 'reserve_req_4')
+		m.addConstr(GEN_PRIORITY_COUNT[5]*(ra_1 + ra_2 + ra_3 + ra_4 + ra_6 + ra_7 + ra_8 + ra_9) + (GEN_PRIORITY_COUNT[5] - 1) * ra_5 >= EXTRA_RESERVE_MARGIN * (uc_5*gf_5*mx_dispatch[5]), 'reserve_req_5')
+		m.addConstr(GEN_PRIORITY_COUNT[6]*(ra_1 + ra_2 + ra_3 + ra_4 + ra_5 + ra_7 + ra_8 + ra_9) + (GEN_PRIORITY_COUNT[6] - 1) * ra_6 >= EXTRA_RESERVE_MARGIN * (uc_6*gf_6*mx_dispatch[6]), 'reserve_req_6')
+		m.addConstr(GEN_PRIORITY_COUNT[7]*(ra_1 + ra_2 + ra_3 + ra_4 + ra_5 + ra_6 + ra_8 + ra_9) + (GEN_PRIORITY_COUNT[7] - 1) * ra_7 >= EXTRA_RESERVE_MARGIN * (uc_7*gf_7*mx_dispatch[7]), 'reserve_req_7')
+		m.addConstr(GEN_PRIORITY_COUNT[8]*(ra_1 + ra_2 + ra_3 + ra_4 + ra_5 + ra_6 + ra_7 + ra_9) + (GEN_PRIORITY_COUNT[8] - 1) * ra_8 >= EXTRA_RESERVE_MARGIN * (uc_8*gf_8*mx_dispatch[8]), 'reserve_req_8')
+		m.addConstr(GEN_PRIORITY_COUNT[9]*(ra_1 + ra_2 + ra_3 + ra_4 + ra_5 + ra_6 + ra_7 + ra_8) + (GEN_PRIORITY_COUNT[9] - 1) * ra_9 >= EXTRA_RESERVE_MARGIN * (uc_9*gf_9*mx_dispatch[9]), 'reserve_req_9')
 
 		# Constraint - Maximum available reserve
 		m.addConstr(ra_1 <= uc_1 * (1.0 - gf_1) * mx_dispatch[1], 'reserve_avail_1_1')
@@ -113,6 +115,7 @@ def power_dispatch(object_load, object_generator, losses, exports):
 		m.params.outputFlag = 0
 		m.optimize()
 
+		reserves = 0
 		for elem in m.getVars():
 			if elem.varName == 'gf_1':
 				dispatch_factor[1] = float(elem.x)
@@ -232,18 +235,18 @@ def power_dispatch_2(object_load, object_generator, losses, exports):
 		m.addConstr((SUM_LOAD+losses+exports) + 0.01 >= uc_1*gf_1*mx_dispatch[1] + uc_2*gf_2*mx_dispatch[2] + uc_3*gf_3*mx_dispatch[3] + uc_4*gf_4*mx_dispatch[4] + uc_5*gf_5*mx_dispatch[5] + uc_6*gf_6*mx_dispatch[6] + uc_7*gf_7*mx_dispatch[7] + uc_8*gf_8*mx_dispatch[8] + uc_9*gf_9*mx_dispatch[9], 'system_load_2')
 
 		# Constraint - Minimum required reserve for CAISO
-		m.addConstr(ra_1 + ra_2 + ra_3 + ra_4 + ra_5 + ra_6 + ra_7 + ra_8 + ra_9 >= uc_1*gf_1*mx_dispatch[1]*0.05 + (uc_2*gf_2*mx_dispatch[2] + uc_3*gf_3*mx_dispatch[3] + uc_4*gf_4*mx_dispatch[4] + uc_5*gf_5*mx_dispatch[5] + uc_6*gf_6*mx_dispatch[6] + uc_7*gf_7*mx_dispatch[7] + uc_8*gf_8*mx_dispatch[8] + uc_9*gf_9*mx_dispatch[9])*0.07, 'net_reserves')
+		m.addConstr(ra_1 + ra_2 + ra_3 + ra_4 + ra_5 + ra_6 + ra_7 + ra_8 + ra_9 >= EXTRA_RESERVE_MARGIN * (uc_1*gf_1*mx_dispatch[1]*0.05 + (uc_2*gf_2*mx_dispatch[2] + uc_3*gf_3*mx_dispatch[3] + uc_4*gf_4*mx_dispatch[4] + uc_5*gf_5*mx_dispatch[5] + uc_6*gf_6*mx_dispatch[6] + uc_7*gf_7*mx_dispatch[7] + uc_8*gf_8*mx_dispatch[8] + uc_9*gf_9*mx_dispatch[9])*0.07), 'net_reserves')
 
 		# Constraint - Minimum required reserve for largest unit
-		m.addConstr(GEN_PRIORITY_COUNT[1]*(ra_2 + ra_3 + ra_4 + ra_5 + ra_6 + ra_7 + ra_8 + ra_9) + (GEN_PRIORITY_COUNT[1] - 1) * ra_1 >= uc_1*gf_1*mx_dispatch[1], 'reserve_req_1')
-		m.addConstr(GEN_PRIORITY_COUNT[2]*(ra_1 + ra_3 + ra_4 + ra_5 + ra_6 + ra_7 + ra_8 + ra_9) + (GEN_PRIORITY_COUNT[2] - 1) * ra_2 >= uc_2*gf_2*mx_dispatch[2], 'reserve_req_2')
-		m.addConstr(GEN_PRIORITY_COUNT[3]*(ra_1 + ra_2 + ra_4 + ra_5 + ra_6 + ra_7 + ra_8 + ra_9) + (GEN_PRIORITY_COUNT[3] - 1) * ra_3 >= uc_3*gf_3*mx_dispatch[3], 'reserve_req_3')
-		m.addConstr(GEN_PRIORITY_COUNT[4]*(ra_1 + ra_2 + ra_3 + ra_5 + ra_6 + ra_7 + ra_8 + ra_9) + (GEN_PRIORITY_COUNT[4] - 1) * ra_4 >= uc_4*gf_4*mx_dispatch[4], 'reserve_req_4')
-		m.addConstr(GEN_PRIORITY_COUNT[5]*(ra_1 + ra_2 + ra_3 + ra_4 + ra_6 + ra_7 + ra_8 + ra_9) + (GEN_PRIORITY_COUNT[5] - 1) * ra_5 >= uc_5*gf_5*mx_dispatch[5], 'reserve_req_5')
-		m.addConstr(GEN_PRIORITY_COUNT[6]*(ra_1 + ra_2 + ra_3 + ra_4 + ra_5 + ra_7 + ra_8 + ra_9) + (GEN_PRIORITY_COUNT[6] - 1) * ra_6 >= uc_6*gf_6*mx_dispatch[6], 'reserve_req_6')
-		m.addConstr(GEN_PRIORITY_COUNT[7]*(ra_1 + ra_2 + ra_3 + ra_4 + ra_5 + ra_6 + ra_8 + ra_9) + (GEN_PRIORITY_COUNT[7] - 1) * ra_7 >= uc_7*gf_7*mx_dispatch[7], 'reserve_req_7')
-		m.addConstr(GEN_PRIORITY_COUNT[8]*(ra_1 + ra_2 + ra_3 + ra_4 + ra_5 + ra_6 + ra_7 + ra_9) + (GEN_PRIORITY_COUNT[8] - 1) * ra_8 >= uc_8*gf_8*mx_dispatch[8], 'reserve_req_8')
-		m.addConstr(GEN_PRIORITY_COUNT[9]*(ra_1 + ra_2 + ra_3 + ra_4 + ra_5 + ra_6 + ra_7 + ra_8) + (GEN_PRIORITY_COUNT[9] - 1) * ra_9 >= uc_9*gf_9*mx_dispatch[9], 'reserve_req_9')
+		m.addConstr(GEN_PRIORITY_COUNT[1]*(ra_2 + ra_3 + ra_4 + ra_5 + ra_6 + ra_7 + ra_8 + ra_9) + (GEN_PRIORITY_COUNT[1] - 1) * ra_1 >= EXTRA_RESERVE_MARGIN * (uc_1*gf_1*mx_dispatch[1]), 'reserve_req_1')
+		m.addConstr(GEN_PRIORITY_COUNT[2]*(ra_1 + ra_3 + ra_4 + ra_5 + ra_6 + ra_7 + ra_8 + ra_9) + (GEN_PRIORITY_COUNT[2] - 1) * ra_2 >= EXTRA_RESERVE_MARGIN * (uc_2*gf_2*mx_dispatch[2]), 'reserve_req_2')
+		m.addConstr(GEN_PRIORITY_COUNT[3]*(ra_1 + ra_2 + ra_4 + ra_5 + ra_6 + ra_7 + ra_8 + ra_9) + (GEN_PRIORITY_COUNT[3] - 1) * ra_3 >= EXTRA_RESERVE_MARGIN * (uc_3*gf_3*mx_dispatch[3]), 'reserve_req_3')
+		m.addConstr(GEN_PRIORITY_COUNT[4]*(ra_1 + ra_2 + ra_3 + ra_5 + ra_6 + ra_7 + ra_8 + ra_9) + (GEN_PRIORITY_COUNT[4] - 1) * ra_4 >= EXTRA_RESERVE_MARGIN * (uc_4*gf_4*mx_dispatch[4]), 'reserve_req_4')
+		m.addConstr(GEN_PRIORITY_COUNT[5]*(ra_1 + ra_2 + ra_3 + ra_4 + ra_6 + ra_7 + ra_8 + ra_9) + (GEN_PRIORITY_COUNT[5] - 1) * ra_5 >= EXTRA_RESERVE_MARGIN * (uc_5*gf_5*mx_dispatch[5]), 'reserve_req_5')
+		m.addConstr(GEN_PRIORITY_COUNT[6]*(ra_1 + ra_2 + ra_3 + ra_4 + ra_5 + ra_7 + ra_8 + ra_9) + (GEN_PRIORITY_COUNT[6] - 1) * ra_6 >= EXTRA_RESERVE_MARGIN * (uc_6*gf_6*mx_dispatch[6]), 'reserve_req_6')
+		m.addConstr(GEN_PRIORITY_COUNT[7]*(ra_1 + ra_2 + ra_3 + ra_4 + ra_5 + ra_6 + ra_8 + ra_9) + (GEN_PRIORITY_COUNT[7] - 1) * ra_7 >= EXTRA_RESERVE_MARGIN * (uc_7*gf_7*mx_dispatch[7]), 'reserve_req_7')
+		m.addConstr(GEN_PRIORITY_COUNT[8]*(ra_1 + ra_2 + ra_3 + ra_4 + ra_5 + ra_6 + ra_7 + ra_9) + (GEN_PRIORITY_COUNT[8] - 1) * ra_8 >= EXTRA_RESERVE_MARGIN * (uc_8*gf_8*mx_dispatch[8]), 'reserve_req_8')
+		m.addConstr(GEN_PRIORITY_COUNT[9]*(ra_1 + ra_2 + ra_3 + ra_4 + ra_5 + ra_6 + ra_7 + ra_8) + (GEN_PRIORITY_COUNT[9] - 1) * ra_9 >= EXTRA_RESERVE_MARGIN * (uc_9*gf_9*mx_dispatch[9]), 'reserve_req_9')
 
 		# Constraint - Maximum available reserve
 		m.addConstr(ra_1 <= uc_1 * (1.0 - gf_1) * mx_dispatch[1], 'reserve_avail_1_1')
@@ -296,7 +299,7 @@ def power_dispatch_2(object_load, object_generator, losses, exports):
 	except gurobipy.GurobiError:
 		print('Gurobi error reported in power dispatch')
 
-def contingency_response(object_load, object_generator, object_cable, losses, exports):
+def contingency_response(object_load, object_generator, object_cable):
 
 	unit_recommit = {101: 0., 201: 0., 102: 0., 202: 0.}
 	unit_response = {101: 0., 201: 0., 301: 0., 401: 0., 102: 0., 202: 0., 302: 0., 402: 0., 107: 0., 207: 0., 307: 0., 113: 0., 213: 0., 313: 0., 115: 0., 215: 0., 315: 0., 415: 0., 515: 0., 615: 0., 116: 0., 118: 0., 121: 0., 122: 0., 222: 0., 322: 0., 422: 0., 522: 0., 622: 0., 123: 0., 223: 0., 323: 0}
@@ -309,10 +312,11 @@ def contingency_response(object_load, object_generator, object_cable, losses, ex
 	P_g = {}
 	P_g_min = {}
 	P_g_max = {}
+	MAX_RESPONSE = max(object_generator.matrix[:, ODC.Generator.REAL_GENERATION_MAX_RATING])
 	for row in object_generator.matrix:
 		if row[ODC.Generator.OPERATIONAL_STATUS] == 0.0:
 			row[ODC.Generator.REAL_GENERATION] = 0.0
-		uc_g[int(row[ODC.Generator.ID])] = row[ODC.Generator.OPERATIONAL_STATUS] * row[ODC.Generator.FUNCTIONAL_STATUS]
+		uc_g[int(row[ODC.Generator.ID])] = row[ODC.Generator.OPERATIONAL_STATUS]
 		r_g[int(row[ODC.Generator.ID])] = row[ODC.Generator.RAMP_RATE]
 		P_g[int(row[ODC.Generator.ID])] = row[ODC.Generator.REAL_GENERATION]
 		P_g_min[int(row[ODC.Generator.ID])] = row[ODC.Generator.REAL_GENERATION_MIN_RATING]
@@ -344,47 +348,48 @@ def contingency_response(object_load, object_generator, object_cable, losses, ex
 	try:
 		m = gurobipy.Model('mip1')
 		
-		slack = 0.1 # kW # slack = m.addVar(lb=0.0, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name='slack')
+		slack = 0.1 # kW
+		# slack = m.addVar(lb=0.0, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name='slack')
 
-		mint = m.addVar(lb=0.0, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name='mint') #minutes
+		mint = m.addVar(lb=0.0, ub=100.0, vtype=GRB.CONTINUOUS, name='mint') #minutes
 
 		uc_101 = m.addVar(lb=0.0, ub=1.0, vtype=GRB.BINARY, name='uc_101') # combustion turbine with fast start capability
 		uc_201 = m.addVar(lb=0.0, ub=1.0, vtype=GRB.BINARY, name='uc_201') # combustion turbine with fast start capability
 		uc_102 = m.addVar(lb=0.0, ub=1.0, vtype=GRB.BINARY, name='uc_102') # combustion turbine with fast start capability
 		uc_202 = m.addVar(lb=0.0, ub=1.0, vtype=GRB.BINARY, name='uc_202') # combustion turbine with fast start capability
 
-		r_101 = m.addVar(lb=-GRB.INFINITY, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name='r_101') # combustion turbine with fast start capability
-		r_201 = m.addVar(lb=-GRB.INFINITY, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name='r_201') # combustion turbine with fast start capability
-		r_301 = m.addVar(lb=-GRB.INFINITY, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name='r_301')
-		r_401 = m.addVar(lb=-GRB.INFINITY, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name='r_401')
-		r_102 = m.addVar(lb=-GRB.INFINITY, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name='r_102') # combustion turbine with fast start capability
-		r_202 = m.addVar(lb=-GRB.INFINITY, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name='r_202') # combustion turbine with fast start capability
-		r_302 = m.addVar(lb=-GRB.INFINITY, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name='r_302')
-		r_402 = m.addVar(lb=-GRB.INFINITY, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name='r_402')
-		r_107 = m.addVar(lb=-GRB.INFINITY, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name='r_107')
-		r_207 = m.addVar(lb=-GRB.INFINITY, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name='r_207')
-		r_307 = m.addVar(lb=-GRB.INFINITY, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name='r_307')
-		r_113 = m.addVar(lb=-GRB.INFINITY, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name='r_113')
-		r_213 = m.addVar(lb=-GRB.INFINITY, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name='r_213')
-		r_313 = m.addVar(lb=-GRB.INFINITY, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name='r_313')
-		r_115 = m.addVar(lb=-GRB.INFINITY, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name='r_115')
-		r_215 = m.addVar(lb=-GRB.INFINITY, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name='r_215')
-		r_315 = m.addVar(lb=-GRB.INFINITY, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name='r_315')
-		r_415 = m.addVar(lb=-GRB.INFINITY, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name='r_415')
-		r_515 = m.addVar(lb=-GRB.INFINITY, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name='r_515')
-		r_615 = m.addVar(lb=-GRB.INFINITY, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name='r_615')
-		r_116 = m.addVar(lb=-GRB.INFINITY, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name='r_116')
-		r_118 = m.addVar(lb=-GRB.INFINITY, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name='r_118')
-		r_121 = m.addVar(lb=-GRB.INFINITY, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name='r_121')
-		r_122 = m.addVar(lb=-GRB.INFINITY, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name='r_122')
-		r_222 = m.addVar(lb=-GRB.INFINITY, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name='r_222')
-		r_322 = m.addVar(lb=-GRB.INFINITY, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name='r_322')
-		r_422 = m.addVar(lb=-GRB.INFINITY, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name='r_422')
-		r_522 = m.addVar(lb=-GRB.INFINITY, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name='r_522')
-		r_622 = m.addVar(lb=-GRB.INFINITY, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name='r_622')
-		r_123 = m.addVar(lb=-GRB.INFINITY, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name='r_123')
-		r_223 = m.addVar(lb=-GRB.INFINITY, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name='r_223')
-		r_323 = m.addVar(lb=-GRB.INFINITY, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name='r_323')
+		r_101 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_101') # combustion turbine with fast start capability
+		r_201 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_201') # combustion turbine with fast start capability
+		r_301 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_301')
+		r_401 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_401')
+		r_102 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_102') # combustion turbine with fast start capability
+		r_202 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_202') # combustion turbine with fast start capability
+		r_302 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_302')
+		r_402 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_402')
+		r_107 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_107')
+		r_207 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_207')
+		r_307 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_307')
+		r_113 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_113')
+		r_213 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_213')
+		r_313 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_313')
+		r_115 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_115')
+		r_215 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_215')
+		r_315 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_315')
+		r_415 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_415')
+		r_515 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_515')
+		r_615 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_615')
+		r_116 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_116')
+		r_118 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_118')
+		r_121 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_121')
+		r_122 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_122')
+		r_222 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_222')
+		r_322 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_322')
+		r_422 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_422')
+		r_522 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_522')
+		r_622 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_622')
+		r_123 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_123')
+		r_223 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_223')
+		r_323 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_323')
 
 		# Objective function
 		m.setObjective(mint, GRB.MINIMIZE)
@@ -526,12 +531,12 @@ def contingency_response(object_load, object_generator, object_cable, losses, ex
 		m.addConstr(r_323 <= uc_g[323] * (mint * r_g[323]))
 
 		# # Re-dispatch must be greater than minimum generation *********************************************************************
-		m.addConstr(P_g[101] + r_101 >= P_g_min[101])
-		m.addConstr(P_g[201] + r_201 >= P_g_min[201])
+		m.addConstr(uc_101*P_g[101] + r_101 >= P_g_min[101])
+		m.addConstr(uc_201*P_g[201] + r_201 >= P_g_min[201])
 		m.addConstr(uc_g[301]*P_g[301] + r_301 >= uc_g[301]*P_g_min[301])
 		m.addConstr(uc_g[401]*P_g[401] + r_401 >= uc_g[401]*P_g_min[401])
-		m.addConstr(P_g[102] + r_102 >= P_g_min[102])
-		m.addConstr(P_g[202] + r_202 >= P_g_min[202])
+		m.addConstr(uc_102*P_g[102] + r_102 >= P_g_min[102])
+		m.addConstr(uc_202*P_g[202] + r_202 >= P_g_min[202])
 		m.addConstr(uc_g[302]*P_g[302] + r_302 >= uc_g[302]*P_g_min[302])
 		m.addConstr(uc_g[402]*P_g[402] + r_402 >= uc_g[402]*P_g_min[402])
 		m.addConstr(uc_g[107]*P_g[107] + r_107 >= uc_g[107]*P_g_min[107])
@@ -560,12 +565,12 @@ def contingency_response(object_load, object_generator, object_cable, losses, ex
 		m.addConstr(uc_g[323]*P_g[323] + r_323 >= uc_g[323]*P_g_min[323])
 
 		# # # Re-dispatch must be less than maximum generation ************************************************************************
-		m.addConstr(P_g[101] + r_101 <= P_g_max[101])
-		m.addConstr(P_g[201] + r_201 <= P_g_max[201])
+		m.addConstr(uc_101*P_g[101] + r_101 <= P_g_max[101])
+		m.addConstr(uc_201*P_g[201] + r_201 <= P_g_max[201])
 		m.addConstr(uc_g[301]*P_g[301] + r_301 <= uc_g[301]*P_g_max[301])
 		m.addConstr(uc_g[401]*P_g[401] + r_401 <= uc_g[401]*P_g_max[401])
-		m.addConstr(P_g[102] + r_102 <= P_g_max[102])
-		m.addConstr(P_g[202] + r_202 <= P_g_max[202])
+		m.addConstr(uc_102*P_g[102] + r_102 <= P_g_max[102])
+		m.addConstr(uc_202*P_g[202] + r_202 <= P_g_max[202])
 		m.addConstr(uc_g[302]*P_g[302] + r_302 <= uc_g[302]*P_g_max[302])
 		m.addConstr(uc_g[402]*P_g[402] + r_402 <= uc_g[402]*P_g_max[402])
 		m.addConstr(uc_g[107]*P_g[107] + r_107 <= uc_g[107]*P_g_max[107])
@@ -2777,7 +2782,7 @@ def contingency_response(object_load, object_generator, object_cable, losses, ex
 		m.params.outputFlag = 0
 		m.optimize()
 
-		minute_results = 0.
+		opt_results = 0.
 		for elem in m.getVars():
 			if elem.varName == 'uc_101':
 				unit_recommit[101] = float(round(elem.x))
@@ -2852,7 +2857,7 @@ def contingency_response(object_load, object_generator, object_cable, losses, ex
 			elif elem.varName == 'r_323':
 				unit_response[323] = float(elem.x)
 			elif elem.varName == 'mint':
-				minute_results = float(elem.x)
+				opt_results = float(elem.x)
 
 		# unit_response[101] = 0.0
 		# unit_response[201] = 0.0
@@ -2870,13 +2875,16 @@ def contingency_response(object_load, object_generator, object_cable, losses, ex
 		# unit_response[223] = 0.0
 
 		for row in object_generator.matrix:
+			row[ODC.Generator.REAL_GENERATION] = uc_g[int(row[ODC.Generator.ID])]*row[ODC.Generator.REAL_GENERATION]
 			if row[ODC.Generator.ID] == 101.0 or row[ODC.Generator.ID] == 201.0 or row[ODC.Generator.ID] == 102.0 or row[ODC.Generator.ID] == 202.0:
 				uc_g[int(row[ODC.Generator.ID])] = unit_recommit[int(row[ODC.Generator.ID])]
 			row[ODC.Generator.OPERATIONAL_STATUS] = uc_g[int(row[ODC.Generator.ID])]
-			row[ODC.Generator.REAL_GENERATION] = uc_g[int(row[ODC.Generator.ID])]*row[ODC.Generator.REAL_GENERATION] + unit_response[int(row[ODC.Generator.ID])]
+			row[ODC.Generator.REAL_GENERATION] += row[ODC.Generator.OPERATIONAL_STATUS]*unit_response[int(row[ODC.Generator.ID])]
 
 		# for elem in unit_response:
 		# 	print(elem, unit_response[elem])
+
+		return opt_results
 
 	except gurobipy.GurobiError:
 		print('Gurobi error reported in contignency response')

@@ -20,6 +20,8 @@ import numpy as np
 import random, csv, sys, os
 import math
 
+from statistics import median
+
 import classes_water as ENC
 import classes_power as ODC
 import classes_interconnection as ICC
@@ -28,11 +30,10 @@ import grb_solvers
 from comtypes import automation
 import win32com.client
 # from win32com.client import makepy
-# import sys
 # sys.argv = ['makepy', 'OpenDSSEngine.DSS']
 # makepy.main()
 
-def main(dss_debug, write_cols):
+def main(dss_debug, write_cols, plf):
 	os_username = os.getlogin()
 
 	# --------------
@@ -374,8 +375,10 @@ def main(dss_debug, write_cols):
 	power_load_ub = 1.0
 	power_load_factor = min(np.random.lognormal(power_load_mu, power_load_sigma, size=None), power_load_ub)
 	power_load_factor = max(power_load_factor, power_load_lb)
+	power_load_factor = plf
 	power_factor = 0.0
 	object_load.multiplyLoadFactor(power_load_factor, power_factor)
+	print('power load factor', power_load_factor)
 	for load in object_load.matrix:
 		if load[ODC.Load.ID] == 4.0 or load[ODC.Load.ID] == 20.0:
 			load[ODC.Load.REAL_LOAD] = load[ODC.Load.REAL_LOAD_MAX]
@@ -388,54 +391,62 @@ def main(dss_debug, write_cols):
 
 	# SIM STEP 2: SET GENERATOR DISPATCH
 	# ----------------------------------
-	base_exports = 0.0 # kW
-	new_exports = 0.0
-	exports = base_exports
+	exports = 0.0 # kW
 	losses = 0.0 # kW
-	counter = 0
-	lost_min = 1000000.0
 
-	while True:
-		grb_solvers.power_dispatch(object_load, object_generator, losses, exports) # unit commitment is variable
-		new_loss = run_OpenDSS(0, True)
-		counter += 1
+	def fun_set_power_dispatch(object_load, object_generator, losses, exports):
+		counter = 0
+		lost_min = 10000000.0
+		while True:
+			grb_solvers.power_dispatch(object_load, object_generator, losses, exports) # unit commitment is variable
+			new_loss = run_OpenDSS(0, True)
+			counter += 1
 
-		if math.fabs(losses - new_loss) > 1.0:
-			if counter > 199:
-				print('Dispatcher - Losses/Exports did not converge')
-				print(elem)
-				sys.exit(0)
-			elif counter > 85:
-				while True:
-					object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS] = dispatcher_min
-					grb_solvers.power_dispatch_2(object_load, object_generator, losses, exports) # unit commitment is input
-					new_loss = run_OpenDSS(0, True)
-					counter +=1
+			if math.fabs(losses - new_loss) > 1.0:
+				if counter > 199:
+					print('Dispatcher - Losses/Exports did not converge')
+					sys.exit()
+				elif counter > 150:
+					while True:
+						object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS] = dispatcher_max
+						grb_solvers.power_dispatch_2(object_load, object_generator, losses, exports) # unit commitment is input
+						new_loss = run_OpenDSS(0, True)
+						counter +=1
 
-					if counter > 199:
-						print('Dispatcher - Losses/Exports did not converge')
-						print(elem)
-						syste.exit()
-					elif math.fabs(losses - new_loss) < 1.0:
-						break
+						if math.fabs(losses - new_loss) < 1.0:
+							return 0
+						else:
+							losses += 0.8 * (new_loss - losses)
+				elif counter > 100:
+					while True:
+						object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS] = dispatcher_min
+						grb_solvers.power_dispatch_2(object_load, object_generator, losses, exports) # unit commitment is input
+						new_loss = run_OpenDSS(0, True)
+						counter +=1
+
+						if math.fabs(losses - new_loss) < 1.0:
+							return 0
+						else:
+							losses += 0.8 * (new_loss - losses)
+				elif counter > 50:
+					if math.fabs(new_loss) < math.fabs(lost_min):
+						lost_min = new_loss
+						dispatcher_min = np.array(object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS], copy=True)
 					else:
-						losses += 0.8 * (new_loss - losses)
-			elif counter > 40:
-				if math.fabs(new_loss) < math.fabs(lost_min):
-					lost_min = new_loss
-					dispatcher_min = np.array(object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS], copy=True)
-			losses += 0.8*(new_loss - losses)
-		else:
-			break
+						dispatcher_max = np.array(object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS], copy=True)
+				losses += 0.8*(new_loss - losses)
+			else:
+				return 0
 
+	fun_set_power_dispatch(object_load, object_generator, losses, exports)
 	print('exports #1', 0.5 * (object_cable.matrix[33, ODC.Cable.REAL_POWER_2] - object_cable.matrix[33, ODC.Cable.REAL_POWER_1]))
 	print('')
 
 	# counter = 0
 	# for row in object_generator.matrix:
 	# 	if row[ODC.Generator.REAL_GENERATION] != 0.0:
-	# 		if counter == 4: # 4 5 6 # 4 5 6
-	# 			print('generator', row[ODC.Generator.ID], 'is offline!')
+	# 		if counter == 5: # 4 5 6 # 4 5 6
+	# 			# print('generator', row[ODC.Generator.ID], 'is offline!')
 	# 			row[ODC.Generator.REAL_GENERATION] = 0.0
 	# 			row[ODC.Generator.OPERATIONAL_STATUS] = 0.0
 	# 			break
@@ -443,7 +454,7 @@ def main(dss_debug, write_cols):
 
 	# counter = 0
 	# for row in object_cable.matrix:
-	# 	if row[ODC.Cable.ID] != 10.0 or row[ODC.Cable.ID] != 100:
+	# 	if row[ODC.Cable.ID] != 10.0 or row[ODC.Cable.ID] != 100.0:
 	# 		if counter == 17: # 12, 17
 	# 			print('cable', row[ODC.Cable.ID], 'is offline!')
 	# 			row[ODC.Cable.OPERATIONAL_STATUS_A] = 0.0
@@ -463,19 +474,16 @@ def main(dss_debug, write_cols):
 	# 		min_load_idx = counter
 	# 	counter += 1
 
-	# print('load', object_load.matrix[min_load_idx, ODC.Load.ID], 'is offline!', object_load.matrix[min_load_idx, ODC.Load.REAL_LOAD])
-	# print('second min load is', object_load.matrix[second_min_load_idx, ODC.Load.ID], object_load.matrix[second_min_load_idx, ODC.Load.REAL_LOAD])
-	# object_load.matrix[min_load_idx, ODC.Load.REAL_LOAD] = 0.0
+	run_OpenDSS(0, True)
+	print('load', object_load.matrix[min_load_idx, ODC.Load.ID], 'is offline!', object_load.matrix[min_load_idx, ODC.Load.REAL_LOAD])
+	print('second min load is', object_load.matrix[second_min_load_idx, ODC.Load.ID], object_load.matrix[second_min_load_idx, ODC.Load.REAL_LOAD])
+	object_load.matrix[min_load_idx, ODC.Load.REAL_LOAD] = 0.0
 
 	branch_id_to_check = 34
-	print('branch id', object_cable.matrix[branch_id_to_check-1, ODC.Cable.ID])
-	print('branch',object_cable.matrix[branch_id_to_check-1, ODC.Cable.ID],'has power',0.5*(object_cable.matrix[branch_id_to_check-1, ODC.Cable.REAL_POWER_2] - object_cable.matrix[branch_id_to_check-1, ODC.Cable.REAL_POWER_1]))
+	print('branch ID',object_cable.matrix[branch_id_to_check-1, ODC.Cable.ID],'has power',0.5*(object_cable.matrix[branch_id_to_check-1, ODC.Cable.REAL_POWER_2] - object_cable.matrix[branch_id_to_check-1, ODC.Cable.REAL_POWER_1]))
 	print('max line load pt1', max(np.absolute(object_cable.matrix[:, ODC.Cable.A_PU_CAPACITY])))
-	print(object_cable.matrix[:, ODC.Cable.A_PU_CAPACITY])
 	
-	losses = 0
-	exports = 0
-	grb_solvers.contingency_response(object_load, object_generator, object_cable, losses, exports)
+	minutes_to_respond = grb_solvers.contingency_response(object_load, object_generator, object_cable)
 	
 	run_OpenDSS(0, True)
 	print('branch',object_cable.matrix[branch_id_to_check-1, ODC.Cable.ID],'has power',0.5*(object_cable.matrix[branch_id_to_check-1, ODC.Cable.REAL_POWER_2] - object_cable.matrix[branch_id_to_check-1, ODC.Cable.REAL_POWER_1]))
@@ -527,11 +535,9 @@ if __name__ == '__main__':
 	write_cols = False # Write column names to seperate file
 	dss_debug = 0
 
-	main(dss_debug, write_cols)
+	power_load_factor = float(sys.argv[1])
 
-
-
-
+	main(dss_debug, write_cols, power_load_factor)
 
 
 
