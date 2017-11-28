@@ -20,6 +20,7 @@ GEN_PRIORITY_COUNT = {1: 6, 2: 2, 3: 1, 4: 4, 5: 4, 6: 3, 7: 3, 8: 5, 9: 4}
 
 NUMBER_OF_MINUTES = 10
 
+# Unit commitment is a variable
 def power_dispatch(object_load, object_generator, losses, exports):
 	mx_dispatch = {1: 0., 2: 0., 3: 0., 4: 0., 5: 0., 6: 0., 7: 0., 8: 0., 9: 0.}
 	mx_reserve = {1: 0., 2: 0., 3: 0., 4: 0., 5: 0., 6: 0., 7: 0., 8: 0., 9: 0.}
@@ -158,6 +159,7 @@ def power_dispatch(object_load, object_generator, losses, exports):
 	except gurobipy.GurobiError:
 		print('Gurobi error reported in power dispatch')
 
+# Unit commitment is an input
 def power_dispatch_2(object_load, object_generator, losses, exports):
 	mx_dispatch = {1: 0., 2: 0., 3: 0., 4: 0., 5: 0., 6: 0., 7: 0., 8: 0., 9: 0.}
 	mx_reserve = {1: 0., 2: 0., 3: 0., 4: 0., 5: 0., 6: 0., 7: 0., 8: 0., 9: 0.}
@@ -342,7 +344,9 @@ def contingency_response(object_load, object_generator, object_cable, losses, ex
 	try:
 		m = gurobipy.Model('mip1')
 		
-		slack = m.addVar(lb=0.0, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name='slack')
+		slack = 0.1 # kW # slack = m.addVar(lb=0.0, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name='slack')
+
+		mint = m.addVar(lb=0.0, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name='mint') #minutes
 
 		uc_101 = m.addVar(lb=0.0, ub=1.0, vtype=GRB.BINARY, name='uc_101') # combustion turbine with fast start capability
 		uc_201 = m.addVar(lb=0.0, ub=1.0, vtype=GRB.BINARY, name='uc_201') # combustion turbine with fast start capability
@@ -382,11 +386,10 @@ def contingency_response(object_load, object_generator, object_cable, losses, ex
 		r_223 = m.addVar(lb=-GRB.INFINITY, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name='r_223')
 		r_323 = m.addVar(lb=-GRB.INFINITY, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name='r_323')
 
-		m.setObjective(slack, GRB.MINIMIZE)
+		# Objective function
+		m.setObjective(mint, GRB.MINIMIZE)
 
-		# m.addConstr(SUM_LOAD+losses+exports - slack <= uc_101*P_g[101] + r_101 + uc_201*P_g[201] + r_201 + P_g[301] + r_301 + P_g[401] + r_401 + uc_102*P_g[102] + r_102 + uc_202*P_g[202] + r_202 + P_g[302] + r_302 + P_g[402] + r_402 + P_g[107] + r_107 + P_g[207] + r_207 + P_g[307] + r_307 + P_g[113] + r_113 + P_g[213] + r_213 + P_g[313] + r_313 + P_g[115] + r_115 + P_g[215] + r_215 + P_g[315] + r_315 + P_g[415] + r_415 + P_g[515] + r_515 + P_g[615] + r_615 + P_g[116] + r_116 + P_g[118] + r_118 + P_g[121] + r_121 + P_g[122] + r_122 + P_g[222] + r_222 + P_g[322] + r_322 + P_g[422] + r_422 + P_g[522] + r_522 + P_g[622] + r_622 + P_g[123] + r_123 + P_g[223] + r_223 + P_g[323] + r_323)
-		# m.addConstr(SUM_LOAD+losses+exports + slack >= uc_101*P_g[101] + r_101 + uc_201*P_g[201] + r_201 + P_g[301] + r_301 + P_g[401] + r_401 + uc_102*P_g[102] + r_102 + uc_202*P_g[202] + r_202 + P_g[302] + r_302 + P_g[402] + r_402 + P_g[107] + r_107 + P_g[207] + r_207 + P_g[307] + r_307 + P_g[113] + r_113 + P_g[213] + r_213 + P_g[313] + r_313 + P_g[115] + r_115 + P_g[215] + r_215 + P_g[315] + r_315 + P_g[415] + r_415 + P_g[515] + r_515 + P_g[615] + r_615 + P_g[116] + r_116 + P_g[118] + r_118 + P_g[121] + r_121 + P_g[122] + r_122 + P_g[222] + r_222 + P_g[322] + r_322 + P_g[422] + r_422 + P_g[522] + r_522 + P_g[622] + r_622 + P_g[123] + r_123 + P_g[223] + r_223 + P_g[323] + r_323)
-
+		# Zero out imports/exports
 		m.addConstr(-slack <= P_b[100] + uc_101*r_101*(ptdf_tab.loc[101]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[101][str(outage_id)]) +
 			uc_201*r_201*(ptdf_tab.loc[201]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[201][str(outage_id)]) +
 			uc_g[301]*r_301*(ptdf_tab.loc[301]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[301][str(outage_id)]) +
@@ -455,72 +458,72 @@ def contingency_response(object_load, object_generator, object_cable, losses, ex
 
 
 		# Re-dispatch must be greater than 10-minutes of ramping down *************************************************************
-		m.addConstr(r_101 >= uc_101 * (NUMBER_OF_MINUTES * -r_g[101]))
-		m.addConstr(r_201 >= uc_201 * (NUMBER_OF_MINUTES * -r_g[201]))
-		m.addConstr(r_301 >= uc_g[301] * (NUMBER_OF_MINUTES * -r_g[301]))
-		m.addConstr(r_401 >= uc_g[401] * (NUMBER_OF_MINUTES * -r_g[401]))
-		m.addConstr(r_102 >= uc_102 * (NUMBER_OF_MINUTES * -r_g[102]))
-		m.addConstr(r_202 >= uc_202 * (NUMBER_OF_MINUTES * -r_g[202]))
-		m.addConstr(r_302 >= uc_g[302] * (NUMBER_OF_MINUTES * -r_g[302]))
-		m.addConstr(r_402 >= uc_g[402] * (NUMBER_OF_MINUTES * -r_g[402]))
-		m.addConstr(r_107 >= uc_g[107] * (NUMBER_OF_MINUTES * -r_g[107]))
-		m.addConstr(r_207 >= uc_g[207] * (NUMBER_OF_MINUTES * -r_g[207]))
-		m.addConstr(r_307 >= uc_g[307] * (NUMBER_OF_MINUTES * -r_g[307]))
-		m.addConstr(r_113 >= uc_g[113] * (NUMBER_OF_MINUTES * -r_g[113]))
-		m.addConstr(r_213 >= uc_g[213] * (NUMBER_OF_MINUTES * -r_g[213]))
-		m.addConstr(r_313 >= uc_g[313] * (NUMBER_OF_MINUTES * -r_g[313]))
-		m.addConstr(r_115 >= uc_g[115] * (NUMBER_OF_MINUTES * -r_g[115]))
-		m.addConstr(r_215 >= uc_g[215] * (NUMBER_OF_MINUTES * -r_g[215]))
-		m.addConstr(r_315 >= uc_g[315] * (NUMBER_OF_MINUTES * -r_g[315]))
-		m.addConstr(r_415 >= uc_g[415] * (NUMBER_OF_MINUTES * -r_g[415]))
-		m.addConstr(r_515 >= uc_g[515] * (NUMBER_OF_MINUTES * -r_g[515]))
-		m.addConstr(r_615 >= uc_g[615] * (NUMBER_OF_MINUTES * -r_g[615]))
-		m.addConstr(r_116 >= uc_g[116] * (NUMBER_OF_MINUTES * -r_g[116]))
-		m.addConstr(r_118 >= uc_g[118] * (NUMBER_OF_MINUTES * -r_g[118]))
-		m.addConstr(r_121 >= uc_g[121] * (NUMBER_OF_MINUTES * -r_g[121]))
-		m.addConstr(r_122 >= uc_g[122] * (NUMBER_OF_MINUTES * -r_g[122]))
-		m.addConstr(r_222 >= uc_g[222] * (NUMBER_OF_MINUTES * -r_g[222]))
-		m.addConstr(r_322 >= uc_g[322] * (NUMBER_OF_MINUTES * -r_g[322]))
-		m.addConstr(r_422 >= uc_g[422] * (NUMBER_OF_MINUTES * -r_g[422]))
-		m.addConstr(r_522 >= uc_g[522] * (NUMBER_OF_MINUTES * -r_g[522]))
-		m.addConstr(r_622 >= uc_g[622] * (NUMBER_OF_MINUTES * -r_g[622]))
-		m.addConstr(r_123 >= uc_g[123] * (NUMBER_OF_MINUTES * -r_g[123]))
-		m.addConstr(r_223 >= uc_g[223] * (NUMBER_OF_MINUTES * -r_g[223]))
-		m.addConstr(r_323 >= uc_g[323] * (NUMBER_OF_MINUTES * -r_g[323]))
+		m.addConstr(r_101 >= uc_101 * (mint * -r_g[101]))
+		m.addConstr(r_201 >= uc_201 * (mint * -r_g[201]))
+		m.addConstr(r_301 >= uc_g[301] * (mint * -r_g[301]))
+		m.addConstr(r_401 >= uc_g[401] * (mint * -r_g[401]))
+		m.addConstr(r_102 >= uc_102 * (mint * -r_g[102]))
+		m.addConstr(r_202 >= uc_202 * (mint * -r_g[202]))
+		m.addConstr(r_302 >= uc_g[302] * (mint * -r_g[302]))
+		m.addConstr(r_402 >= uc_g[402] * (mint * -r_g[402]))
+		m.addConstr(r_107 >= uc_g[107] * (mint * -r_g[107]))
+		m.addConstr(r_207 >= uc_g[207] * (mint * -r_g[207]))
+		m.addConstr(r_307 >= uc_g[307] * (mint * -r_g[307]))
+		m.addConstr(r_113 >= uc_g[113] * (mint * -r_g[113]))
+		m.addConstr(r_213 >= uc_g[213] * (mint * -r_g[213]))
+		m.addConstr(r_313 >= uc_g[313] * (mint * -r_g[313]))
+		m.addConstr(r_115 >= uc_g[115] * (mint * -r_g[115]))
+		m.addConstr(r_215 >= uc_g[215] * (mint * -r_g[215]))
+		m.addConstr(r_315 >= uc_g[315] * (mint * -r_g[315]))
+		m.addConstr(r_415 >= uc_g[415] * (mint * -r_g[415]))
+		m.addConstr(r_515 >= uc_g[515] * (mint * -r_g[515]))
+		m.addConstr(r_615 >= uc_g[615] * (mint * -r_g[615]))
+		m.addConstr(r_116 >= uc_g[116] * (mint * -r_g[116]))
+		m.addConstr(r_118 >= uc_g[118] * (mint * -r_g[118]))
+		m.addConstr(r_121 >= uc_g[121] * (mint * -r_g[121]))
+		m.addConstr(r_122 >= uc_g[122] * (mint * -r_g[122]))
+		m.addConstr(r_222 >= uc_g[222] * (mint * -r_g[222]))
+		m.addConstr(r_322 >= uc_g[322] * (mint * -r_g[322]))
+		m.addConstr(r_422 >= uc_g[422] * (mint * -r_g[422]))
+		m.addConstr(r_522 >= uc_g[522] * (mint * -r_g[522]))
+		m.addConstr(r_622 >= uc_g[622] * (mint * -r_g[622]))
+		m.addConstr(r_123 >= uc_g[123] * (mint * -r_g[123]))
+		m.addConstr(r_223 >= uc_g[223] * (mint * -r_g[223]))
+		m.addConstr(r_323 >= uc_g[323] * (mint * -r_g[323]))
 
 		# # Re-dispatch must be less than 10-minutes of ramping up ******************************************************************
-		m.addConstr(r_101 <= uc_101 * (NUMBER_OF_MINUTES * r_g[101]))
-		m.addConstr(r_201 <= uc_201 * (NUMBER_OF_MINUTES * r_g[201]))
-		m.addConstr(r_301 <= uc_g[301] * (NUMBER_OF_MINUTES * r_g[301]))
-		m.addConstr(r_401 <= uc_g[401] * (NUMBER_OF_MINUTES * r_g[401]))
-		m.addConstr(r_102 <= uc_102 * (NUMBER_OF_MINUTES * r_g[102]))
-		m.addConstr(r_202 <= uc_202 * (NUMBER_OF_MINUTES * r_g[202]))
-		m.addConstr(r_302 <= uc_g[302] * (NUMBER_OF_MINUTES * r_g[302]))
-		m.addConstr(r_402 <= uc_g[402] * (NUMBER_OF_MINUTES * r_g[402]))
-		m.addConstr(r_107 <= uc_g[107] * (NUMBER_OF_MINUTES * r_g[107]))
-		m.addConstr(r_207 <= uc_g[207] * (NUMBER_OF_MINUTES * r_g[207]))
-		m.addConstr(r_307 <= uc_g[307] * (NUMBER_OF_MINUTES * r_g[307]))
-		m.addConstr(r_113 <= uc_g[113] * (NUMBER_OF_MINUTES * r_g[113]))
-		m.addConstr(r_213 <= uc_g[213] * (NUMBER_OF_MINUTES * r_g[213]))
-		m.addConstr(r_313 <= uc_g[313] * (NUMBER_OF_MINUTES * r_g[313]))
-		m.addConstr(r_115 <= uc_g[115] * (NUMBER_OF_MINUTES * r_g[115]))
-		m.addConstr(r_215 <= uc_g[215] * (NUMBER_OF_MINUTES * r_g[215]))
-		m.addConstr(r_315 <= uc_g[315] * (NUMBER_OF_MINUTES * r_g[315]))
-		m.addConstr(r_415 <= uc_g[415] * (NUMBER_OF_MINUTES * r_g[415]))
-		m.addConstr(r_515 <= uc_g[515] * (NUMBER_OF_MINUTES * r_g[515]))
-		m.addConstr(r_615 <= uc_g[615] * (NUMBER_OF_MINUTES * r_g[615]))
-		m.addConstr(r_116 <= uc_g[116] * (NUMBER_OF_MINUTES * r_g[116]))
-		m.addConstr(r_118 <= uc_g[118] * (NUMBER_OF_MINUTES * r_g[118]))
-		m.addConstr(r_121 <= uc_g[121] * (NUMBER_OF_MINUTES * r_g[121]))
-		m.addConstr(r_122 <= uc_g[122] * (NUMBER_OF_MINUTES * r_g[122]))
-		m.addConstr(r_222 <= uc_g[222] * (NUMBER_OF_MINUTES * r_g[222]))
-		m.addConstr(r_322 <= uc_g[322] * (NUMBER_OF_MINUTES * r_g[322]))
-		m.addConstr(r_422 <= uc_g[422] * (NUMBER_OF_MINUTES * r_g[422]))
-		m.addConstr(r_522 <= uc_g[522] * (NUMBER_OF_MINUTES * r_g[522]))
-		m.addConstr(r_622 <= uc_g[622] * (NUMBER_OF_MINUTES * r_g[622]))
-		m.addConstr(r_123 <= uc_g[123] * (NUMBER_OF_MINUTES * r_g[123]))
-		m.addConstr(r_223 <= uc_g[223] * (NUMBER_OF_MINUTES * r_g[223]))
-		m.addConstr(r_323 <= uc_g[323] * (NUMBER_OF_MINUTES * r_g[323]))
+		m.addConstr(r_101 <= uc_101 * (mint * r_g[101]))
+		m.addConstr(r_201 <= uc_201 * (mint * r_g[201]))
+		m.addConstr(r_301 <= uc_g[301] * (mint * r_g[301]))
+		m.addConstr(r_401 <= uc_g[401] * (mint * r_g[401]))
+		m.addConstr(r_102 <= uc_102 * (mint * r_g[102]))
+		m.addConstr(r_202 <= uc_202 * (mint * r_g[202]))
+		m.addConstr(r_302 <= uc_g[302] * (mint * r_g[302]))
+		m.addConstr(r_402 <= uc_g[402] * (mint * r_g[402]))
+		m.addConstr(r_107 <= uc_g[107] * (mint * r_g[107]))
+		m.addConstr(r_207 <= uc_g[207] * (mint * r_g[207]))
+		m.addConstr(r_307 <= uc_g[307] * (mint * r_g[307]))
+		m.addConstr(r_113 <= uc_g[113] * (mint * r_g[113]))
+		m.addConstr(r_213 <= uc_g[213] * (mint * r_g[213]))
+		m.addConstr(r_313 <= uc_g[313] * (mint * r_g[313]))
+		m.addConstr(r_115 <= uc_g[115] * (mint * r_g[115]))
+		m.addConstr(r_215 <= uc_g[215] * (mint * r_g[215]))
+		m.addConstr(r_315 <= uc_g[315] * (mint * r_g[315]))
+		m.addConstr(r_415 <= uc_g[415] * (mint * r_g[415]))
+		m.addConstr(r_515 <= uc_g[515] * (mint * r_g[515]))
+		m.addConstr(r_615 <= uc_g[615] * (mint * r_g[615]))
+		m.addConstr(r_116 <= uc_g[116] * (mint * r_g[116]))
+		m.addConstr(r_118 <= uc_g[118] * (mint * r_g[118]))
+		m.addConstr(r_121 <= uc_g[121] * (mint * r_g[121]))
+		m.addConstr(r_122 <= uc_g[122] * (mint * r_g[122]))
+		m.addConstr(r_222 <= uc_g[222] * (mint * r_g[222]))
+		m.addConstr(r_322 <= uc_g[322] * (mint * r_g[322]))
+		m.addConstr(r_422 <= uc_g[422] * (mint * r_g[422]))
+		m.addConstr(r_522 <= uc_g[522] * (mint * r_g[522]))
+		m.addConstr(r_622 <= uc_g[622] * (mint * r_g[622]))
+		m.addConstr(r_123 <= uc_g[123] * (mint * r_g[123]))
+		m.addConstr(r_223 <= uc_g[223] * (mint * r_g[223]))
+		m.addConstr(r_323 <= uc_g[323] * (mint * r_g[323]))
 
 		# # Re-dispatch must be greater than minimum generation *********************************************************************
 		m.addConstr(P_g[101] + r_101 >= P_g_min[101])
@@ -2774,7 +2777,7 @@ def contingency_response(object_load, object_generator, object_cable, losses, ex
 		m.params.outputFlag = 0
 		m.optimize()
 
-		slackresults = 0.
+		minute_results = 0.
 		for elem in m.getVars():
 			if elem.varName == 'uc_101':
 				unit_recommit[101] = float(round(elem.x))
@@ -2848,8 +2851,8 @@ def contingency_response(object_load, object_generator, object_cable, losses, ex
 				unit_response[223] = float(elem.x)
 			elif elem.varName == 'r_323':
 				unit_response[323] = float(elem.x)
-			elif elem.varName == 'slack':
-				slackresults = float(elem.x)
+			elif elem.varName == 'mint':
+				minute_results = float(elem.x)
 
 		# unit_response[101] = 0.0
 		# unit_response[201] = 0.0
@@ -2874,8 +2877,6 @@ def contingency_response(object_load, object_generator, object_cable, losses, ex
 
 		# for elem in unit_response:
 		# 	print(elem, unit_response[elem])
-
-		print('minimum slack', slackresults)
 
 	except gurobipy.GurobiError:
 		print('Gurobi error reported in contignency response')

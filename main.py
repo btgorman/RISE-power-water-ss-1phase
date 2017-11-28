@@ -396,7 +396,7 @@ def main(dss_debug, write_cols):
 	lost_min = 1000000.0
 
 	while True:
-		grb_solvers.power_dispatch(object_load, object_generator, losses, exports)
+		grb_solvers.power_dispatch(object_load, object_generator, losses, exports) # unit commitment is variable
 		new_loss = run_OpenDSS(0, True)
 		counter += 1
 
@@ -408,7 +408,7 @@ def main(dss_debug, write_cols):
 			elif counter > 85:
 				while True:
 					object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS] = dispatcher_min
-					grb_solvers.power_dispatch_2(object_load, object_generator, losses, exports)
+					grb_solvers.power_dispatch_2(object_load, object_generator, losses, exports) # unit commitment is input
 					new_loss = run_OpenDSS(0, True)
 					counter +=1
 
@@ -420,7 +420,7 @@ def main(dss_debug, write_cols):
 						break
 					else:
 						losses += 0.8 * (new_loss - losses)
-			elif counter > 2:
+			elif counter > 40:
 				if math.fabs(new_loss) < math.fabs(lost_min):
 					lost_min = new_loss
 					dispatcher_min = np.array(object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS], copy=True)
