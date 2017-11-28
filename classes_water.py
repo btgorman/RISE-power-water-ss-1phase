@@ -271,11 +271,15 @@ class Junction:
 					break
 				row[Junction.QUALITY] = EN_val.contents.value
 
-				if row[Junction.BASE_DEMAND] == 0.0:
-					row[Junction.PERCENT_DEMAND] = 1.0
-				else:
+				if row[Junction.BASE_DEMAND] > 0.0:
 					row[Junction.PERCENT_DEMAND] = row[Junction.DEMAND] / row[Junction.BASE_DEMAND] # "fail" if 0 or less
-				row[Junction.PERCENT_PRESSURE] = row[Junction.PRESSURE] / row[Junction.MIN_PRESSURE] # "fail" if less than 1
+				else:
+					row[Junction.PERCENT_DEMAND] = 1.0					
+
+				if row[Junction.MIN_PRESSURE] > 0.0:
+					row[Junction.PERCENT_PRESSURE] = row[Junction.PRESSURE] / row[Junction.MIN_PRESSURE] # "fail" if less than 1
+				else:
+					row[Junction.PERCENT_PRESSURE] = 1.0
 		except:
 			print('WATER ERROR in Junction2')
 
