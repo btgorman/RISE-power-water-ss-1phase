@@ -304,8 +304,8 @@ def contingency_response(object_load, object_generator, object_cable):
 	unit_recommit = {101: 0., 201: 0., 102: 0., 202: 0.}
 	unit_response = {101: 0., 201: 0., 301: 0., 401: 0., 102: 0., 202: 0., 302: 0., 402: 0., 107: 0., 207: 0., 307: 0., 113: 0., 213: 0., 313: 0., 115: 0., 215: 0., 315: 0., 415: 0., 515: 0., 615: 0., 116: 0., 118: 0., 121: 0., 122: 0., 222: 0., 322: 0., 422: 0., 522: 0., 622: 0., 123: 0., 223: 0., 323: 0}
 
-	ptdf_tab = pd.DataFrame.from_csv('C://Users//sk8er//Documents//git//RISE-power-water-ss-1phase//tables//ptdf.csv', header=0, index_col=0)
-	lodf_tab = pd.DataFrame.from_csv('C://Users//sk8er//Documents//git//RISE-power-water-ss-1phase//tables//lodf.csv', header=0, index_col=0)
+	ptdf_tab = pd.DataFrame.from_csv('C://Users//sk8er//Documents//git//RISE-power-water-ss-1phase//model_methods//dcopf_tables//ptdf.csv', header=0, index_col=0)
+	lodf_tab = pd.DataFrame.from_csv('C://Users//sk8er//Documents//git//RISE-power-water-ss-1phase//model_methods//dcopf_tables//lodf.csv', header=0, index_col=0)
 
 	uc_g = {}
 	r_g = {}
