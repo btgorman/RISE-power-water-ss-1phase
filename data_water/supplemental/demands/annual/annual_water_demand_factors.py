@@ -226,6 +226,8 @@ for month in range(1, len(monthly_seasonal_demand_scalar)+1):
 
 # annual_hourly_demands = np.array(total_hourly_demands)
 # np.savetxt('waterdemands288.csv', annual_hourly_demands, fmt='%.6f', delimiter=',', newline='\n')
+print('min', min(total_hourly_demands))
+print('max', max(total_hourly_demands))
 
 count, bins, ignored = plt.hist([winter_hourly_demands, summer_hourly_demands, equinox_hourly_demands], int(288/8), stacked=True, label=['winter', 'summer', 'spring/fall'])
 sumcount = sum(count[-1]) * math.fabs(bins[0] - bins[1])

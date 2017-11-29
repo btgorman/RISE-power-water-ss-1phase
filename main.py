@@ -33,7 +33,7 @@ import win32com.client
 # sys.argv = ['makepy', 'OpenDSSEngine.DSS']
 # makepy.main()
 
-def main(dss_debug, write_cols):
+def main(dss_debug, write_cols, wdf):
 	os_username = os.getlogin()
 
 	# --------------
@@ -189,7 +189,7 @@ def main(dss_debug, write_cols):
 			writer.writerow(templist)
 			templist = ['Summary', 'Yes']
 			writer.writerow(templist)
-			templist = ['Page', 0]
+			templist = ['Page', 5]
 			writer.writerow(templist)
 			writer.writerow('')
 
@@ -369,78 +369,79 @@ def main(dss_debug, write_cols):
 
 	# SIM STEP 1: SET LOAD CURVES
 	# ------------------------------
-	power_load_mu = -0.51385 # lognormal, AIC -9693.48
-	power_load_sigma = 0.23256 # lognormal, AIC -9693.48
-	power_load_lb = 0.3388
-	power_load_ub = 1.0
-	power_load_factor = min(np.random.lognormal(power_load_mu, power_load_sigma, size=None), power_load_ub)
-	power_load_factor = max(power_load_factor, power_load_lb)
-	power_factor = 0.0
-	object_load.multiplyLoadFactor(power_load_factor, power_factor)
-	print('power load factor', power_load_factor)
-	for load in object_load.matrix:
-		if load[ODC.Load.ID] == 4.0 or load[ODC.Load.ID] == 20.0:
-			load[ODC.Load.REAL_LOAD] = load[ODC.Load.REAL_LOAD_MAX]
+	# power_load_mu = -0.51385 # lognormal, AIC -9693.48
+	# power_load_sigma = 0.23256 # lognormal, AIC -9693.48
+	# power_load_lb = 0.3388
+	# power_load_ub = 1.0
+	# power_load_factor = min(np.random.lognormal(power_load_mu, power_load_sigma, size=None), power_load_ub)
+	# power_load_factor = max(power_load_factor, power_load_lb)
+	# power_factor = 0.0
+	# object_load.multiplyLoadFactor(power_load_factor, power_factor)
+	# print('power load factor', power_load_factor)
+	# for load in object_load.matrix:
+	# 	if load[ODC.Load.ID] == 4.0 or load[ODC.Load.ID] == 20.0:
+	# 		load[ODC.Load.REAL_LOAD] = load[ODC.Load.REAL_LOAD_MAX]
 
-	water_demand_scale = np.exp(0.0144362) # exponential, AIC = 582.27
-	water_demand_lb = 0.256
-	water_demand_ub = 2.0 #4.21
+	water_demand_scale = np.exp(-0.4559995) # exponential, AIC = 314.27
+	water_demand_lb = 0.372453
+	water_demand_ub = 1.9 #2.984
 	water_demand_factor = min(water_demand_lb+np.random.exponential(water_demand_scale, size=None), water_demand_ub)
+	water_demand_factor = wdf
 	object_junction.multiplyLoadFactor(water_demand_factor)
 	print('water demand factor', water_demand_factor)
 
-	SIM STEP 2: SET GENERATOR DISPATCH
-	----------------------------------
-	exports = 0.0 # kW
-	losses = 0.0 # kW
+	# SIM STEP 2: SET GENERATOR DISPATCH
+	# ----------------------------------
+	# exports = 0.0 # kW
+	# losses = 0.0 # kW
 
-	def fun_set_power_dispatch(object_load, object_generator, losses, exports):
-		counter = 0
-		lost_min = 10000000.0
-		while True:
-			grb_solvers.power_dispatch(object_load, object_generator, losses, exports) # unit commitment is variable
-			new_loss = run_OpenDSS(0, True)
-			counter += 1
+	# def fun_set_power_dispatch(object_load, object_generator, losses, exports):
+	# 	counter = 0
+	# 	lost_min = 10000000.0
+	# 	while True:
+	# 		grb_solvers.power_dispatch(object_load, object_generator, losses, exports) # unit commitment is variable
+	# 		new_loss = run_OpenDSS(0, True)
+	# 		counter += 1
 
-			if math.fabs(losses - new_loss) > 1.0:
-				if counter > 199:
-					print('Dispatcher - Losses/Exports did not converge')
-					sys.exit()
-				elif counter > 150:
-					while True:
-						object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS] = dispatcher_max
-						grb_solvers.power_dispatch_2(object_load, object_generator, losses, exports) # unit commitment is input
-						new_loss = run_OpenDSS(0, True)
-						counter +=1
+	# 		if math.fabs(losses - new_loss) > 1.0:
+	# 			if counter > 199:
+	# 				print('Dispatcher - Losses/Exports did not converge')
+	# 				sys.exit()
+	# 			elif counter > 150:
+	# 				while True:
+	# 					object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS] = dispatcher_max
+	# 					grb_solvers.power_dispatch_2(object_load, object_generator, losses, exports) # unit commitment is input
+	# 					new_loss = run_OpenDSS(0, True)
+	# 					counter +=1
 
-						if math.fabs(losses - new_loss) < 1.0:
-							return 0
-						else:
-							losses += 0.8 * (new_loss - losses)
-				elif counter > 100:
-					while True:
-						object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS] = dispatcher_min
-						grb_solvers.power_dispatch_2(object_load, object_generator, losses, exports) # unit commitment is input
-						new_loss = run_OpenDSS(0, True)
-						counter +=1
+	# 					if math.fabs(losses - new_loss) < 1.0:
+	# 						return 0
+	# 					else:
+	# 						losses += 0.8 * (new_loss - losses)
+	# 			elif counter > 100:
+	# 				while True:
+	# 					object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS] = dispatcher_min
+	# 					grb_solvers.power_dispatch_2(object_load, object_generator, losses, exports) # unit commitment is input
+	# 					new_loss = run_OpenDSS(0, True)
+	# 					counter +=1
 
-						if math.fabs(losses - new_loss) < 1.0:
-							return 0
-						else:
-							losses += 0.8 * (new_loss - losses)
-				elif counter > 50:
-					if math.fabs(new_loss) < math.fabs(lost_min):
-						lost_min = new_loss
-						dispatcher_min = np.array(object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS], copy=True)
-					else:
-						dispatcher_max = np.array(object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS], copy=True)
-				losses += 0.8*(new_loss - losses)
-			else:
-				return 0
+	# 					if math.fabs(losses - new_loss) < 1.0:
+	# 						return 0
+	# 					else:
+	# 						losses += 0.8 * (new_loss - losses)
+	# 			elif counter > 50:
+	# 				if math.fabs(new_loss) < math.fabs(lost_min):
+	# 					lost_min = new_loss
+	# 					dispatcher_min = np.array(object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS], copy=True)
+	# 				else:
+	# 					dispatcher_max = np.array(object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS], copy=True)
+	# 			losses += 0.8*(new_loss - losses)
+	# 		else:
+	# 			return 0
 
-	fun_set_power_dispatch(object_load, object_generator, losses, exports)
-	print('exports #1', 0.5 * (object_cable.matrix[33, ODC.Cable.REAL_POWER_2] - object_cable.matrix[33, ODC.Cable.REAL_POWER_1]))
-	print('')
+	# fun_set_power_dispatch(object_load, object_generator, losses, exports)
+	# print('exports #1', 0.5 * (object_cable.matrix[33, ODC.Cable.REAL_POWER_2] - object_cable.matrix[33, ODC.Cable.REAL_POWER_1]))
+	# print('')
 
 	# counter = 0
 	# for row in object_generator.matrix:
@@ -474,96 +475,139 @@ def main(dss_debug, write_cols):
 	# 		min_load_idx = counter
 	# 	counter += 1
 
-	run_OpenDSS(0, True)
-	print('load', object_load.matrix[min_load_idx, ODC.Load.ID], 'is offline!', object_load.matrix[min_load_idx, ODC.Load.REAL_LOAD])
-	print('second min load is', object_load.matrix[second_min_load_idx, ODC.Load.ID], object_load.matrix[second_min_load_idx, ODC.Load.REAL_LOAD])
-	object_load.matrix[min_load_idx, ODC.Load.REAL_LOAD] = 0.0
+	# run_OpenDSS(0, True)
+	# print('load', object_load.matrix[min_load_idx, ODC.Load.ID], 'is offline!', object_load.matrix[min_load_idx, ODC.Load.REAL_LOAD])
+	# print('second min load is', object_load.matrix[second_min_load_idx, ODC.Load.ID], object_load.matrix[second_min_load_idx, ODC.Load.REAL_LOAD])
+	# object_load.matrix[min_load_idx, ODC.Load.REAL_LOAD] = 0.0
 
-	branch_id_to_check = 34
-	print('branch ID',object_cable.matrix[branch_id_to_check-1, ODC.Cable.ID],'has power',0.5*(object_cable.matrix[branch_id_to_check-1, ODC.Cable.REAL_POWER_2] - object_cable.matrix[branch_id_to_check-1, ODC.Cable.REAL_POWER_1]))
-	print('max line load pt1', max(np.absolute(object_cable.matrix[:, ODC.Cable.A_PU_CAPACITY])))
+	# branch_id_to_check = 34
+	# print('branch ID',object_cable.matrix[branch_id_to_check-1, ODC.Cable.ID],'has power',0.5*(object_cable.matrix[branch_id_to_check-1, ODC.Cable.REAL_POWER_2] - object_cable.matrix[branch_id_to_check-1, ODC.Cable.REAL_POWER_1]))
+	# print('max line load pt1', max(np.absolute(object_cable.matrix[:, ODC.Cable.A_PU_CAPACITY])))
 	
-	minutes_to_respond = grb_solvers.contingency_response(object_load, object_generator, object_cable)
+	# minutes_to_respond = grb_solvers.contingency_response(object_load, object_generator, object_cable)
 	
-	run_OpenDSS(0, True)
-	print('branch',object_cable.matrix[branch_id_to_check-1, ODC.Cable.ID],'has power',0.5*(object_cable.matrix[branch_id_to_check-1, ODC.Cable.REAL_POWER_2] - object_cable.matrix[branch_id_to_check-1, ODC.Cable.REAL_POWER_1]))
-	print('exports #2', 0.5 * (object_cable.matrix[33, ODC.Cable.REAL_POWER_2] - object_cable.matrix[33, ODC.Cable.REAL_POWER_1]))
-	print('max line load pt2', max(np.absolute(object_cable.matrix[:, ODC.Cable.A_PU_CAPACITY])))
-	print('')
+	# run_OpenDSS(0, True)
+	# print('branch',object_cable.matrix[branch_id_to_check-1, ODC.Cable.ID],'has power',0.5*(object_cable.matrix[branch_id_to_check-1, ODC.Cable.REAL_POWER_2] - object_cable.matrix[branch_id_to_check-1, ODC.Cable.REAL_POWER_1]))
+	# print('exports #2', 0.5 * (object_cable.matrix[33, ODC.Cable.REAL_POWER_2] - object_cable.matrix[33, ODC.Cable.REAL_POWER_1]))
+	# print('max line load pt2', max(np.absolute(object_cable.matrix[:, ODC.Cable.A_PU_CAPACITY])))
+	# print('')
 
-	SIM STEP 3: RUN POWER-WATER SIMULATION
-	--------------------------------------
-	input_list_continuous, input_list_categorical, _, input_tensor_continuous, input_tensor_categorical, _ = run_OpenDSS(dss_debug, False)
-	input_list_continuous1, input_list_categorical1, _, input_tensor_continuous1, input_tensor_categorical1, _ = run_EPANET()
-	_, _, output_list, _, _, output_tensor = run_OpenDSS(dss_debug, False)
-	_, _, output_list1, _, _, output_tensor1 = run_EPANET()
+	# SIM STEP 3: RUN POWER-WATER SIMULATION
+	# --------------------------------------
+	# input_list_continuous, input_list_categorical, _, input_tensor_continuous, input_tensor_categorical, _ = run_OpenDSS(dss_debug, False)
+	# input_list_continuous1, input_list_categorical1, _, input_tensor_continuous1, input_tensor_categorical1, _ = run_EPANET()
+	# _, _, output_list, _, _, output_tensor = run_OpenDSS(dss_debug, False)
+	# _, _, output_list1, _, _, output_tensor1 = run_EPANET()
 
+	list_set_of_set = []
+	base_pipe_status = np.array(object_pipe.matrix[:, ENC.Pipe.OPERATIONAL_STATUS], copy=True)
+	base_demands = np.array(object_junction.matrix[:, ENC.Junction.BASE_DEMAND], copy=True)
 
-	id_1 = 0
-	max_id_1 = 0
-	for row in object_junction.matrix:
-		if row[ENC.Junction.BASE_DEMAND] > 0.0:
-			object_junction.matrix[:, ENC.Junction.BASE_DEMAND] = base_demands
+	temp_base_demand_id = 0
+	for idx in range(0, len(object_junction.matrix)):
+		if object_junction.matrix[idx, ENC.Junction.ID] == 28.0:
+			temp_base_demand_id = idx
+			break
+	remove_junction_demand = 0.0 * np.array(object_junction.matrix[:, ENC.Junction.BASE_DEMAND], copy=True)
+	remove_junction_demand[temp_base_demand_id] = object_junction.matrix[temp_base_demand_id, ENC.Junction.BASE_DEMAND]
 
-			demand_decrease = row[ENC.Junction.BASE_DEMAND]*1.0
-			row[ENC.Junction.BASE_DEMAND] -= demand_decrease
+	breaker = False
+	for row in object_pipe.matrix:
+		print('SHUT DOWN PIPE:', row[ENC.Pipe.ID])
+		list_set = []
+		list_set.append(water_demand_factor)
+		list_set.append(row[ENC.Pipe.ID])
+
+		object_pipe.matrix[:, ENC.Pipe.OPERATIONAL_STATUS] = base_pipe_status
+		object_junction.matrix[:, ENC.Junction.BASE_DEMAND] = base_demands
+
+		row[ENC.Pipe.OPERATIONAL_STATUS] = 0.0
+
+		run_EPANET()
+		while min(object_junction.matrix[:, ENC.Junction.PERCENT_PRESSURE]) < 1.0 and max(object_junction.matrix[:, ENC.Junction.BASE_DEMAND] - remove_junction_demand) > 0.0:
+			base_demands_extra = np.array(object_junction.matrix[:, ENC.Junction.BASE_DEMAND], copy=True)
+			lowest_pressure = min(object_junction.matrix[:, ENC.Junction.PERCENT_PRESSURE])
+
+			id_with_best_pressure_increase = -1
+			max_pressure_increase = 0.0
+
+			if lowest_pressure < 1.0:
+				for row in object_junction.matrix:
+					if row[ENC.Junction.BASE_DEMAND] > 0.0 and row[ENC.Junction.ID] != 28.0: # don't cut off the exports to tuscon (i.e., out of local network)
+						object_junction.matrix[:, ENC.Junction.BASE_DEMAND] = base_demands_extra
+
+						demand_decrease = row[ENC.Junction.BASE_DEMAND]*1.0
+						row[ENC.Junction.BASE_DEMAND] -= demand_decrease
+
+						run_EPANET()
+						if (min(object_junction.matrix[:, ENC.Junction.PERCENT_PRESSURE])-lowest_pressure)/demand_decrease > max_pressure_increase:
+							id_with_best_pressure_increase = row[ENC.Junction.ID]
+							max_pressure_increase = (min(object_junction.matrix[:, ENC.Junction.PERCENT_PRESSURE])-lowest_pressure)/demand_decrease
+
+				object_junction.matrix[:, ENC.Junction.BASE_DEMAND] = base_demands_extra
+
+				if id_with_best_pressure_increase == -1:
+					print('couldnt find water demand solution')
+					breaker = True
+					break
+
+				for row in object_junction.matrix:
+					if row[ENC.Junction.ID] == id_with_best_pressure_increase:
+						row[ENC.Junction.BASE_DEMAND] = 0.0
+						list_set.append(row[ENC.Junction.ID])
+				run_EPANET()
+		
+		if breaker == False and min(object_junction.matrix[:, ENC.Junction.PERCENT_PRESSURE]) < 1.0:
+			print('couldnt find water demand solution')
 			print(object_junction.matrix[:, ENC.Junction.BASE_DEMAND])
+			sys.exit()
+		
+		list_set_of_set.append(list_set)
 
-			run_EPANET()
-			print('id', row[ENC.Junction.ID])
-			print('lowest pressure:', min(object_junction.matrix[:, ENC.Junction.PERCENT_PRESSURE]),'%')
-			print('increase in pressure per GPM', (min(object_junction.matrix[:, ENC.Junction.PERCENT_PRESSURE])-lowest_pressure)/demand_decrease)
-			if (min(object_junction.matrix[:, ENC.Junction.PERCENT_PRESSURE])-lowest_pressure)/demand_decrease > max_id_1:
-				id_1 = row[ENC.Junction.ID]
-				max_id_1 = (min(object_junction.matrix[:, ENC.Junction.PERCENT_PRESSURE])-lowest_pressure)/demand_decrease
-			print('')
+	with open('model_outputs/list_set_of_set.csv', 'a', newline='') as file:
+		writer = csv.writer(file)
+		writer.writerows(list_set_of_set)
 
-	print(id_1, max_id_1)
+	# RESULTS STEP 1: FORMAT INPUT/OUTPUT TENSORS
+	# -------------------------------------------
+	# input_list_continuous = input_list_continuous + input_list_continuous1
+	# input_list_categorical = input_list_categorical + input_list_categorical1
+	# output_list = output_list + output_list1
 
-	for row in object_junction.matrix:
-		if row[ENC.Junction.ID] == id_1:
-			row[ENC.Junction.BASE_DEMAND] = 0.0
+	# input_tensor_continuous = np.concatenate((input_tensor_continuous, input_tensor_continuous1), axis=0)
+	# input_tensor_categorical = np.concatenate((input_tensor_categorical, input_tensor_categorical1), axis=0)
+	# output_tensor = np.concatenate((output_tensor, output_tensor1), axis=0)
 
-	base_demands = np.array(object_junction.matrix[:, ENC.Junction.BASE_DEMAND])
+	# RESULTS STEP 2: WRITE INPUT/OUTPUT TENSORS TO FILE
+	# --------------------------------------------------
+	# if write_cols:
+	# 	with open('C:/Users/'+os_username+'/Documents/git/RISE-power-water-ss-1phase/tensor_outputs/input_list_continuous_columns.csv', 'w') as f:
+	# 		writer = csv.writer(f, delimiter=',')
+	# 		writer.writerow(input_list_continuous)
+	# 	with open('C:/Users/'+os_username+'/Documents/git/RISE-power-water-ss-1phase/tensor_outputs/input_list_categorical_columns.csv', 'w') as f:
+	# 		writer = csv.writer(f, delimiter=',')
+	# 		writer.writerow(input_list_categorical)
+	# 	with open('C:/Users/'+os_username+'/Documents/git/RISE-power-water-ss-1phase/tensor_outputs/output_list_columns.csv', 'w') as f:
+	# 		writer = csv.writer(f, delimiter=',')
+	# 		writer.writerow(output_list)
 
-	RESULTS STEP 1: FORMAT INPUT/OUTPUT TENSORS
-	-------------------------------------------
-	input_list_continuous = input_list_continuous + input_list_continuous1
-	input_list_categorical = input_list_categorical + input_list_categorical1
-	output_list = output_list + output_list1
+	# with open('C:/Users/'+os_username+'/Documents/git/RISE-power-water-ss-1phase/tensor_outputs/input_tensor_continuous.csv', 'ab') as f:
+	# 	np.savetxt(f, input_tensor_continuous[None, :], fmt='%0.6f', delimiter=' ', newline='\n')
+	# with open('C:/Users/'+os_username+'/Documents/git/RISE-power-water-ss-1phase/tensor_outputs/input_tensor_categorical.csv', 'ab') as f:
+	# 	np.savetxt(f, input_tensor_categorical[None, :], fmt='%0.6f', delimiter=' ', newline='\n')
+	# with open('C:/Users/'+os_username+'/Documents/git/RISE-power-water-ss-1phase/tensor_outputs/output_tensor.csv', 'ab') as f:
+	# 	np.savetxt(f, output_tensor[None, :], fmt='%0.6f', delimiter=' ', newline='\n')
 
-	input_tensor_continuous = np.concatenate((input_tensor_continuous, input_tensor_continuous1), axis=0)
-	input_tensor_categorical = np.concatenate((input_tensor_categorical, input_tensor_categorical1), axis=0)
-	output_tensor = np.concatenate((output_tensor, output_tensor1), axis=0)
-
-	RESULTS STEP 2: WRITE INPUT/OUTPUT TENSORS TO FILE
-	--------------------------------------------------
-	if write_cols:
-		with open('C:/Users/'+os_username+'/Documents/git/RISE-power-water-ss-1phase/model_outputs/input_list_continuous_columns.csv', 'w') as f:
-			writer = csv.writer(f, delimiter=',')
-			writer.writerow(input_list_continuous)
-		with open('C:/Users/'+os_username+'/Documents/git/RISE-power-water-ss-1phase/model_outputs/input_list_categorical_columns.csv', 'w') as f:
-			writer = csv.writer(f, delimiter=',')
-			writer.writerow(input_list_categorical)
-		with open('C:/Users/'+os_username+'/Documents/git/RISE-power-water-ss-1phase/model_outputs/output_list_columns.csv', 'w') as f:
-			writer = csv.writer(f, delimiter=',')
-			writer.writerow(output_list)
-
-	with open('C:/Users/'+os_username+'/Documents/git/RISE-power-water-ss-1phase/model_outputs/input_tensor_continuous.csv', 'ab') as f:
-		np.savetxt(f, input_tensor_continuous[None, :], fmt='%0.6f', delimiter=' ', newline='\n')
-	with open('C:/Users/'+os_username+'/Documents/git/RISE-power-water-ss-1phase/model_outputs/input_tensor_categorical.csv', 'ab') as f:
-		np.savetxt(f, input_tensor_categorical[None, :], fmt='%0.6f', delimiter=' ', newline='\n')
-	with open('C:/Users/'+os_username+'/Documents/git/RISE-power-water-ss-1phase/model_outputs/output_tensor.csv', 'ab') as f:
-		np.savetxt(f, output_tensor[None, :], fmt='%0.6f', delimiter=' ', newline='\n')
-
-	END
-	---
+	# END
+	# ---
 
 if __name__ == '__main__':
 	write_cols = False # Write column names to seperate file
 	dss_debug = 0
 
-	main(dss_debug, write_cols)
+	water_demand_factor = float(sys.argv[1])
+
+	main(dss_debug, write_cols, water_demand_factor)
 
 
 

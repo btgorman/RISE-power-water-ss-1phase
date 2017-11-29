@@ -609,21 +609,21 @@ def main(dss_debug, write_cols, plf):
 	# RESULTS STEP 2: WRITE INPUT/OUTPUT TENSORS TO FILE
 	# --------------------------------------------------
 	# if write_cols:
-	# 	with open('C:/Users/'+os_username+'/Documents/git/RISE-power-water-ss-1phase/outputs/input_list_continuous_columns.csv', 'w') as f:
+	# 	with open('C:/Users/'+os_username+'/Documents/git/RISE-power-water-ss-1phase/tensor_outputs/input_list_continuous_columns.csv', 'w') as f:
 	# 		writer = csv.writer(f, delimiter=',')
 	# 		writer.writerow(input_list_continuous)
-	# 	with open('C:/Users/'+os_username+'/Documents/git/RISE-power-water-ss-1phase/outputs/input_list_categorical_columns.csv', 'w') as f:
+	# 	with open('C:/Users/'+os_username+'/Documents/git/RISE-power-water-ss-1phase/tensor_outputs/input_list_categorical_columns.csv', 'w') as f:
 	# 		writer = csv.writer(f, delimiter=',')
 	# 		writer.writerow(input_list_categorical)
-	# 	with open('C:/Users/'+os_username+'/Documents/git/RISE-power-water-ss-1phase/outputs/output_list_columns.csv', 'w') as f:
+	# 	with open('C:/Users/'+os_username+'/Documents/git/RISE-power-water-ss-1phase/tensor_outputs/output_list_columns.csv', 'w') as f:
 	# 		writer = csv.writer(f, delimiter=',')
 	# 		writer.writerow(output_list)
 
-	# with open('C:/Users/'+os_username+'/Documents/git/RISE-power-water-ss-1phase/outputs/input_tensor_continuous.csv', 'ab') as f:
+	# with open('C:/Users/'+os_username+'/Documents/git/RISE-power-water-ss-1phase/tensor_outputs/input_tensor_continuous.csv', 'ab') as f:
 	# 	np.savetxt(f, input_tensor_continuous[None, :], fmt='%0.6f', delimiter=' ', newline='\n')
-	# with open('C:/Users/'+os_username+'/Documents/git/RISE-power-water-ss-1phase/outputs/input_tensor_categorical.csv', 'ab') as f:
+	# with open('C:/Users/'+os_username+'/Documents/git/RISE-power-water-ss-1phase/tensor_outputs/input_tensor_categorical.csv', 'ab') as f:
 	# 	np.savetxt(f, input_tensor_categorical[None, :], fmt='%0.6f', delimiter=' ', newline='\n')
-	# with open('C:/Users/'+os_username+'/Documents/git/RISE-power-water-ss-1phase/outputs/output_tensor.csv', 'ab') as f:
+	# with open('C:/Users/'+os_username+'/Documents/git/RISE-power-water-ss-1phase/tensor_outputs/output_tensor.csv', 'ab') as f:
 	# 	np.savetxt(f, output_tensor[None, :], fmt='%0.6f', delimiter=' ', newline='\n')
 
 	# END
