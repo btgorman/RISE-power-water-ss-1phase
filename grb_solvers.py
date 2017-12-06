@@ -19,285 +19,534 @@ GEN_PRIORITY_KEY = {122: 1, 222: 1, 322: 1, 422: 1, 522: 1, 622: 1,
 GEN_PRIORITY_COUNT = {1: 6, 2: 2, 3: 1, 4: 4, 5: 4, 6: 3, 7: 3, 8: 5, 9: 4}
 
 NUMBER_OF_MINUTES = 10
-EXTRA_RESERVE_MARGIN = 0.1 # 8%
-EXTRA_RESERVE_MARGIN += 1.0
+EXTRA_RESERVE_MARGIN = 1.07 # 3%
 
-# Unit commitment is a variable
-def power_dispatch(object_load, object_generator, losses, exports):
-	mx_dispatch = {1: 0., 2: 0., 3: 0., 4: 0., 5: 0., 6: 0., 7: 0., 8: 0., 9: 0.}
-	mx_reserve = {1: 0., 2: 0., 3: 0., 4: 0., 5: 0., 6: 0., 7: 0., 8: 0., 9: 0.}
-	dispatch_factor = {1: 0., 2: 0., 3: 0., 4: 0., 5: 0., 6: 0., 7: 0., 8: 0., 9: 0.}
-	operational_status = {1: 0., 2: 0., 3: 0., 4: 0., 5: 0., 6: 0., 7: 0., 8: 0., 9: 0.}
+def unit_commitment_priority_list(object_load, object_generator, losses, exports):
 
-	# Set "constants"
+	out_u_c = {}
+	out_u_d = {}
+	out_u_r = {}
+	unit_min_dispatch = {}
+
+	obj_coeff_list = []
+	hydro_coeff_list = []
+	non_hydro_coeff_list = []
+	combustion_ids = []
+
+	combustion_id_counter = 0
+	for unit_id in object_generator.matrix[:, ODC.Generator.ID]:
+		obj_coeff_list.append(GEN_PRIORITY_KEY[int(unit_id)])
+
+		if GEN_PRIORITY_KEY[int(unit_id)] == 9:
+			combustion_ids.append(combustion_id_counter)
+		if GEN_PRIORITY_KEY[int(unit_id)] == 1: # hydro units
+			hydro_coeff_list.append(1.0)
+			non_hydro_coeff_list.append(0.0)
+		else: # non hydro units
+			hydro_coeff_list.append(0.0)
+			non_hydro_coeff_list.append(1.0)
+
+		obj_coeff = {i:j for i,j in zip(object_generator.matrix[:, ODC.Generator.ID], obj_coeff_list)}
+		# coefficient with ones for hydro units only
+		hydro_coeff = {i:j for i,j in zip(object_generator.matrix[:, ODC.Generator.ID], hydro_coeff_list)}
+		# coefficients with ones for non-hydro units only
+		non_hydro_coeff = {i:j for i,j in zip(object_generator.matrix[:, ODC.Generator.ID], non_hydro_coeff_list)}
+		combustion_id_counter += 1
+
 	for row in object_generator.matrix:
-		mx_dispatch[GEN_PRIORITY_KEY[int(row[ODC.Generator.ID])]] += row[ODC.Generator.REAL_GENERATION_MAX_RATING]
-		mx_reserve[GEN_PRIORITY_KEY[int(row[ODC.Generator.ID])]] += row[ODC.Generator.RAMP_RATE]
+		unit_min_dispatch[row[ODC.Generator.ID]] = row[ODC.Generator.REAL_GENERATION_MIN_RATING]
+
 	SUM_LOAD = float(sum(object_load.matrix[:, ODC.Load.REAL_LOAD]))
+	losses = float(losses)
+	exports = float(exports)
 
 	try:
-		# Model
 		m = gurobipy.Model('mip1')
 
-		# Create variables
-		gf_1 = m.addVar(lb=0.00, ub=1.0, vtype=GRB.CONTINUOUS, name='gf_1') # TODO: fix these
-		gf_2 = m.addVar(lb=0.25, ub=1.0, vtype=GRB.CONTINUOUS, name='gf_2')
-		gf_3 = m.addVar(lb=0.40, ub=1.0, vtype=GRB.CONTINUOUS, name='gf_3')
-		gf_4 = m.addVar(lb=0.35, ub=1.0, vtype=GRB.CONTINUOUS, name='gf_4')
-		gf_5 = m.addVar(lb=0.20, ub=1.0, vtype=GRB.CONTINUOUS, name='gf_5')
-		gf_6 = m.addVar(lb=0.35, ub=1.0, vtype=GRB.CONTINUOUS, name='gf_6')
-		gf_7 = m.addVar(lb=0.25, ub=1.0, vtype=GRB.CONTINUOUS, name='gf_7')
-		gf_8 = m.addVar(lb=0.20, ub=1.0, vtype=GRB.CONTINUOUS, name='gf_8')
-		gf_9 = m.addVar(lb=0.70, ub=1.0, vtype=GRB.CONTINUOUS, name='gf_9')
+		unit_dispatch = m.addVars(object_generator.matrix[:, ODC.Generator.ID], lb=0.0, ub=object_generator.matrix[:, ODC.Generator.REAL_GENERATION_MAX_RATING], vtype=GRB.CONTINUOUS, name='u_d')
+		unit_commit = m.addVars(object_generator.matrix[:, ODC.Generator.ID], lb=0.0, ub=1.0, vtype=GRB.BINARY, name='u_c')
+		unit_reserves = m.addVars(object_generator.matrix[:, ODC.Generator.ID], lb=0.0, ub=(NUMBER_OF_MINUTES * object_generator.matrix[:, ODC.Generator.RAMP_RATE]), vtype=GRB.CONTINUOUS, name='u_r')
 
-		uc_1 = m.addVar(lb=0.0, ub=1.0, vtype=GRB.BINARY, name='uc_1')
-		uc_2 = m.addVar(lb=0.0, ub=1.0, vtype=GRB.BINARY, name='uc_2')
-		uc_3 = m.addVar(lb=0.0, ub=1.0, vtype=GRB.BINARY, name='uc_3')
-		uc_4 = m.addVar(lb=0.0, ub=1.0, vtype=GRB.BINARY, name='uc_4')
-		uc_5 = m.addVar(lb=0.0, ub=1.0, vtype=GRB.BINARY, name='uc_5')
-		uc_6 = m.addVar(lb=0.0, ub=1.0, vtype=GRB.BINARY, name='uc_6')
-		uc_7 = m.addVar(lb=0.0, ub=1.0, vtype=GRB.BINARY, name='uc_7')
-		uc_8 = m.addVar(lb=0.0, ub=1.0, vtype=GRB.BINARY, name='uc_8')
-		uc_9 = m.addVar(lb=0.0, ub=1.0, vtype=GRB.BINARY, name='uc_9')
+		# Minimizes priority list
+		m.setObjective(unit_commit[101.0]*unit_dispatch[101.0]*obj_coeff[101.0] + 
+			unit_commit[201.0]*unit_dispatch[201.0]*obj_coeff[201.0] + 
+			unit_commit[301.0]*unit_dispatch[301.0]*obj_coeff[301.0] + 
+			unit_commit[401.0]*unit_dispatch[401.0]*obj_coeff[401.0] + 
+			unit_commit[102.0]*unit_dispatch[102.0]*obj_coeff[102.0] + 
+			unit_commit[202.0]*unit_dispatch[202.0]*obj_coeff[202.0] + 
+			unit_commit[302.0]*unit_dispatch[302.0]*obj_coeff[302.0] + 
+			unit_commit[402.0]*unit_dispatch[402.0]*obj_coeff[402.0] + 
+			unit_commit[107.0]*unit_dispatch[107.0]*obj_coeff[107.0] + 
+			unit_commit[207.0]*unit_dispatch[207.0]*obj_coeff[207.0] + 
+			unit_commit[307.0]*unit_dispatch[307.0]*obj_coeff[307.0] + 
+			unit_commit[113.0]*unit_dispatch[113.0]*obj_coeff[113.0] + 
+			unit_commit[213.0]*unit_dispatch[213.0]*obj_coeff[213.0] + 
+			unit_commit[313.0]*unit_dispatch[313.0]*obj_coeff[313.0] + 
+			unit_commit[115.0]*unit_dispatch[115.0]*obj_coeff[115.0] + 
+			unit_commit[215.0]*unit_dispatch[215.0]*obj_coeff[215.0] + 
+			unit_commit[315.0]*unit_dispatch[315.0]*obj_coeff[315.0] + 
+			unit_commit[415.0]*unit_dispatch[415.0]*obj_coeff[415.0] + 
+			unit_commit[515.0]*unit_dispatch[515.0]*obj_coeff[515.0] + 
+			unit_commit[615.0]*unit_dispatch[615.0]*obj_coeff[615.0] + 
+			unit_commit[116.0]*unit_dispatch[116.0]*obj_coeff[116.0] + 
+			unit_commit[118.0]*unit_dispatch[118.0]*obj_coeff[118.0] + 
+			unit_commit[121.0]*unit_dispatch[121.0]*obj_coeff[121.0] + 
+			unit_commit[122.0]*unit_dispatch[122.0]*obj_coeff[122.0] + 
+			unit_commit[222.0]*unit_dispatch[222.0]*obj_coeff[222.0] + 
+			unit_commit[322.0]*unit_dispatch[322.0]*obj_coeff[322.0] + 
+			unit_commit[422.0]*unit_dispatch[422.0]*obj_coeff[422.0] + 
+			unit_commit[522.0]*unit_dispatch[522.0]*obj_coeff[522.0] + 
+			unit_commit[622.0]*unit_dispatch[622.0]*obj_coeff[622.0] + 
+			unit_commit[123.0]*unit_dispatch[123.0]*obj_coeff[123.0] + 
+			unit_commit[223.0]*unit_dispatch[223.0]*obj_coeff[223.0] + 
+			unit_commit[323.0]*unit_dispatch[323.0]*obj_coeff[323.0], GRB.MINIMIZE)
 
-		ra_1 = m.addVar(lb=0.0, vtype=GRB.CONTINUOUS, name='ra_1')
-		ra_2 = m.addVar(lb=0.0, vtype=GRB.CONTINUOUS, name='ra_2')
-		ra_3 = m.addVar(lb=0.0, vtype=GRB.CONTINUOUS, name='ra_3')
-		ra_4 = m.addVar(lb=0.0, vtype=GRB.CONTINUOUS, name='ra_4')
-		ra_5 = m.addVar(lb=0.0, vtype=GRB.CONTINUOUS, name='ra_5')
-		ra_6 = m.addVar(lb=0.0, vtype=GRB.CONTINUOUS, name='ra_6')
-		ra_7 = m.addVar(lb=0.0, vtype=GRB.CONTINUOUS, name='ra_7')
-		ra_8 = m.addVar(lb=0.0, vtype=GRB.CONTINUOUS, name='ra_8')
-		ra_9 = m.addVar(lb=0.0, vtype=GRB.CONTINUOUS, name='ra_9')
+		# Balances Gen~Load
+		m.addConstr(SUM_LOAD+losses+exports - 0.01 <= unit_commit[101.0]*unit_dispatch[101.0] + 
+			unit_commit[201.0]*unit_dispatch[201.0] + 
+			unit_commit[301.0]*unit_dispatch[301.0] + 
+			unit_commit[401.0]*unit_dispatch[401.0] + 
+			unit_commit[102.0]*unit_dispatch[102.0] + 
+			unit_commit[202.0]*unit_dispatch[202.0] + 
+			unit_commit[302.0]*unit_dispatch[302.0] + 
+			unit_commit[402.0]*unit_dispatch[402.0] + 
+			unit_commit[107.0]*unit_dispatch[107.0] + 
+			unit_commit[207.0]*unit_dispatch[207.0] + 
+			unit_commit[307.0]*unit_dispatch[307.0] + 
+			unit_commit[113.0]*unit_dispatch[113.0] + 
+			unit_commit[213.0]*unit_dispatch[213.0] + 
+			unit_commit[313.0]*unit_dispatch[313.0] + 
+			unit_commit[115.0]*unit_dispatch[115.0] + 
+			unit_commit[215.0]*unit_dispatch[215.0] + 
+			unit_commit[315.0]*unit_dispatch[315.0] + 
+			unit_commit[415.0]*unit_dispatch[415.0] + 
+			unit_commit[515.0]*unit_dispatch[515.0] + 
+			unit_commit[615.0]*unit_dispatch[615.0] + 
+			unit_commit[116.0]*unit_dispatch[116.0] + 
+			unit_commit[118.0]*unit_dispatch[118.0] + 
+			unit_commit[121.0]*unit_dispatch[121.0] + 
+			unit_commit[122.0]*unit_dispatch[122.0] + 
+			unit_commit[222.0]*unit_dispatch[222.0] + 
+			unit_commit[322.0]*unit_dispatch[322.0] + 
+			unit_commit[422.0]*unit_dispatch[422.0] + 
+			unit_commit[522.0]*unit_dispatch[522.0] + 
+			unit_commit[622.0]*unit_dispatch[622.0] + 
+			unit_commit[123.0]*unit_dispatch[123.0] + 
+			unit_commit[223.0]*unit_dispatch[223.0] + 
+			unit_commit[323.0]*unit_dispatch[323.0])
+		m.addConstr(SUM_LOAD+losses+exports + 0.01 >= unit_commit[101.0]*unit_dispatch[101.0] + 
+			unit_commit[201.0]*unit_dispatch[201.0] + 
+			unit_commit[301.0]*unit_dispatch[301.0] + 
+			unit_commit[401.0]*unit_dispatch[401.0] + 
+			unit_commit[102.0]*unit_dispatch[102.0] + 
+			unit_commit[202.0]*unit_dispatch[202.0] + 
+			unit_commit[302.0]*unit_dispatch[302.0] + 
+			unit_commit[402.0]*unit_dispatch[402.0] + 
+			unit_commit[107.0]*unit_dispatch[107.0] + 
+			unit_commit[207.0]*unit_dispatch[207.0] + 
+			unit_commit[307.0]*unit_dispatch[307.0] + 
+			unit_commit[113.0]*unit_dispatch[113.0] + 
+			unit_commit[213.0]*unit_dispatch[213.0] + 
+			unit_commit[313.0]*unit_dispatch[313.0] + 
+			unit_commit[115.0]*unit_dispatch[115.0] + 
+			unit_commit[215.0]*unit_dispatch[215.0] + 
+			unit_commit[315.0]*unit_dispatch[315.0] + 
+			unit_commit[415.0]*unit_dispatch[415.0] + 
+			unit_commit[515.0]*unit_dispatch[515.0] + 
+			unit_commit[615.0]*unit_dispatch[615.0] + 
+			unit_commit[116.0]*unit_dispatch[116.0] + 
+			unit_commit[118.0]*unit_dispatch[118.0] + 
+			unit_commit[121.0]*unit_dispatch[121.0] + 
+			unit_commit[122.0]*unit_dispatch[122.0] + 
+			unit_commit[222.0]*unit_dispatch[222.0] + 
+			unit_commit[322.0]*unit_dispatch[322.0] + 
+			unit_commit[422.0]*unit_dispatch[422.0] + 
+			unit_commit[522.0]*unit_dispatch[522.0] + 
+			unit_commit[622.0]*unit_dispatch[622.0] + 
+			unit_commit[123.0]*unit_dispatch[123.0] + 
+			unit_commit[223.0]*unit_dispatch[223.0] + 
+			unit_commit[323.0]*unit_dispatch[323.0])
 
-		# Objective function that minimizes priority level of dispatch
-		m.setObjective(1*uc_1*gf_1*mx_dispatch[1] + 2*uc_2*gf_1*mx_dispatch[2] + 3*uc_3*gf_1*mx_dispatch[3] + 4*uc_4*gf_1*mx_dispatch[4] + 5*uc_5*gf_1*mx_dispatch[5] + 6*uc_6*gf_1*mx_dispatch[6] + 7*uc_7*gf_1*mx_dispatch[7] + 8*uc_8*gf_1*mx_dispatch[8] + 9*uc_9*gf_1*mx_dispatch[9], GRB.MINIMIZE)
+		# Bounds unit dispatch with minimum dispatch
+		m.addConstr(unit_commit[101.0]*unit_dispatch[101.0] >= unit_commit[101.0]*unit_min_dispatch[101.0])
+		m.addConstr(unit_commit[201.0]*unit_dispatch[201.0] >= unit_commit[201.0]*unit_min_dispatch[201.0])
+		m.addConstr(unit_commit[301.0]*unit_dispatch[301.0] >= unit_commit[301.0]*unit_min_dispatch[301.0])
+		m.addConstr(unit_commit[401.0]*unit_dispatch[401.0] >= unit_commit[401.0]*unit_min_dispatch[401.0])
+		m.addConstr(unit_commit[102.0]*unit_dispatch[102.0] >= unit_commit[102.0]*unit_min_dispatch[102.0])
+		m.addConstr(unit_commit[202.0]*unit_dispatch[202.0] >= unit_commit[202.0]*unit_min_dispatch[202.0])
+		m.addConstr(unit_commit[302.0]*unit_dispatch[302.0] >= unit_commit[302.0]*unit_min_dispatch[302.0])
+		m.addConstr(unit_commit[402.0]*unit_dispatch[402.0] >= unit_commit[402.0]*unit_min_dispatch[402.0])
+		m.addConstr(unit_commit[107.0]*unit_dispatch[107.0] >= unit_commit[107.0]*unit_min_dispatch[107.0])
+		m.addConstr(unit_commit[207.0]*unit_dispatch[207.0] >= unit_commit[207.0]*unit_min_dispatch[207.0])
+		m.addConstr(unit_commit[307.0]*unit_dispatch[307.0] >= unit_commit[307.0]*unit_min_dispatch[307.0])
+		m.addConstr(unit_commit[113.0]*unit_dispatch[113.0] >= unit_commit[113.0]*unit_min_dispatch[113.0])
+		m.addConstr(unit_commit[213.0]*unit_dispatch[213.0] >= unit_commit[213.0]*unit_min_dispatch[213.0])
+		m.addConstr(unit_commit[313.0]*unit_dispatch[313.0] >= unit_commit[313.0]*unit_min_dispatch[313.0])
+		m.addConstr(unit_commit[115.0]*unit_dispatch[115.0] >= unit_commit[115.0]*unit_min_dispatch[115.0])
+		m.addConstr(unit_commit[215.0]*unit_dispatch[215.0] >= unit_commit[215.0]*unit_min_dispatch[215.0])
+		m.addConstr(unit_commit[315.0]*unit_dispatch[315.0] >= unit_commit[315.0]*unit_min_dispatch[315.0])
+		m.addConstr(unit_commit[415.0]*unit_dispatch[415.0] >= unit_commit[415.0]*unit_min_dispatch[415.0])
+		m.addConstr(unit_commit[515.0]*unit_dispatch[515.0] >= unit_commit[515.0]*unit_min_dispatch[515.0])
+		m.addConstr(unit_commit[615.0]*unit_dispatch[615.0] >= unit_commit[615.0]*unit_min_dispatch[615.0])
+		m.addConstr(unit_commit[116.0]*unit_dispatch[116.0] >= unit_commit[116.0]*unit_min_dispatch[116.0])
+		m.addConstr(unit_commit[118.0]*unit_dispatch[118.0] >= unit_commit[118.0]*unit_min_dispatch[118.0])
+		m.addConstr(unit_commit[121.0]*unit_dispatch[121.0] >= unit_commit[121.0]*unit_min_dispatch[121.0])
+		m.addConstr(unit_commit[122.0]*unit_dispatch[122.0] >= unit_commit[122.0]*unit_min_dispatch[122.0])
+		m.addConstr(unit_commit[222.0]*unit_dispatch[222.0] >= unit_commit[222.0]*unit_min_dispatch[222.0])
+		m.addConstr(unit_commit[322.0]*unit_dispatch[322.0] >= unit_commit[322.0]*unit_min_dispatch[322.0])
+		m.addConstr(unit_commit[422.0]*unit_dispatch[422.0] >= unit_commit[422.0]*unit_min_dispatch[422.0])
+		m.addConstr(unit_commit[522.0]*unit_dispatch[522.0] >= unit_commit[522.0]*unit_min_dispatch[522.0])
+		m.addConstr(unit_commit[622.0]*unit_dispatch[622.0] >= unit_commit[622.0]*unit_min_dispatch[622.0])
+		m.addConstr(unit_commit[123.0]*unit_dispatch[123.0] >= unit_commit[123.0]*unit_min_dispatch[123.0])
+		m.addConstr(unit_commit[223.0]*unit_dispatch[223.0] >= unit_commit[223.0]*unit_min_dispatch[223.0])
+		m.addConstr(unit_commit[323.0]*unit_dispatch[323.0] >= unit_commit[323.0]*unit_min_dispatch[323.0])
 
-		# Constraint - Loads = Gen
-		m.addConstr((SUM_LOAD+losses+exports) - 0.01 <= uc_1*gf_1*mx_dispatch[1] + uc_2*gf_2*mx_dispatch[2] + uc_3*gf_3*mx_dispatch[3] + uc_4*gf_4*mx_dispatch[4] + uc_5*gf_5*mx_dispatch[5] + uc_6*gf_6*mx_dispatch[6] + uc_7*gf_7*mx_dispatch[7] + uc_8*gf_8*mx_dispatch[8] + uc_9*gf_9*mx_dispatch[9], 'system_load_1')
-		m.addConstr((SUM_LOAD+losses+exports) + 0.01 >= uc_1*gf_1*mx_dispatch[1] + uc_2*gf_2*mx_dispatch[2] + uc_3*gf_3*mx_dispatch[3] + uc_4*gf_4*mx_dispatch[4] + uc_5*gf_5*mx_dispatch[5] + uc_6*gf_6*mx_dispatch[6] + uc_7*gf_7*mx_dispatch[7] + uc_8*gf_8*mx_dispatch[8] + uc_9*gf_9*mx_dispatch[9], 'system_load_2')
+		# Minimum reserves for CAISO
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * (0.05*unit_dispatch.prod(hydro_coeff)) + (0.07*unit_dispatch.prod(non_hydro_coeff)))
 
-		# Constraint - Minimum required reserve for CAISO
-		m.addConstr(ra_1 + ra_2 + ra_3 + ra_4 + ra_5 + ra_6 + ra_7 + ra_8 + ra_9 >= EXTRA_RESERVE_MARGIN * (uc_1*gf_1*mx_dispatch[1]*0.05 + (uc_2*gf_2*mx_dispatch[2] + uc_3*gf_3*mx_dispatch[3] + uc_4*gf_4*mx_dispatch[4] + uc_5*gf_5*mx_dispatch[5] + uc_6*gf_6*mx_dispatch[6] + uc_7*gf_7*mx_dispatch[7] + uc_8*gf_8*mx_dispatch[8] + uc_9*gf_9*mx_dispatch[9])*0.07), 'net_reserves')
+		# Minimum reserves for largest dispatch+reserve unit
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * (unit_dispatch[101.0] + unit_reserves[101.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * (unit_dispatch[201.0] + unit_reserves[201.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * unit_commit[301.0] * (unit_dispatch[301.0] + unit_reserves[301.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * unit_commit[401.0] * (unit_dispatch[401.0] + unit_reserves[401.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * (unit_dispatch[102.0] + unit_reserves[102.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * (unit_dispatch[202.0] + unit_reserves[202.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * unit_commit[302.0] * (unit_dispatch[302.0] + unit_reserves[302.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * unit_commit[402.0] * (unit_dispatch[402.0] + unit_reserves[402.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * unit_commit[107.0] * (unit_dispatch[107.0] + unit_reserves[107.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * unit_commit[207.0] * (unit_dispatch[207.0] + unit_reserves[207.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * unit_commit[307.0] * (unit_dispatch[307.0] + unit_reserves[307.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * unit_commit[113.0] * (unit_dispatch[113.0] + unit_reserves[113.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * unit_commit[213.0] * (unit_dispatch[213.0] + unit_reserves[213.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * unit_commit[313.0] * (unit_dispatch[313.0] + unit_reserves[313.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * unit_commit[115.0] * (unit_dispatch[115.0] + unit_reserves[115.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * unit_commit[215.0] * (unit_dispatch[215.0] + unit_reserves[215.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * unit_commit[315.0] * (unit_dispatch[315.0] + unit_reserves[315.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * unit_commit[415.0] * (unit_dispatch[415.0] + unit_reserves[415.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * unit_commit[515.0] * (unit_dispatch[515.0] + unit_reserves[515.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * unit_commit[615.0] * (unit_dispatch[615.0] + unit_reserves[615.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * unit_commit[116.0] * (unit_dispatch[116.0] + unit_reserves[116.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * unit_commit[118.0] * (unit_dispatch[118.0] + unit_reserves[118.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * unit_commit[121.0] * (unit_dispatch[121.0] + unit_reserves[121.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * unit_commit[122.0] * (unit_dispatch[122.0] + unit_reserves[122.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * unit_commit[222.0] * (unit_dispatch[222.0] + unit_reserves[222.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * unit_commit[322.0] * (unit_dispatch[322.0] + unit_reserves[322.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * unit_commit[422.0] * (unit_dispatch[422.0] + unit_reserves[422.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * unit_commit[522.0] * (unit_dispatch[522.0] + unit_reserves[522.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * unit_commit[622.0] * (unit_dispatch[622.0] + unit_reserves[622.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * unit_commit[123.0] * (unit_dispatch[123.0] + unit_reserves[123.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * unit_commit[223.0] * (unit_dispatch[223.0] + unit_reserves[223.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * unit_commit[323.0] * (unit_dispatch[323.0] + unit_reserves[323.0]))
 
-		# Constraint - Minimum required reserve for largest unit
-		m.addConstr(GEN_PRIORITY_COUNT[1]*(ra_2 + ra_3 + ra_4 + ra_5 + ra_6 + ra_7 + ra_8 + ra_9) + (GEN_PRIORITY_COUNT[1] - 1) * ra_1 >= EXTRA_RESERVE_MARGIN * (uc_1*gf_1*mx_dispatch[1]), 'reserve_req_1')
-		m.addConstr(GEN_PRIORITY_COUNT[2]*(ra_1 + ra_3 + ra_4 + ra_5 + ra_6 + ra_7 + ra_8 + ra_9) + (GEN_PRIORITY_COUNT[2] - 1) * ra_2 >= EXTRA_RESERVE_MARGIN * (uc_2*gf_2*mx_dispatch[2]), 'reserve_req_2')
-		m.addConstr(GEN_PRIORITY_COUNT[3]*(ra_1 + ra_2 + ra_4 + ra_5 + ra_6 + ra_7 + ra_8 + ra_9) + (GEN_PRIORITY_COUNT[3] - 1) * ra_3 >= EXTRA_RESERVE_MARGIN * (uc_3*gf_3*mx_dispatch[3]), 'reserve_req_3')
-		m.addConstr(GEN_PRIORITY_COUNT[4]*(ra_1 + ra_2 + ra_3 + ra_5 + ra_6 + ra_7 + ra_8 + ra_9) + (GEN_PRIORITY_COUNT[4] - 1) * ra_4 >= EXTRA_RESERVE_MARGIN * (uc_4*gf_4*mx_dispatch[4]), 'reserve_req_4')
-		m.addConstr(GEN_PRIORITY_COUNT[5]*(ra_1 + ra_2 + ra_3 + ra_4 + ra_6 + ra_7 + ra_8 + ra_9) + (GEN_PRIORITY_COUNT[5] - 1) * ra_5 >= EXTRA_RESERVE_MARGIN * (uc_5*gf_5*mx_dispatch[5]), 'reserve_req_5')
-		m.addConstr(GEN_PRIORITY_COUNT[6]*(ra_1 + ra_2 + ra_3 + ra_4 + ra_5 + ra_7 + ra_8 + ra_9) + (GEN_PRIORITY_COUNT[6] - 1) * ra_6 >= EXTRA_RESERVE_MARGIN * (uc_6*gf_6*mx_dispatch[6]), 'reserve_req_6')
-		m.addConstr(GEN_PRIORITY_COUNT[7]*(ra_1 + ra_2 + ra_3 + ra_4 + ra_5 + ra_6 + ra_8 + ra_9) + (GEN_PRIORITY_COUNT[7] - 1) * ra_7 >= EXTRA_RESERVE_MARGIN * (uc_7*gf_7*mx_dispatch[7]), 'reserve_req_7')
-		m.addConstr(GEN_PRIORITY_COUNT[8]*(ra_1 + ra_2 + ra_3 + ra_4 + ra_5 + ra_6 + ra_7 + ra_9) + (GEN_PRIORITY_COUNT[8] - 1) * ra_8 >= EXTRA_RESERVE_MARGIN * (uc_8*gf_8*mx_dispatch[8]), 'reserve_req_8')
-		m.addConstr(GEN_PRIORITY_COUNT[9]*(ra_1 + ra_2 + ra_3 + ra_4 + ra_5 + ra_6 + ra_7 + ra_8) + (GEN_PRIORITY_COUNT[9] - 1) * ra_9 >= EXTRA_RESERVE_MARGIN * (uc_9*gf_9*mx_dispatch[9]), 'reserve_req_9')
+		# Maximum reserves bounded by unit max dispatch for non-combustion units
+		m.addConstrs(unit_reserves.select()[idx] <= [a*b for a,b in zip(unit_commit.select(), [i-j for i,j in zip(object_generator.matrix[:, ODC.Generator.REAL_GENERATION_MAX_RATING], unit_dispatch.select())]) ][idx] for idx in range(len(unit_reserves.select())) if idx not in combustion_ids)
+		# Maximum reserves bounded by unit max reserve for non-combustion units
+		m.addConstrs(unit_reserves.select()[idx] <= [a*b for a,b in zip(unit_commit.select(), [NUMBER_OF_MINUTES*i for i in object_generator.matrix[:, ODC.Generator.RAMP_RATE]])][idx] for idx in range(len(unit_reserves.select())) if idx not in combustion_ids)
 
-		# Constraint - Maximum available reserve
-		m.addConstr(ra_1 <= uc_1 * (1.0 - gf_1) * mx_dispatch[1], 'reserve_avail_1_1')
-		m.addConstr(ra_1 <= uc_1 * NUMBER_OF_MINUTES * mx_reserve[1], 'reserve_avail_1_2')
-		m.addConstr(ra_2 <= uc_2 * (1.0 - gf_2) * mx_dispatch[2], 'reserve_avail_2_1')
-		m.addConstr(ra_2 <= uc_2 * NUMBER_OF_MINUTES * mx_reserve[2], 'reserve_avail_2_2')
-		m.addConstr(ra_3 <= uc_3 * (1.0 - gf_3) * mx_dispatch[3], 'reserve_avail_3_1')
-		m.addConstr(ra_3 <= uc_3 * NUMBER_OF_MINUTES * mx_reserve[3], 'reserve_avail_3_2')
-		m.addConstr(ra_4 <= uc_4 * (1.0 - gf_4) * mx_dispatch[4], 'reserve_avail_4_1')
-		m.addConstr(ra_4 <= uc_4 * NUMBER_OF_MINUTES * mx_reserve[4], 'reserve_avail_4_2')
-		m.addConstr(ra_5 <= uc_5 * (1.0 - gf_5) * mx_dispatch[5], 'reserve_avail_5_1')
-		m.addConstr(ra_5 <= uc_5 * NUMBER_OF_MINUTES * mx_reserve[5], 'reserve_avail_5_2')
-		m.addConstr(ra_6 <= uc_6 * (1.0 - gf_6) * mx_dispatch[6], 'reserve_avail_6_1')
-		m.addConstr(ra_6 <= uc_6 * NUMBER_OF_MINUTES * mx_reserve[6], 'reserve_avail_6_2')
-		m.addConstr(ra_7 <= uc_7 * (1.0 - gf_7) * mx_dispatch[7], 'reserve_avail_7_1')
-		m.addConstr(ra_7 <= uc_7 * NUMBER_OF_MINUTES * mx_reserve[7], 'reserve_avail_7_2')
-		m.addConstr(ra_8 <= uc_8 * (1.0 - gf_8) * mx_dispatch[8], 'reserve_avail_8_1')
-		m.addConstr(ra_8 <= uc_8 * NUMBER_OF_MINUTES * mx_reserve[8], 'reserve_avail_8_2')
-		m.addConstr(ra_9 <= (1.0 - gf_9) * mx_dispatch[9], 'reserve_avail_9_1')
-		m.addConstr(ra_9 <= NUMBER_OF_MINUTES * mx_reserve[9], 'reserve_avail_9_2')
+		# Maximum reserves bounded by unit max dispatch for combustion units
+		m.addConstrs(unit_reserves.select()[idx] <= [i-j for i,j in zip(object_generator.matrix[:, ODC.Generator.REAL_GENERATION_MAX_RATING], unit_dispatch.select())][idx] for idx in range(len(unit_reserves.select())) if idx in combustion_ids)
+		# Maximum reserves boudned by unit max reserve for conbustion units
+		m.addConstrs(unit_reserves.select()[idx] <= [NUMBER_OF_MINUTES*i for i in object_generator.matrix[:, ODC.Generator.RAMP_RATE]][idx] for idx in range(len(unit_reserves.select())) if idx in combustion_ids)
 
-		# Solve
-		m.params.outputFlag = 0
-		m.optimize()
-
-		reserves = 0
-		for elem in m.getVars():
-			if elem.varName == 'gf_1':
-				dispatch_factor[1] = float(elem.x)
-			elif elem.varName == 'gf_2':
-				dispatch_factor[2] = float(elem.x)
-			elif elem.varName == 'gf_3':
-				dispatch_factor[3] = float(elem.x)
-			elif elem.varName == 'gf_4':
-				dispatch_factor[4] = float(elem.x)
-			elif elem.varName == 'gf_5':
-				dispatch_factor[5] = float(elem.x)
-			elif elem.varName == 'gf_6':
-				dispatch_factor[6] = float(elem.x)
-			elif elem.varName == 'gf_7':
-				dispatch_factor[7] = float(elem.x)
-			elif elem.varName == 'gf_8':
-				dispatch_factor[8] = float(elem.x)
-			elif elem.varName == 'gf_9':
-				dispatch_factor[9] = float(elem.x)
-			elif elem.varName == 'uc_1':
-				operational_status[1] = float(round(elem.x))
-			elif elem.varName == 'uc_2':
-				operational_status[2] = float(round(elem.x))
-			elif elem.varName == 'uc_3':
-				operational_status[3] = float(round(elem.x))
-			elif elem.varName == 'uc_4':
-				operational_status[4] = float(round(elem.x))
-			elif elem.varName == 'uc_5':
-				operational_status[5] = float(round(elem.x))
-			elif elem.varName == 'uc_6':
-				operational_status[6] = float(round(elem.x))
-			elif elem.varName == 'uc_7':
-				operational_status[7] = float(round(elem.x))
-			elif elem.varName == 'uc_8':
-				operational_status[8] = float(round(elem.x))
-			elif elem.varName == 'uc_9':
-				operational_status[9] = float(round(elem.x))
-
-		for row in object_generator.matrix:
-			row[ODC.Generator.REAL_GENERATION] = row[ODC.Generator.REAL_GENERATION_MAX_RATING] * dispatch_factor[GEN_PRIORITY_KEY[int(row[ODC.Generator.ID])]]
-			row[ODC.Generator.OPERATIONAL_STATUS] = operational_status[GEN_PRIORITY_KEY[int(row[ODC.Generator.ID])]]
-			row[ODC.Generator.REAL_GENERATION] = row[ODC.Generator.REAL_GENERATION] * row[ODC.Generator.OPERATIONAL_STATUS]
-		
-	except gurobipy.GurobiError:
-		print('Gurobi error reported in power dispatch')
-
-# Unit commitment is an input
-def power_dispatch_2(object_load, object_generator, losses, exports):
-	mx_dispatch = {1: 0., 2: 0., 3: 0., 4: 0., 5: 0., 6: 0., 7: 0., 8: 0., 9: 0.}
-	mx_reserve = {1: 0., 2: 0., 3: 0., 4: 0., 5: 0., 6: 0., 7: 0., 8: 0., 9: 0.}
-	dispatch_factor = {1: 0., 2: 0., 3: 0., 4: 0., 5: 0., 6: 0., 7: 0., 8: 0., 9: 0.}
-
-	uc_1 = 0.0
-	uc_2 = 0.0
-	uc_3 = 0.0
-	uc_4 = 0.0
-	uc_5 = 0.0
-	uc_6 = 0.0
-	uc_7 = 0.0
-	uc_8 = 0.0
-	uc_9 = 0.0
-
-	# Set "constants"
-	for row in object_generator.matrix:
-		mx_dispatch[GEN_PRIORITY_KEY[int(row[ODC.Generator.ID])]] += row[ODC.Generator.REAL_GENERATION_MAX_RATING]
-		mx_reserve[GEN_PRIORITY_KEY[int(row[ODC.Generator.ID])]] += row[ODC.Generator.RAMP_RATE]
-		if row[ODC.Generator.ID] == 122.0:
-			uc_1 = row[ODC.Generator.OPERATIONAL_STATUS]
-		elif row[ODC.Generator.ID] == 118.0:
-			uc_2 = row[ODC.Generator.OPERATIONAL_STATUS]
-		elif row[ODC.Generator.ID] == 323.0:
-			uc_3 = row[ODC.Generator.OPERATIONAL_STATUS]
-		elif row[ODC.Generator.ID] == 615.0:
-			uc_4 = row[ODC.Generator.OPERATIONAL_STATUS]
-		elif row[ODC.Generator.ID] == 301.0:
-			uc_5 = row[ODC.Generator.OPERATIONAL_STATUS]
-		elif row[ODC.Generator.ID] == 113.0:
-			uc_6 = row[ODC.Generator.OPERATIONAL_STATUS]
-		elif row[ODC.Generator.ID] == 107.0:
-			uc_7 = row[ODC.Generator.OPERATIONAL_STATUS]
-		elif row[ODC.Generator.ID] == 115.0:
-			uc_8 = row[ODC.Generator.OPERATIONAL_STATUS]
-		elif row[ODC.Generator.ID] == 101.0:
-			uc_9 = row[ODC.Generator.OPERATIONAL_STATUS]
-	SUM_LOAD = float(sum(object_load.matrix[:, ODC.Load.REAL_LOAD]))
-
-	try:
-		# Model
-		m = gurobipy.Model('mip1')
-
-		# Create variables
-		gf_1 = m.addVar(lb=0.00, ub=1.0, vtype=GRB.CONTINUOUS, name='gf_1') # TODO: fix these
-		gf_2 = m.addVar(lb=0.25, ub=1.0, vtype=GRB.CONTINUOUS, name='gf_2')
-		gf_3 = m.addVar(lb=0.40, ub=1.0, vtype=GRB.CONTINUOUS, name='gf_3')
-		gf_4 = m.addVar(lb=0.35, ub=1.0, vtype=GRB.CONTINUOUS, name='gf_4')
-		gf_5 = m.addVar(lb=0.20, ub=1.0, vtype=GRB.CONTINUOUS, name='gf_5')
-		gf_6 = m.addVar(lb=0.35, ub=1.0, vtype=GRB.CONTINUOUS, name='gf_6')
-		gf_7 = m.addVar(lb=0.25, ub=1.0, vtype=GRB.CONTINUOUS, name='gf_7')
-		gf_8 = m.addVar(lb=0.20, ub=1.0, vtype=GRB.CONTINUOUS, name='gf_8')
-		gf_9 = m.addVar(lb=0.70, ub=1.0, vtype=GRB.CONTINUOUS, name='gf_9')
-
-		ra_1 = m.addVar(lb=0.0, vtype=GRB.CONTINUOUS, name='ra_1')
-		ra_2 = m.addVar(lb=0.0, vtype=GRB.CONTINUOUS, name='ra_2')
-		ra_3 = m.addVar(lb=0.0, vtype=GRB.CONTINUOUS, name='ra_3')
-		ra_4 = m.addVar(lb=0.0, vtype=GRB.CONTINUOUS, name='ra_4')
-		ra_5 = m.addVar(lb=0.0, vtype=GRB.CONTINUOUS, name='ra_5')
-		ra_6 = m.addVar(lb=0.0, vtype=GRB.CONTINUOUS, name='ra_6')
-		ra_7 = m.addVar(lb=0.0, vtype=GRB.CONTINUOUS, name='ra_7')
-		ra_8 = m.addVar(lb=0.0, vtype=GRB.CONTINUOUS, name='ra_8')
-		ra_9 = m.addVar(lb=0.0, vtype=GRB.CONTINUOUS, name='ra_9')
-
-		# Objective function that minimizes priority level of dispatch
-		m.setObjective(1*uc_1*gf_1*mx_dispatch[1] + 2*uc_2*gf_1*mx_dispatch[2] + 3*uc_3*gf_1*mx_dispatch[3] + 4*uc_4*gf_1*mx_dispatch[4] + 5*uc_5*gf_1*mx_dispatch[5] + 6*uc_6*gf_1*mx_dispatch[6] + 7*uc_7*gf_1*mx_dispatch[7] + 8*uc_8*gf_1*mx_dispatch[8] + 9*uc_9*gf_1*mx_dispatch[9], GRB.MINIMIZE)
-
-		# Constraint - Loads = Gen
-		m.addConstr((SUM_LOAD+losses+exports) - 0.01 <= uc_1*gf_1*mx_dispatch[1] + uc_2*gf_2*mx_dispatch[2] + uc_3*gf_3*mx_dispatch[3] + uc_4*gf_4*mx_dispatch[4] + uc_5*gf_5*mx_dispatch[5] + uc_6*gf_6*mx_dispatch[6] + uc_7*gf_7*mx_dispatch[7] + uc_8*gf_8*mx_dispatch[8] + uc_9*gf_9*mx_dispatch[9], 'system_load_1')
-		m.addConstr((SUM_LOAD+losses+exports) + 0.01 >= uc_1*gf_1*mx_dispatch[1] + uc_2*gf_2*mx_dispatch[2] + uc_3*gf_3*mx_dispatch[3] + uc_4*gf_4*mx_dispatch[4] + uc_5*gf_5*mx_dispatch[5] + uc_6*gf_6*mx_dispatch[6] + uc_7*gf_7*mx_dispatch[7] + uc_8*gf_8*mx_dispatch[8] + uc_9*gf_9*mx_dispatch[9], 'system_load_2')
-
-		# Constraint - Minimum required reserve for CAISO
-		m.addConstr(ra_1 + ra_2 + ra_3 + ra_4 + ra_5 + ra_6 + ra_7 + ra_8 + ra_9 >= EXTRA_RESERVE_MARGIN * (uc_1*gf_1*mx_dispatch[1]*0.05 + (uc_2*gf_2*mx_dispatch[2] + uc_3*gf_3*mx_dispatch[3] + uc_4*gf_4*mx_dispatch[4] + uc_5*gf_5*mx_dispatch[5] + uc_6*gf_6*mx_dispatch[6] + uc_7*gf_7*mx_dispatch[7] + uc_8*gf_8*mx_dispatch[8] + uc_9*gf_9*mx_dispatch[9])*0.07), 'net_reserves')
-
-		# Constraint - Minimum required reserve for largest unit
-		m.addConstr(GEN_PRIORITY_COUNT[1]*(ra_2 + ra_3 + ra_4 + ra_5 + ra_6 + ra_7 + ra_8 + ra_9) + (GEN_PRIORITY_COUNT[1] - 1) * ra_1 >= EXTRA_RESERVE_MARGIN * (uc_1*gf_1*mx_dispatch[1]), 'reserve_req_1')
-		m.addConstr(GEN_PRIORITY_COUNT[2]*(ra_1 + ra_3 + ra_4 + ra_5 + ra_6 + ra_7 + ra_8 + ra_9) + (GEN_PRIORITY_COUNT[2] - 1) * ra_2 >= EXTRA_RESERVE_MARGIN * (uc_2*gf_2*mx_dispatch[2]), 'reserve_req_2')
-		m.addConstr(GEN_PRIORITY_COUNT[3]*(ra_1 + ra_2 + ra_4 + ra_5 + ra_6 + ra_7 + ra_8 + ra_9) + (GEN_PRIORITY_COUNT[3] - 1) * ra_3 >= EXTRA_RESERVE_MARGIN * (uc_3*gf_3*mx_dispatch[3]), 'reserve_req_3')
-		m.addConstr(GEN_PRIORITY_COUNT[4]*(ra_1 + ra_2 + ra_3 + ra_5 + ra_6 + ra_7 + ra_8 + ra_9) + (GEN_PRIORITY_COUNT[4] - 1) * ra_4 >= EXTRA_RESERVE_MARGIN * (uc_4*gf_4*mx_dispatch[4]), 'reserve_req_4')
-		m.addConstr(GEN_PRIORITY_COUNT[5]*(ra_1 + ra_2 + ra_3 + ra_4 + ra_6 + ra_7 + ra_8 + ra_9) + (GEN_PRIORITY_COUNT[5] - 1) * ra_5 >= EXTRA_RESERVE_MARGIN * (uc_5*gf_5*mx_dispatch[5]), 'reserve_req_5')
-		m.addConstr(GEN_PRIORITY_COUNT[6]*(ra_1 + ra_2 + ra_3 + ra_4 + ra_5 + ra_7 + ra_8 + ra_9) + (GEN_PRIORITY_COUNT[6] - 1) * ra_6 >= EXTRA_RESERVE_MARGIN * (uc_6*gf_6*mx_dispatch[6]), 'reserve_req_6')
-		m.addConstr(GEN_PRIORITY_COUNT[7]*(ra_1 + ra_2 + ra_3 + ra_4 + ra_5 + ra_6 + ra_8 + ra_9) + (GEN_PRIORITY_COUNT[7] - 1) * ra_7 >= EXTRA_RESERVE_MARGIN * (uc_7*gf_7*mx_dispatch[7]), 'reserve_req_7')
-		m.addConstr(GEN_PRIORITY_COUNT[8]*(ra_1 + ra_2 + ra_3 + ra_4 + ra_5 + ra_6 + ra_7 + ra_9) + (GEN_PRIORITY_COUNT[8] - 1) * ra_8 >= EXTRA_RESERVE_MARGIN * (uc_8*gf_8*mx_dispatch[8]), 'reserve_req_8')
-		m.addConstr(GEN_PRIORITY_COUNT[9]*(ra_1 + ra_2 + ra_3 + ra_4 + ra_5 + ra_6 + ra_7 + ra_8) + (GEN_PRIORITY_COUNT[9] - 1) * ra_9 >= EXTRA_RESERVE_MARGIN * (uc_9*gf_9*mx_dispatch[9]), 'reserve_req_9')
-
-		# Constraint - Maximum available reserve
-		m.addConstr(ra_1 <= uc_1 * (1.0 - gf_1) * mx_dispatch[1], 'reserve_avail_1_1')
-		m.addConstr(ra_1 <= uc_1 * NUMBER_OF_MINUTES * mx_reserve[1], 'reserve_avail_1_2')
-		m.addConstr(ra_2 <= uc_2 * (1.0 - gf_2) * mx_dispatch[2], 'reserve_avail_2_1')
-		m.addConstr(ra_2 <= uc_2 * NUMBER_OF_MINUTES * mx_reserve[2], 'reserve_avail_2_2')
-		m.addConstr(ra_3 <= uc_3 * (1.0 - gf_3) * mx_dispatch[3], 'reserve_avail_3_1')
-		m.addConstr(ra_3 <= uc_3 * NUMBER_OF_MINUTES * mx_reserve[3], 'reserve_avail_3_2')
-		m.addConstr(ra_4 <= uc_4 * (1.0 - gf_4) * mx_dispatch[4], 'reserve_avail_4_1')
-		m.addConstr(ra_4 <= uc_4 * NUMBER_OF_MINUTES * mx_reserve[4], 'reserve_avail_4_2')
-		m.addConstr(ra_5 <= uc_5 * (1.0 - gf_5) * mx_dispatch[5], 'reserve_avail_5_1')
-		m.addConstr(ra_5 <= uc_5 * NUMBER_OF_MINUTES * mx_reserve[5], 'reserve_avail_5_2')
-		m.addConstr(ra_6 <= uc_6 * (1.0 - gf_6) * mx_dispatch[6], 'reserve_avail_6_1')
-		m.addConstr(ra_6 <= uc_6 * NUMBER_OF_MINUTES * mx_reserve[6], 'reserve_avail_6_2')
-		m.addConstr(ra_7 <= uc_7 * (1.0 - gf_7) * mx_dispatch[7], 'reserve_avail_7_1')
-		m.addConstr(ra_7 <= uc_7 * NUMBER_OF_MINUTES * mx_reserve[7], 'reserve_avail_7_2')
-		m.addConstr(ra_8 <= uc_8 * (1.0 - gf_8) * mx_dispatch[8], 'reserve_avail_8_1')
-		m.addConstr(ra_8 <= uc_8 * NUMBER_OF_MINUTES * mx_reserve[8], 'reserve_avail_8_2')
-		m.addConstr(ra_9 <= (1.0 - gf_9) * mx_dispatch[9], 'reserve_avail_9_1')
-		m.addConstr(ra_9 <= NUMBER_OF_MINUTES * mx_reserve[9], 'reserve_avail_9_2')
-
-		# Solve
 		m.params.outputFlag = 0
 		m.optimize()
 
 		for elem in m.getVars():
-			if elem.varName == 'gf_1':
-				dispatch_factor[1] = float(elem.x)
-			elif elem.varName == 'gf_2':
-				dispatch_factor[2] = float(elem.x)
-			elif elem.varName == 'gf_3':
-				dispatch_factor[3] = float(elem.x)
-			elif elem.varName == 'gf_4':
-				dispatch_factor[4] = float(elem.x)
-			elif elem.varName == 'gf_5':
-				dispatch_factor[5] = float(elem.x)
-			elif elem.varName == 'gf_6':
-				dispatch_factor[6] = float(elem.x)
-			elif elem.varName == 'gf_7':
-				dispatch_factor[7] = float(elem.x)
-			elif elem.varName == 'gf_8':
-				dispatch_factor[8] = float(elem.x)
-			elif elem.varName == 'gf_9':
-				dispatch_factor[9] = float(elem.x)
+			if elem.varName[0:3] == 'u_c':
+				out_u_c[float(elem.varName[4:9])] = float(elem.x)
+			elif elem.varName[0:3] == 'u_d':
+				out_u_d[float(elem.varName[4:9])] = float(elem.x)
+			elif elem.varName[0:3] == 'u_r':
+				out_u_r[float(elem.varName[4:9])] = float(elem.x)
 
+		actual_reserves = 0.0
+		needed_reserves = 0.0
 		for row in object_generator.matrix:
-			row[ODC.Generator.REAL_GENERATION] = row[ODC.Generator.REAL_GENERATION_MAX_RATING] * dispatch_factor[GEN_PRIORITY_KEY[int(row[ODC.Generator.ID])]]
-			row[ODC.Generator.REAL_GENERATION] = row[ODC.Generator.REAL_GENERATION] * row[ODC.Generator.OPERATIONAL_STATUS]
+			row[ODC.Generator.OPERATIONAL_STATUS] = out_u_c[row[ODC.Generator.ID]]
+			row[ODC.Generator.REAL_GENERATION] = row[ODC.Generator.OPERATIONAL_STATUS] * out_u_d[row[ODC.Generator.ID]]
+			online = row[ODC.Generator.OPERATIONAL_STATUS]
+			if GEN_PRIORITY_KEY[int(row[ODC.Generator.ID])] == 9:
+				online = 1.0
+			actual_reserves += min(row[ODC.Generator.REAL_GENERATION_MAX_RATING] - row[ODC.Generator.REAL_GENERATION], online * NUMBER_OF_MINUTES * row[ODC.Generator.RAMP_RATE])
+			if row[ODC.Generator.REAL_GENERATION] + min(row[ODC.Generator.REAL_GENERATION_MAX_RATING] - row[ODC.Generator.REAL_GENERATION], online * NUMBER_OF_MINUTES * row[ODC.Generator.RAMP_RATE]) > needed_reserves:
+				needed_reserves = row[ODC.Generator.REAL_GENERATION] + min(row[ODC.Generator.REAL_GENERATION_MAX_RATING] - row[ODC.Generator.REAL_GENERATION], online * NUMBER_OF_MINUTES * row[ODC.Generator.RAMP_RATE])
+
+		# if math.fabs(SUM_LOAD - sum(object_generator.matrix[:, ODC.Generator.REAL_GENERATION])) > 1.0:
+		# 	print('total load', SUM_LOAD)
+		# 	print('total gen', sum(object_generator.matrix[:,ODC.Generator.REAL_GENERATION]))
+
+		# if actual_reserves < needed_reserves:
+		# 	print('actual reserves', actual_reserves)
+		# 	print('needed reserves', needed_reserves)
+
+		return needed_reserves, actual_reserves
 
 	except gurobipy.GurobiError:
-		print('Gurobi error reported in power dispatch')
+		print(gurobipy.GurobiError.message)
+		print('GurobiError in Unit Dispatch')
+
+def unit_commitment_priority_list_2(object_load, object_generator, losses, exports):
+
+	out_u_c = {}
+	out_u_d = {}
+	out_u_r = {}
+	unit_min_dispatch = {}
+	unti_commit = {}
+
+	obj_coeff_list = []
+	hydro_coeff_list = []
+	non_hydro_coeff_list = []
+	combustion_ids = []
+
+	combustion_id_counter = 0
+	for unit_id in object_generator.matrix[:, ODC.Generator.ID]:
+		obj_coeff_list.append(GEN_PRIORITY_KEY[int(unit_id)])
+
+		if GEN_PRIORITY_KEY[int(unit_id)] == 9:
+			combustion_ids.append(combustion_id_counter)
+		if GEN_PRIORITY_KEY[int(unit_id)] == 1: # hydro units
+			hydro_coeff_list.append(1.0)
+			non_hydro_coeff_list.append(0.0)
+		else: # non hydro units
+			hydro_coeff_list.append(0.0)
+			non_hydro_coeff_list.append(1.0)
+
+		obj_coeff = {i:j for i,j in zip(object_generator.matrix[:, ODC.Generator.ID], obj_coeff_list)}
+		# coefficient with ones for hydro units only
+		hydro_coeff = {i:j for i,j in zip(object_generator.matrix[:, ODC.Generator.ID], hydro_coeff_list)}
+		# coefficients with ones for non-hydro units only
+		non_hydro_coeff = {i:j for i,j in zip(object_generator.matrix[:, ODC.Generator.ID], non_hydro_coeff_list)}
+		combustion_id_counter += 1
+
+	for row in object_generator.matrix:
+		unit_min_dispatch[row[ODC.Generator.ID]] = row[ODC.Generator.REAL_GENERATION_MIN_RATING]
+		unit_commit[row[ODC.Generator.ID]] == row[ODC.Generator.OPERATIONAL_STATUS]
+
+	SUM_LOAD = float(sum(object_load.matrix[:, ODC.Load.REAL_LOAD]))
+	losses = float(losses)
+	exports = float(exports)
+
+	try:
+		m = gurobipy.Model('mip1')
+
+		unit_dispatch = m.addVars(object_generator.matrix[:, ODC.Generator.ID], lb=0.0, ub=object_generator.matrix[:, ODC.Generator.REAL_GENERATION_MAX_RATING], vtype=GRB.CONTINUOUS, name='u_d')
+		unit_reserves = m.addVars(object_generator.matrix[:, ODC.Generator.ID], lb=0.0, ub=(NUMBER_OF_MINUTES * object_generator.matrix[:, ODC.Generator.RAMP_RATE]), vtype=GRB.CONTINUOUS, name='u_r')
+
+		# Minimizes priority list
+		m.setObjective(unit_commit[101.0]*unit_dispatch[101.0]*obj_coeff[101.0] + 
+			unit_commit[201.0]*unit_dispatch[201.0]*obj_coeff[201.0] + 
+			unit_commit[301.0]*unit_dispatch[301.0]*obj_coeff[301.0] + 
+			unit_commit[401.0]*unit_dispatch[401.0]*obj_coeff[401.0] + 
+			unit_commit[102.0]*unit_dispatch[102.0]*obj_coeff[102.0] + 
+			unit_commit[202.0]*unit_dispatch[202.0]*obj_coeff[202.0] + 
+			unit_commit[302.0]*unit_dispatch[302.0]*obj_coeff[302.0] + 
+			unit_commit[402.0]*unit_dispatch[402.0]*obj_coeff[402.0] + 
+			unit_commit[107.0]*unit_dispatch[107.0]*obj_coeff[107.0] + 
+			unit_commit[207.0]*unit_dispatch[207.0]*obj_coeff[207.0] + 
+			unit_commit[307.0]*unit_dispatch[307.0]*obj_coeff[307.0] + 
+			unit_commit[113.0]*unit_dispatch[113.0]*obj_coeff[113.0] + 
+			unit_commit[213.0]*unit_dispatch[213.0]*obj_coeff[213.0] + 
+			unit_commit[313.0]*unit_dispatch[313.0]*obj_coeff[313.0] + 
+			unit_commit[115.0]*unit_dispatch[115.0]*obj_coeff[115.0] + 
+			unit_commit[215.0]*unit_dispatch[215.0]*obj_coeff[215.0] + 
+			unit_commit[315.0]*unit_dispatch[315.0]*obj_coeff[315.0] + 
+			unit_commit[415.0]*unit_dispatch[415.0]*obj_coeff[415.0] + 
+			unit_commit[515.0]*unit_dispatch[515.0]*obj_coeff[515.0] + 
+			unit_commit[615.0]*unit_dispatch[615.0]*obj_coeff[615.0] + 
+			unit_commit[116.0]*unit_dispatch[116.0]*obj_coeff[116.0] + 
+			unit_commit[118.0]*unit_dispatch[118.0]*obj_coeff[118.0] + 
+			unit_commit[121.0]*unit_dispatch[121.0]*obj_coeff[121.0] + 
+			unit_commit[122.0]*unit_dispatch[122.0]*obj_coeff[122.0] + 
+			unit_commit[222.0]*unit_dispatch[222.0]*obj_coeff[222.0] + 
+			unit_commit[322.0]*unit_dispatch[322.0]*obj_coeff[322.0] + 
+			unit_commit[422.0]*unit_dispatch[422.0]*obj_coeff[422.0] + 
+			unit_commit[522.0]*unit_dispatch[522.0]*obj_coeff[522.0] + 
+			unit_commit[622.0]*unit_dispatch[622.0]*obj_coeff[622.0] + 
+			unit_commit[123.0]*unit_dispatch[123.0]*obj_coeff[123.0] + 
+			unit_commit[223.0]*unit_dispatch[223.0]*obj_coeff[223.0] + 
+			unit_commit[323.0]*unit_dispatch[323.0]*obj_coeff[323.0], GRB.MINIMIZE)
+
+		# Balances Gen~Load
+		m.addConstr(SUM_LOAD+losses+exports - 0.01 <= unit_commit[101.0]*unit_dispatch[101.0] + 
+			unit_commit[201.0]*unit_dispatch[201.0] + 
+			unit_commit[301.0]*unit_dispatch[301.0] + 
+			unit_commit[401.0]*unit_dispatch[401.0] + 
+			unit_commit[102.0]*unit_dispatch[102.0] + 
+			unit_commit[202.0]*unit_dispatch[202.0] + 
+			unit_commit[302.0]*unit_dispatch[302.0] + 
+			unit_commit[402.0]*unit_dispatch[402.0] + 
+			unit_commit[107.0]*unit_dispatch[107.0] + 
+			unit_commit[207.0]*unit_dispatch[207.0] + 
+			unit_commit[307.0]*unit_dispatch[307.0] + 
+			unit_commit[113.0]*unit_dispatch[113.0] + 
+			unit_commit[213.0]*unit_dispatch[213.0] + 
+			unit_commit[313.0]*unit_dispatch[313.0] + 
+			unit_commit[115.0]*unit_dispatch[115.0] + 
+			unit_commit[215.0]*unit_dispatch[215.0] + 
+			unit_commit[315.0]*unit_dispatch[315.0] + 
+			unit_commit[415.0]*unit_dispatch[415.0] + 
+			unit_commit[515.0]*unit_dispatch[515.0] + 
+			unit_commit[615.0]*unit_dispatch[615.0] + 
+			unit_commit[116.0]*unit_dispatch[116.0] + 
+			unit_commit[118.0]*unit_dispatch[118.0] + 
+			unit_commit[121.0]*unit_dispatch[121.0] + 
+			unit_commit[122.0]*unit_dispatch[122.0] + 
+			unit_commit[222.0]*unit_dispatch[222.0] + 
+			unit_commit[322.0]*unit_dispatch[322.0] + 
+			unit_commit[422.0]*unit_dispatch[422.0] + 
+			unit_commit[522.0]*unit_dispatch[522.0] + 
+			unit_commit[622.0]*unit_dispatch[622.0] + 
+			unit_commit[123.0]*unit_dispatch[123.0] + 
+			unit_commit[223.0]*unit_dispatch[223.0] + 
+			unit_commit[323.0]*unit_dispatch[323.0])
+		m.addConstr(SUM_LOAD+losses+exports + 0.01 >= unit_commit[101.0]*unit_dispatch[101.0] + 
+			unit_commit[201.0]*unit_dispatch[201.0] + 
+			unit_commit[301.0]*unit_dispatch[301.0] + 
+			unit_commit[401.0]*unit_dispatch[401.0] + 
+			unit_commit[102.0]*unit_dispatch[102.0] + 
+			unit_commit[202.0]*unit_dispatch[202.0] + 
+			unit_commit[302.0]*unit_dispatch[302.0] + 
+			unit_commit[402.0]*unit_dispatch[402.0] + 
+			unit_commit[107.0]*unit_dispatch[107.0] + 
+			unit_commit[207.0]*unit_dispatch[207.0] + 
+			unit_commit[307.0]*unit_dispatch[307.0] + 
+			unit_commit[113.0]*unit_dispatch[113.0] + 
+			unit_commit[213.0]*unit_dispatch[213.0] + 
+			unit_commit[313.0]*unit_dispatch[313.0] + 
+			unit_commit[115.0]*unit_dispatch[115.0] + 
+			unit_commit[215.0]*unit_dispatch[215.0] + 
+			unit_commit[315.0]*unit_dispatch[315.0] + 
+			unit_commit[415.0]*unit_dispatch[415.0] + 
+			unit_commit[515.0]*unit_dispatch[515.0] + 
+			unit_commit[615.0]*unit_dispatch[615.0] + 
+			unit_commit[116.0]*unit_dispatch[116.0] + 
+			unit_commit[118.0]*unit_dispatch[118.0] + 
+			unit_commit[121.0]*unit_dispatch[121.0] + 
+			unit_commit[122.0]*unit_dispatch[122.0] + 
+			unit_commit[222.0]*unit_dispatch[222.0] + 
+			unit_commit[322.0]*unit_dispatch[322.0] + 
+			unit_commit[422.0]*unit_dispatch[422.0] + 
+			unit_commit[522.0]*unit_dispatch[522.0] + 
+			unit_commit[622.0]*unit_dispatch[622.0] + 
+			unit_commit[123.0]*unit_dispatch[123.0] + 
+			unit_commit[223.0]*unit_dispatch[223.0] + 
+			unit_commit[323.0]*unit_dispatch[323.0])
+
+		# Bounds unit dispatch with minimum dispatch
+		m.addConstr(unit_commit[101.0]*unit_dispatch[101.0] >= unit_commit[101.0]*unit_min_dispatch[101.0])
+		m.addConstr(unit_commit[201.0]*unit_dispatch[201.0] >= unit_commit[201.0]*unit_min_dispatch[201.0])
+		m.addConstr(unit_commit[301.0]*unit_dispatch[301.0] >= unit_commit[301.0]*unit_min_dispatch[301.0])
+		m.addConstr(unit_commit[401.0]*unit_dispatch[401.0] >= unit_commit[401.0]*unit_min_dispatch[401.0])
+		m.addConstr(unit_commit[102.0]*unit_dispatch[102.0] >= unit_commit[102.0]*unit_min_dispatch[102.0])
+		m.addConstr(unit_commit[202.0]*unit_dispatch[202.0] >= unit_commit[202.0]*unit_min_dispatch[202.0])
+		m.addConstr(unit_commit[302.0]*unit_dispatch[302.0] >= unit_commit[302.0]*unit_min_dispatch[302.0])
+		m.addConstr(unit_commit[402.0]*unit_dispatch[402.0] >= unit_commit[402.0]*unit_min_dispatch[402.0])
+		m.addConstr(unit_commit[107.0]*unit_dispatch[107.0] >= unit_commit[107.0]*unit_min_dispatch[107.0])
+		m.addConstr(unit_commit[207.0]*unit_dispatch[207.0] >= unit_commit[207.0]*unit_min_dispatch[207.0])
+		m.addConstr(unit_commit[307.0]*unit_dispatch[307.0] >= unit_commit[307.0]*unit_min_dispatch[307.0])
+		m.addConstr(unit_commit[113.0]*unit_dispatch[113.0] >= unit_commit[113.0]*unit_min_dispatch[113.0])
+		m.addConstr(unit_commit[213.0]*unit_dispatch[213.0] >= unit_commit[213.0]*unit_min_dispatch[213.0])
+		m.addConstr(unit_commit[313.0]*unit_dispatch[313.0] >= unit_commit[313.0]*unit_min_dispatch[313.0])
+		m.addConstr(unit_commit[115.0]*unit_dispatch[115.0] >= unit_commit[115.0]*unit_min_dispatch[115.0])
+		m.addConstr(unit_commit[215.0]*unit_dispatch[215.0] >= unit_commit[215.0]*unit_min_dispatch[215.0])
+		m.addConstr(unit_commit[315.0]*unit_dispatch[315.0] >= unit_commit[315.0]*unit_min_dispatch[315.0])
+		m.addConstr(unit_commit[415.0]*unit_dispatch[415.0] >= unit_commit[415.0]*unit_min_dispatch[415.0])
+		m.addConstr(unit_commit[515.0]*unit_dispatch[515.0] >= unit_commit[515.0]*unit_min_dispatch[515.0])
+		m.addConstr(unit_commit[615.0]*unit_dispatch[615.0] >= unit_commit[615.0]*unit_min_dispatch[615.0])
+		m.addConstr(unit_commit[116.0]*unit_dispatch[116.0] >= unit_commit[116.0]*unit_min_dispatch[116.0])
+		m.addConstr(unit_commit[118.0]*unit_dispatch[118.0] >= unit_commit[118.0]*unit_min_dispatch[118.0])
+		m.addConstr(unit_commit[121.0]*unit_dispatch[121.0] >= unit_commit[121.0]*unit_min_dispatch[121.0])
+		m.addConstr(unit_commit[122.0]*unit_dispatch[122.0] >= unit_commit[122.0]*unit_min_dispatch[122.0])
+		m.addConstr(unit_commit[222.0]*unit_dispatch[222.0] >= unit_commit[222.0]*unit_min_dispatch[222.0])
+		m.addConstr(unit_commit[322.0]*unit_dispatch[322.0] >= unit_commit[322.0]*unit_min_dispatch[322.0])
+		m.addConstr(unit_commit[422.0]*unit_dispatch[422.0] >= unit_commit[422.0]*unit_min_dispatch[422.0])
+		m.addConstr(unit_commit[522.0]*unit_dispatch[522.0] >= unit_commit[522.0]*unit_min_dispatch[522.0])
+		m.addConstr(unit_commit[622.0]*unit_dispatch[622.0] >= unit_commit[622.0]*unit_min_dispatch[622.0])
+		m.addConstr(unit_commit[123.0]*unit_dispatch[123.0] >= unit_commit[123.0]*unit_min_dispatch[123.0])
+		m.addConstr(unit_commit[223.0]*unit_dispatch[223.0] >= unit_commit[223.0]*unit_min_dispatch[223.0])
+		m.addConstr(unit_commit[323.0]*unit_dispatch[323.0] >= unit_commit[323.0]*unit_min_dispatch[323.0])
+
+		# Minimum reserves for CAISO
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * (0.05*unit_dispatch.prod(hydro_coeff)) + (0.07*unit_dispatch.prod(non_hydro_coeff)))
+
+		# Minimum reserves for largest dispatch+reserve unit
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * (unit_dispatch[101.0] + unit_reserves[101.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * (unit_dispatch[201.0] + unit_reserves[201.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * unit_commit[301.0] * (unit_dispatch[301.0] + unit_reserves[301.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * unit_commit[401.0] * (unit_dispatch[401.0] + unit_reserves[401.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * (unit_dispatch[102.0] + unit_reserves[102.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * (unit_dispatch[202.0] + unit_reserves[202.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * unit_commit[302.0] * (unit_dispatch[302.0] + unit_reserves[302.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * unit_commit[402.0] * (unit_dispatch[402.0] + unit_reserves[402.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * unit_commit[107.0] * (unit_dispatch[107.0] + unit_reserves[107.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * unit_commit[207.0] * (unit_dispatch[207.0] + unit_reserves[207.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * unit_commit[307.0] * (unit_dispatch[307.0] + unit_reserves[307.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * unit_commit[113.0] * (unit_dispatch[113.0] + unit_reserves[113.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * unit_commit[213.0] * (unit_dispatch[213.0] + unit_reserves[213.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * unit_commit[313.0] * (unit_dispatch[313.0] + unit_reserves[313.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * unit_commit[115.0] * (unit_dispatch[115.0] + unit_reserves[115.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * unit_commit[215.0] * (unit_dispatch[215.0] + unit_reserves[215.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * unit_commit[315.0] * (unit_dispatch[315.0] + unit_reserves[315.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * unit_commit[415.0] * (unit_dispatch[415.0] + unit_reserves[415.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * unit_commit[515.0] * (unit_dispatch[515.0] + unit_reserves[515.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * unit_commit[615.0] * (unit_dispatch[615.0] + unit_reserves[615.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * unit_commit[116.0] * (unit_dispatch[116.0] + unit_reserves[116.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * unit_commit[118.0] * (unit_dispatch[118.0] + unit_reserves[118.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * unit_commit[121.0] * (unit_dispatch[121.0] + unit_reserves[121.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * unit_commit[122.0] * (unit_dispatch[122.0] + unit_reserves[122.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * unit_commit[222.0] * (unit_dispatch[222.0] + unit_reserves[222.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * unit_commit[322.0] * (unit_dispatch[322.0] + unit_reserves[322.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * unit_commit[422.0] * (unit_dispatch[422.0] + unit_reserves[422.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * unit_commit[522.0] * (unit_dispatch[522.0] + unit_reserves[522.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * unit_commit[622.0] * (unit_dispatch[622.0] + unit_reserves[622.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * unit_commit[123.0] * (unit_dispatch[123.0] + unit_reserves[123.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * unit_commit[223.0] * (unit_dispatch[223.0] + unit_reserves[223.0]))
+		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * unit_commit[323.0] * (unit_dispatch[323.0] + unit_reserves[323.0]))
+
+		# Maximum reserves bounded by unit max dispatch for non-combustion units
+		m.addConstrs(unit_reserves.select()[idx] <= [a*b for a,b in zip(unit_commit.select(), [i-j for i,j in zip(object_generator.matrix[:, ODC.Generator.REAL_GENERATION_MAX_RATING], unit_dispatch.select())]) ][idx] for idx in range(len(unit_reserves.select())) if idx not in combustion_ids)
+		# Maximum reserves bounded by unit max reserve for non-combustion units
+		m.addConstrs(unit_reserves.select()[idx] <= [a*b for a,b in zip(unit_commit.select(), [NUMBER_OF_MINUTES*i for i in object_generator.matrix[:, ODC.Generator.RAMP_RATE]])][idx] for idx in range(len(unit_reserves.select())) if idx not in combustion_ids)
+
+		# Maximum reserves bounded by unit max dispatch for combustion units
+		m.addConstrs(unit_reserves.select()[idx] <= [i-j for i,j in zip(object_generator.matrix[:, ODC.Generator.REAL_GENERATION_MAX_RATING], unit_dispatch.select())][idx] for idx in range(len(unit_reserves.select())) if idx in combustion_ids)
+		# Maximum reserves boudned by unit max reserve for conbustion units
+		m.addConstrs(unit_reserves.select()[idx] <= [NUMBER_OF_MINUTES*i for i in object_generator.matrix[:, ODC.Generator.RAMP_RATE]][idx] for idx in range(len(unit_reserves.select())) if idx in combustion_ids)
+
+		m.params.outputFlag = 0
+		m.optimize()
+
+		for elem in m.getVars():
+			if elem.varName[0:3] == 'u_d':
+				out_u_d[float(elem.varName[4:9])] = float(elem.x)
+			elif elem.varName[0:3] == 'u_r':
+				out_u_r[float(elem.varName[4:9])] = float(elem.x)
+
+		actual_reserves = 0.0
+		needed_reserves = 0.0
+		for row in object_generator.matrix:
+			row[ODC.Generator.OPERATIONAL_STATUS] = unit_commit[row[ODC.Generator.ID]]
+			row[ODC.Generator.REAL_GENERATION] = row[ODC.Generator.OPERATIONAL_STATUS] * out_u_d[row[ODC.Generator.ID]]
+			online = row[ODC.Generator.OPERATIONAL_STATUS]
+			if GEN_PRIORITY_KEY[int(row[ODC.Generator.ID])] == 9:
+				online = 1.0
+			actual_reserves += min(row[ODC.Generator.REAL_GENERATION_MAX_RATING] - row[ODC.Generator.REAL_GENERATION], online * NUMBER_OF_MINUTES * row[ODC.Generator.RAMP_RATE])
+			if row[ODC.Generator.REAL_GENERATION] + min(row[ODC.Generator.REAL_GENERATION_MAX_RATING] - row[ODC.Generator.REAL_GENERATION], online * NUMBER_OF_MINUTES * row[ODC.Generator.RAMP_RATE]) > needed_reserves:
+				needed_reserves = row[ODC.Generator.REAL_GENERATION] + min(row[ODC.Generator.REAL_GENERATION_MAX_RATING] - row[ODC.Generator.REAL_GENERATION], online * NUMBER_OF_MINUTES * row[ODC.Generator.RAMP_RATE])
+
+		# if math.fabs(SUM_LOAD - sum(object_generator.matrix[:, ODC.Generator.REAL_GENERATION])) > 1.0:
+		# 	print('total load', SUM_LOAD)
+		# 	print('total gen', sum(object_generator.matrix[:,ODC.Generator.REAL_GENERATION]))
+
+		# if actual_reserves < needed_reserves:
+		# 	print('actual reserves', actual_reserves)
+		# 	print('needed reserves', needed_reserves)
+
+		return needed_reserves, actual_reserves
+
+	except gurobipy.GurobiError:
+		print(gurobipy.GurobiError.message)
+		print('GurobiError in Unit Dispatch')
 
 def contingency_response(object_load, object_generator, object_cable):
 
@@ -2888,3 +3137,332 @@ def contingency_response(object_load, object_generator, object_cable):
 
 	except gurobipy.GurobiError:
 		print('Gurobi error reported in contignency response')
+
+'''
+# Unit commitment is a variable
+def power_dispatch(object_load, object_generator, losses, exports, SUM_LOAD):
+	mx_dispatch = {1: 0., 2: 0., 3: 0., 4: 0., 5: 0., 6: 0., 7: 0., 8: 0., 9: 0.}
+	mx_reserve = {1: 0., 2: 0., 3: 0., 4: 0., 5: 0., 6: 0., 7: 0., 8: 0., 9: 0.}
+	dispatch_factor = {1: 0., 2: 0., 3: 0., 4: 0., 5: 0., 6: 0., 7: 0., 8: 0., 9: 0.}
+	operational_status = {1: 0., 2: 0., 3: 0., 4: 0., 5: 0., 6: 0., 7: 0., 8: 0., 9: 0.}
+
+	# Set "constants"
+	for row in object_generator.matrix:
+		mx_dispatch[GEN_PRIORITY_KEY[int(row[ODC.Generator.ID])]] += row[ODC.Generator.REAL_GENERATION_MAX_RATING]
+		mx_reserve[GEN_PRIORITY_KEY[int(row[ODC.Generator.ID])]] += row[ODC.Generator.RAMP_RATE]
+	# SUM_LOAD = float(sum(object_load.matrix[:, ODC.Load.REAL_LOAD]))
+	SUM_LOAD = float(SUM_LOAD)
+	try:
+		# Model
+		m = gurobipy.Model('mip1')
+
+		# Create variables
+		gf_1 = m.addVar(lb=0.00, ub=1.0, vtype=GRB.CONTINUOUS, name='gf_1') # TODO: fix these
+		gf_2 = m.addVar(lb=0.25, ub=1.0, vtype=GRB.CONTINUOUS, name='gf_2')
+		gf_3 = m.addVar(lb=0.40, ub=1.0, vtype=GRB.CONTINUOUS, name='gf_3')
+		gf_4 = m.addVar(lb=0.35, ub=1.0, vtype=GRB.CONTINUOUS, name='gf_4')
+		gf_5 = m.addVar(lb=0.20, ub=1.0, vtype=GRB.CONTINUOUS, name='gf_5')
+		gf_6 = m.addVar(lb=0.35, ub=1.0, vtype=GRB.CONTINUOUS, name='gf_6')
+		gf_7 = m.addVar(lb=0.25, ub=1.0, vtype=GRB.CONTINUOUS, name='gf_7')
+		gf_8 = m.addVar(lb=0.20, ub=1.0, vtype=GRB.CONTINUOUS, name='gf_8')
+		gf_9 = m.addVar(lb=0.70, ub=1.0, vtype=GRB.CONTINUOUS, name='gf_9')
+
+		uc_1 = m.addVar(lb=0.0, ub=1.0, vtype=GRB.BINARY, name='uc_1')
+		uc_2 = m.addVar(lb=0.0, ub=1.0, vtype=GRB.BINARY, name='uc_2')
+		uc_3 = m.addVar(lb=0.0, ub=1.0, vtype=GRB.BINARY, name='uc_3')
+		uc_4 = m.addVar(lb=0.0, ub=1.0, vtype=GRB.BINARY, name='uc_4')
+		uc_5 = m.addVar(lb=0.0, ub=1.0, vtype=GRB.BINARY, name='uc_5')
+		uc_6 = m.addVar(lb=0.0, ub=1.0, vtype=GRB.BINARY, name='uc_6')
+		uc_7 = m.addVar(lb=0.0, ub=1.0, vtype=GRB.BINARY, name='uc_7')
+		uc_8 = m.addVar(lb=0.0, ub=1.0, vtype=GRB.BINARY, name='uc_8')
+		uc_9 = m.addVar(lb=0.0, ub=1.0, vtype=GRB.BINARY, name='uc_9')
+
+		ra_1 = m.addVar(lb=0.0, vtype=GRB.CONTINUOUS, name='ra_1')
+		ra_2 = m.addVar(lb=0.0, vtype=GRB.CONTINUOUS, name='ra_2')
+		ra_3 = m.addVar(lb=0.0, vtype=GRB.CONTINUOUS, name='ra_3')
+		ra_4 = m.addVar(lb=0.0, vtype=GRB.CONTINUOUS, name='ra_4')
+		ra_5 = m.addVar(lb=0.0, vtype=GRB.CONTINUOUS, name='ra_5')
+		ra_6 = m.addVar(lb=0.0, vtype=GRB.CONTINUOUS, name='ra_6')
+		ra_7 = m.addVar(lb=0.0, vtype=GRB.CONTINUOUS, name='ra_7')
+		ra_8 = m.addVar(lb=0.0, vtype=GRB.CONTINUOUS, name='ra_8')
+		ra_9 = m.addVar(lb=0.0, vtype=GRB.CONTINUOUS, name='ra_9')
+
+		# Objective function that minimizes priority level of dispatch
+		m.setObjective(1*uc_1*gf_1*mx_dispatch[1] + 2*uc_2*gf_1*mx_dispatch[2] + 3*uc_3*gf_1*mx_dispatch[3] + 4*uc_4*gf_1*mx_dispatch[4] + 5*uc_5*gf_1*mx_dispatch[5] + 6*uc_6*gf_1*mx_dispatch[6] + 7*uc_7*gf_1*mx_dispatch[7] + 8*uc_8*gf_1*mx_dispatch[8] + 9*uc_9*gf_1*mx_dispatch[9], GRB.MINIMIZE)
+
+		# Constraint - Loads = Gen
+		m.addConstr((SUM_LOAD+losses+exports) - 0.01 <= uc_1*gf_1*mx_dispatch[1] + uc_2*gf_2*mx_dispatch[2] + uc_3*gf_3*mx_dispatch[3] + uc_4*gf_4*mx_dispatch[4] + uc_5*gf_5*mx_dispatch[5] + uc_6*gf_6*mx_dispatch[6] + uc_7*gf_7*mx_dispatch[7] + uc_8*gf_8*mx_dispatch[8] + uc_9*gf_9*mx_dispatch[9], 'system_load_1')
+		m.addConstr((SUM_LOAD+losses+exports) + 0.01 >= uc_1*gf_1*mx_dispatch[1] + uc_2*gf_2*mx_dispatch[2] + uc_3*gf_3*mx_dispatch[3] + uc_4*gf_4*mx_dispatch[4] + uc_5*gf_5*mx_dispatch[5] + uc_6*gf_6*mx_dispatch[6] + uc_7*gf_7*mx_dispatch[7] + uc_8*gf_8*mx_dispatch[8] + uc_9*gf_9*mx_dispatch[9], 'system_load_2')
+
+		# Constraint - Minimum required reserve for CAISO
+		m.addConstr(ra_1 + ra_2 + ra_3 + ra_4 + ra_5 + ra_6 + ra_7 + ra_8 + ra_9 >= EXTRA_RESERVE_MARGIN * (uc_1*gf_1*mx_dispatch[1]*0.05 + (uc_2*gf_2*mx_dispatch[2] + uc_3*gf_3*mx_dispatch[3] + uc_4*gf_4*mx_dispatch[4] + uc_5*gf_5*mx_dispatch[5] + uc_6*gf_6*mx_dispatch[6] + uc_7*gf_7*mx_dispatch[7] + uc_8*gf_8*mx_dispatch[8] + uc_9*gf_9*mx_dispatch[9])*0.07), 'net_reserves')
+
+		# Constraint - Minimum required reserve for largest unit
+		m.addConstr(GEN_PRIORITY_COUNT[1]*(ra_2 + ra_3 + ra_4 + ra_5 + ra_6 + ra_7 + ra_8 + ra_9) + (GEN_PRIORITY_COUNT[1] - 0) * ra_1 >= EXTRA_RESERVE_MARGIN * (uc_1*gf_1*mx_dispatch[1]), 'reserve_req_1')
+		m.addConstr(GEN_PRIORITY_COUNT[2]*(ra_1 + ra_3 + ra_4 + ra_5 + ra_6 + ra_7 + ra_8 + ra_9) + (GEN_PRIORITY_COUNT[2] - 0) * ra_2 >= EXTRA_RESERVE_MARGIN * (uc_2*gf_2*mx_dispatch[2]), 'reserve_req_2')
+		m.addConstr(GEN_PRIORITY_COUNT[3]*(ra_1 + ra_2 + ra_4 + ra_5 + ra_6 + ra_7 + ra_8 + ra_9) + (GEN_PRIORITY_COUNT[3] - 0) * ra_3 >= EXTRA_RESERVE_MARGIN * (uc_3*gf_3*mx_dispatch[3]), 'reserve_req_3')
+		m.addConstr(GEN_PRIORITY_COUNT[4]*(ra_1 + ra_2 + ra_3 + ra_5 + ra_6 + ra_7 + ra_8 + ra_9) + (GEN_PRIORITY_COUNT[4] - 0) * ra_4 >= EXTRA_RESERVE_MARGIN * (uc_4*gf_4*mx_dispatch[4]), 'reserve_req_4')
+		m.addConstr(GEN_PRIORITY_COUNT[5]*(ra_1 + ra_2 + ra_3 + ra_4 + ra_6 + ra_7 + ra_8 + ra_9) + (GEN_PRIORITY_COUNT[5] - 0) * ra_5 >= EXTRA_RESERVE_MARGIN * (uc_5*gf_5*mx_dispatch[5]), 'reserve_req_5')
+		m.addConstr(GEN_PRIORITY_COUNT[6]*(ra_1 + ra_2 + ra_3 + ra_4 + ra_5 + ra_7 + ra_8 + ra_9) + (GEN_PRIORITY_COUNT[6] - 0) * ra_6 >= EXTRA_RESERVE_MARGIN * (uc_6*gf_6*mx_dispatch[6]), 'reserve_req_6')
+		m.addConstr(GEN_PRIORITY_COUNT[7]*(ra_1 + ra_2 + ra_3 + ra_4 + ra_5 + ra_6 + ra_8 + ra_9) + (GEN_PRIORITY_COUNT[7] - 0) * ra_7 >= EXTRA_RESERVE_MARGIN * (uc_7*gf_7*mx_dispatch[7]), 'reserve_req_7')
+		m.addConstr(GEN_PRIORITY_COUNT[8]*(ra_1 + ra_2 + ra_3 + ra_4 + ra_5 + ra_6 + ra_7 + ra_9) + (GEN_PRIORITY_COUNT[8] - 0) * ra_8 >= EXTRA_RESERVE_MARGIN * (uc_8*gf_8*mx_dispatch[8]), 'reserve_req_8')
+		m.addConstr(GEN_PRIORITY_COUNT[9]*(ra_1 + ra_2 + ra_3 + ra_4 + ra_5 + ra_6 + ra_7 + ra_8) + (GEN_PRIORITY_COUNT[9] - 0) * ra_9 >= EXTRA_RESERVE_MARGIN * (uc_9*gf_9*mx_dispatch[9]), 'reserve_req_9')
+
+		# Constraint - Maximum available reserve
+		m.addConstr(ra_1 <= uc_1 * (1.0 - gf_1) * mx_dispatch[1], 'reserve_avail_1_1')
+		m.addConstr(ra_1 <= uc_1 * NUMBER_OF_MINUTES * mx_reserve[1], 'reserve_avail_1_2')
+		m.addConstr(ra_2 <= uc_2 * (1.0 - gf_2) * mx_dispatch[2], 'reserve_avail_2_1')
+		m.addConstr(ra_2 <= uc_2 * NUMBER_OF_MINUTES * mx_reserve[2], 'reserve_avail_2_2')
+		m.addConstr(ra_3 <= uc_3 * (1.0 - gf_3) * mx_dispatch[3], 'reserve_avail_3_1')
+		m.addConstr(ra_3 <= uc_3 * NUMBER_OF_MINUTES * mx_reserve[3], 'reserve_avail_3_2')
+		m.addConstr(ra_4 <= uc_4 * (1.0 - gf_4) * mx_dispatch[4], 'reserve_avail_4_1')
+		m.addConstr(ra_4 <= uc_4 * NUMBER_OF_MINUTES * mx_reserve[4], 'reserve_avail_4_2')
+		m.addConstr(ra_5 <= uc_5 * (1.0 - gf_5) * mx_dispatch[5], 'reserve_avail_5_1')
+		m.addConstr(ra_5 <= uc_5 * NUMBER_OF_MINUTES * mx_reserve[5], 'reserve_avail_5_2')
+		m.addConstr(ra_6 <= uc_6 * (1.0 - gf_6) * mx_dispatch[6], 'reserve_avail_6_1')
+		m.addConstr(ra_6 <= uc_6 * NUMBER_OF_MINUTES * mx_reserve[6], 'reserve_avail_6_2')
+		m.addConstr(ra_7 <= uc_7 * (1.0 - gf_7) * mx_dispatch[7], 'reserve_avail_7_1')
+		m.addConstr(ra_7 <= uc_7 * NUMBER_OF_MINUTES * mx_reserve[7], 'reserve_avail_7_2')
+		m.addConstr(ra_8 <= uc_8 * (1.0 - gf_8) * mx_dispatch[8], 'reserve_avail_8_1')
+		m.addConstr(ra_8 <= uc_8 * NUMBER_OF_MINUTES * mx_reserve[8], 'reserve_avail_8_2')
+		m.addConstr(ra_9 <= (1.0 - gf_9) * mx_dispatch[9], 'reserve_avail_9_1')
+		m.addConstr(ra_9 <= NUMBER_OF_MINUTES * mx_reserve[9], 'reserve_avail_9_2')
+
+		# Solve
+		m.params.outputFlag = 0
+		m.optimize()
+
+		reserves = 0
+		for elem in m.getVars():
+			if elem.varName == 'gf_1':
+				dispatch_factor[1] = float(elem.x)
+			elif elem.varName == 'gf_2':
+				dispatch_factor[2] = float(elem.x)
+			elif elem.varName == 'gf_3':
+				dispatch_factor[3] = float(elem.x)
+			elif elem.varName == 'gf_4':
+				dispatch_factor[4] = float(elem.x)
+			elif elem.varName == 'gf_5':
+				dispatch_factor[5] = float(elem.x)
+			elif elem.varName == 'gf_6':
+				dispatch_factor[6] = float(elem.x)
+			elif elem.varName == 'gf_7':
+				dispatch_factor[7] = float(elem.x)
+			elif elem.varName == 'gf_8':
+				dispatch_factor[8] = float(elem.x)
+			elif elem.varName == 'gf_9':
+				dispatch_factor[9] = float(elem.x)
+			elif elem.varName == 'uc_1':
+				operational_status[1] = float(round(elem.x))
+			elif elem.varName == 'uc_2':
+				operational_status[2] = float(round(elem.x))
+			elif elem.varName == 'uc_3':
+				operational_status[3] = float(round(elem.x))
+			elif elem.varName == 'uc_4':
+				operational_status[4] = float(round(elem.x))
+			elif elem.varName == 'uc_5':
+				operational_status[5] = float(round(elem.x))
+			elif elem.varName == 'uc_6':
+				operational_status[6] = float(round(elem.x))
+			elif elem.varName == 'uc_7':
+				operational_status[7] = float(round(elem.x))
+			elif elem.varName == 'uc_8':
+				operational_status[8] = float(round(elem.x))
+			elif elem.varName == 'uc_9':
+				operational_status[9] = float(round(elem.x))
+		for elem in m.getVars():
+			if elem.varName == 'ra_1':
+				reserves += operational_status[1]*float(elem.x)
+			elif elem.varName == 'ra_2':
+				reserves += operational_status[2]*float(elem.x)
+			elif elem.varName == 'ra_3':
+				reserves += operational_status[3]*float(elem.x)
+			elif elem.varName == 'ra_4':
+				reserves += operational_status[4]*float(elem.x)
+			elif elem.varName == 'ra_5':
+				reserves += operational_status[5]*float(elem.x)
+			elif elem.varName == 'ra_6':
+				reserves += operational_status[6]*float(elem.x)
+			elif elem.varName == 'ra_7':
+				reserves += operational_status[7]*float(elem.x)
+			elif elem.varName == 'ra_8':
+				reserves += operational_status[8]*float(elem.x)
+			elif elem.varName == 'ra_9':
+				reserves += 1.0*float(elem.x)
+
+		for row in object_generator.matrix:
+			row[ODC.Generator.REAL_GENERATION] = row[ODC.Generator.REAL_GENERATION_MAX_RATING] * dispatch_factor[GEN_PRIORITY_KEY[int(row[ODC.Generator.ID])]]
+			row[ODC.Generator.OPERATIONAL_STATUS] = operational_status[GEN_PRIORITY_KEY[int(row[ODC.Generator.ID])]]
+			row[ODC.Generator.REAL_GENERATION] = row[ODC.Generator.REAL_GENERATION] * row[ODC.Generator.OPERATIONAL_STATUS]
+		
+		needed_reserves_1 = operational_status[1]*dispatch_factor[1]*mx_dispatch[1]*0.05 + (operational_status[2]*dispatch_factor[2]*mx_dispatch[2] + operational_status[3]*dispatch_factor[3]*mx_dispatch[3] + operational_status[4]*dispatch_factor[4]*mx_dispatch[4] + operational_status[5]*dispatch_factor[5]*mx_dispatch[5] + operational_status[6]*dispatch_factor[6]*mx_dispatch[6] + operational_status[7]*dispatch_factor[7]*mx_dispatch[7] + operational_status[8]*dispatch_factor[8]*mx_dispatch[8] + operational_status[9]*dispatch_factor[9]*mx_dispatch[9])*0.07
+		needed_reserves_2 = max(operational_status[1]*dispatch_factor[1]*mx_dispatch[1] / GEN_PRIORITY_COUNT[1], operational_status[2]*dispatch_factor[2]*mx_dispatch[2] / GEN_PRIORITY_COUNT[2], operational_status[3]*dispatch_factor[3]*mx_dispatch[3] / GEN_PRIORITY_COUNT[3], operational_status[4]*dispatch_factor[4]*mx_dispatch[4] / GEN_PRIORITY_COUNT[4], operational_status[5]*dispatch_factor[5]*mx_dispatch[5] / GEN_PRIORITY_COUNT[5], operational_status[6]*dispatch_factor[6]*mx_dispatch[6] / GEN_PRIORITY_COUNT[6], operational_status[7]*dispatch_factor[7]*mx_dispatch[7] / GEN_PRIORITY_COUNT[7], operational_status[8]*dispatch_factor[8]*mx_dispatch[8] / GEN_PRIORITY_COUNT[8], operational_status[9]*dispatch_factor[9]*mx_dispatch[9] / GEN_PRIORITY_COUNT[9])
+		needed_reserves = max(needed_reserves_1, needed_reserves_2)
+
+		return reserves, needed_reserves
+
+	except gurobipy.GurobiError:
+		print('Gurobi error reported in power dispatch')
+
+# Unit commitment is an input
+def power_dispatch_2(object_load, object_generator, losses, exports, SUM_LOAD):
+	mx_dispatch = {1: 0., 2: 0., 3: 0., 4: 0., 5: 0., 6: 0., 7: 0., 8: 0., 9: 0.}
+	mx_reserve = {1: 0., 2: 0., 3: 0., 4: 0., 5: 0., 6: 0., 7: 0., 8: 0., 9: 0.}
+	dispatch_factor = {1: 0., 2: 0., 3: 0., 4: 0., 5: 0., 6: 0., 7: 0., 8: 0., 9: 0.}
+
+	uc_1 = 0.0
+	uc_2 = 0.0
+	uc_3 = 0.0
+	uc_4 = 0.0
+	uc_5 = 0.0
+	uc_6 = 0.0
+	uc_7 = 0.0
+	uc_8 = 0.0
+	uc_9 = 0.0
+
+	# Set "constants"
+	for row in object_generator.matrix:
+		mx_dispatch[GEN_PRIORITY_KEY[int(row[ODC.Generator.ID])]] += row[ODC.Generator.REAL_GENERATION_MAX_RATING]
+		mx_reserve[GEN_PRIORITY_KEY[int(row[ODC.Generator.ID])]] += row[ODC.Generator.RAMP_RATE]
+		if row[ODC.Generator.ID] == 122.0:
+			uc_1 = row[ODC.Generator.OPERATIONAL_STATUS]
+		elif row[ODC.Generator.ID] == 118.0:
+			uc_2 = row[ODC.Generator.OPERATIONAL_STATUS]
+		elif row[ODC.Generator.ID] == 323.0:
+			uc_3 = row[ODC.Generator.OPERATIONAL_STATUS]
+		elif row[ODC.Generator.ID] == 615.0:
+			uc_4 = row[ODC.Generator.OPERATIONAL_STATUS]
+		elif row[ODC.Generator.ID] == 301.0:
+			uc_5 = row[ODC.Generator.OPERATIONAL_STATUS]
+		elif row[ODC.Generator.ID] == 113.0:
+			uc_6 = row[ODC.Generator.OPERATIONAL_STATUS]
+		elif row[ODC.Generator.ID] == 107.0:
+			uc_7 = row[ODC.Generator.OPERATIONAL_STATUS]
+		elif row[ODC.Generator.ID] == 115.0:
+			uc_8 = row[ODC.Generator.OPERATIONAL_STATUS]
+		elif row[ODC.Generator.ID] == 101.0:
+			uc_9 = row[ODC.Generator.OPERATIONAL_STATUS]
+	# SUM_LOAD = float(sum(object_load.matrix[:, ODC.Load.REAL_LOAD]))
+
+	try:
+		# Model
+		m = gurobipy.Model('mip1')
+
+		# Create variables
+		gf_1 = m.addVar(lb=0.00, ub=1.0, vtype=GRB.CONTINUOUS, name='gf_1') # TODO: fix these
+		gf_2 = m.addVar(lb=0.25, ub=1.0, vtype=GRB.CONTINUOUS, name='gf_2')
+		gf_3 = m.addVar(lb=0.40, ub=1.0, vtype=GRB.CONTINUOUS, name='gf_3')
+		gf_4 = m.addVar(lb=0.35, ub=1.0, vtype=GRB.CONTINUOUS, name='gf_4')
+		gf_5 = m.addVar(lb=0.20, ub=1.0, vtype=GRB.CONTINUOUS, name='gf_5')
+		gf_6 = m.addVar(lb=0.35, ub=1.0, vtype=GRB.CONTINUOUS, name='gf_6')
+		gf_7 = m.addVar(lb=0.25, ub=1.0, vtype=GRB.CONTINUOUS, name='gf_7')
+		gf_8 = m.addVar(lb=0.20, ub=1.0, vtype=GRB.CONTINUOUS, name='gf_8')
+		gf_9 = m.addVar(lb=0.70, ub=1.0, vtype=GRB.CONTINUOUS, name='gf_9')
+
+		ra_1 = m.addVar(lb=0.0, vtype=GRB.CONTINUOUS, name='ra_1')
+		ra_2 = m.addVar(lb=0.0, vtype=GRB.CONTINUOUS, name='ra_2')
+		ra_3 = m.addVar(lb=0.0, vtype=GRB.CONTINUOUS, name='ra_3')
+		ra_4 = m.addVar(lb=0.0, vtype=GRB.CONTINUOUS, name='ra_4')
+		ra_5 = m.addVar(lb=0.0, vtype=GRB.CONTINUOUS, name='ra_5')
+		ra_6 = m.addVar(lb=0.0, vtype=GRB.CONTINUOUS, name='ra_6')
+		ra_7 = m.addVar(lb=0.0, vtype=GRB.CONTINUOUS, name='ra_7')
+		ra_8 = m.addVar(lb=0.0, vtype=GRB.CONTINUOUS, name='ra_8')
+		ra_9 = m.addVar(lb=0.0, vtype=GRB.CONTINUOUS, name='ra_9')
+
+		# Objective function that minimizes priority level of dispatch
+		m.setObjective(1*uc_1*gf_1*mx_dispatch[1] + 2*uc_2*gf_1*mx_dispatch[2] + 3*uc_3*gf_1*mx_dispatch[3] + 4*uc_4*gf_1*mx_dispatch[4] + 5*uc_5*gf_1*mx_dispatch[5] + 6*uc_6*gf_1*mx_dispatch[6] + 7*uc_7*gf_1*mx_dispatch[7] + 8*uc_8*gf_1*mx_dispatch[8] + 9*uc_9*gf_1*mx_dispatch[9], GRB.MINIMIZE)
+
+		# Constraint - Loads = Gen
+		m.addConstr((SUM_LOAD+losses+exports) - 0.01 <= uc_1*gf_1*mx_dispatch[1] + uc_2*gf_2*mx_dispatch[2] + uc_3*gf_3*mx_dispatch[3] + uc_4*gf_4*mx_dispatch[4] + uc_5*gf_5*mx_dispatch[5] + uc_6*gf_6*mx_dispatch[6] + uc_7*gf_7*mx_dispatch[7] + uc_8*gf_8*mx_dispatch[8] + uc_9*gf_9*mx_dispatch[9], 'system_load_1')
+		m.addConstr((SUM_LOAD+losses+exports) + 0.01 >= uc_1*gf_1*mx_dispatch[1] + uc_2*gf_2*mx_dispatch[2] + uc_3*gf_3*mx_dispatch[3] + uc_4*gf_4*mx_dispatch[4] + uc_5*gf_5*mx_dispatch[5] + uc_6*gf_6*mx_dispatch[6] + uc_7*gf_7*mx_dispatch[7] + uc_8*gf_8*mx_dispatch[8] + uc_9*gf_9*mx_dispatch[9], 'system_load_2')
+
+		# Constraint - Minimum required reserve for CAISO
+		m.addConstr(ra_1 + ra_2 + ra_3 + ra_4 + ra_5 + ra_6 + ra_7 + ra_8 + ra_9 >= EXTRA_RESERVE_MARGIN * (uc_1*gf_1*mx_dispatch[1]*0.05 + (uc_2*gf_2*mx_dispatch[2] + uc_3*gf_3*mx_dispatch[3] + uc_4*gf_4*mx_dispatch[4] + uc_5*gf_5*mx_dispatch[5] + uc_6*gf_6*mx_dispatch[6] + uc_7*gf_7*mx_dispatch[7] + uc_8*gf_8*mx_dispatch[8] + uc_9*gf_9*mx_dispatch[9])*0.07), 'net_reserves')
+
+		# Constraint - Minimum required reserve for largest unit
+		m.addConstr(GEN_PRIORITY_COUNT[1]*(ra_2 + ra_3 + ra_4 + ra_5 + ra_6 + ra_7 + ra_8 + ra_9) + (GEN_PRIORITY_COUNT[1] - 1) * ra_1 >= EXTRA_RESERVE_MARGIN * (uc_1*gf_1*mx_dispatch[1]), 'reserve_req_1')
+		m.addConstr(GEN_PRIORITY_COUNT[2]*(ra_1 + ra_3 + ra_4 + ra_5 + ra_6 + ra_7 + ra_8 + ra_9) + (GEN_PRIORITY_COUNT[2] - 1) * ra_2 >= EXTRA_RESERVE_MARGIN * (uc_2*gf_2*mx_dispatch[2]), 'reserve_req_2')
+		m.addConstr(GEN_PRIORITY_COUNT[3]*(ra_1 + ra_2 + ra_4 + ra_5 + ra_6 + ra_7 + ra_8 + ra_9) + (GEN_PRIORITY_COUNT[3] - 1) * ra_3 >= EXTRA_RESERVE_MARGIN * (uc_3*gf_3*mx_dispatch[3]), 'reserve_req_3')
+		m.addConstr(GEN_PRIORITY_COUNT[4]*(ra_1 + ra_2 + ra_3 + ra_5 + ra_6 + ra_7 + ra_8 + ra_9) + (GEN_PRIORITY_COUNT[4] - 1) * ra_4 >= EXTRA_RESERVE_MARGIN * (uc_4*gf_4*mx_dispatch[4]), 'reserve_req_4')
+		m.addConstr(GEN_PRIORITY_COUNT[5]*(ra_1 + ra_2 + ra_3 + ra_4 + ra_6 + ra_7 + ra_8 + ra_9) + (GEN_PRIORITY_COUNT[5] - 1) * ra_5 >= EXTRA_RESERVE_MARGIN * (uc_5*gf_5*mx_dispatch[5]), 'reserve_req_5')
+		m.addConstr(GEN_PRIORITY_COUNT[6]*(ra_1 + ra_2 + ra_3 + ra_4 + ra_5 + ra_7 + ra_8 + ra_9) + (GEN_PRIORITY_COUNT[6] - 1) * ra_6 >= EXTRA_RESERVE_MARGIN * (uc_6*gf_6*mx_dispatch[6]), 'reserve_req_6')
+		m.addConstr(GEN_PRIORITY_COUNT[7]*(ra_1 + ra_2 + ra_3 + ra_4 + ra_5 + ra_6 + ra_8 + ra_9) + (GEN_PRIORITY_COUNT[7] - 1) * ra_7 >= EXTRA_RESERVE_MARGIN * (uc_7*gf_7*mx_dispatch[7]), 'reserve_req_7')
+		m.addConstr(GEN_PRIORITY_COUNT[8]*(ra_1 + ra_2 + ra_3 + ra_4 + ra_5 + ra_6 + ra_7 + ra_9) + (GEN_PRIORITY_COUNT[8] - 1) * ra_8 >= EXTRA_RESERVE_MARGIN * (uc_8*gf_8*mx_dispatch[8]), 'reserve_req_8')
+		m.addConstr(GEN_PRIORITY_COUNT[9]*(ra_1 + ra_2 + ra_3 + ra_4 + ra_5 + ra_6 + ra_7 + ra_8) + (GEN_PRIORITY_COUNT[9] - 1) * ra_9 >= EXTRA_RESERVE_MARGIN * (uc_9*gf_9*mx_dispatch[9]), 'reserve_req_9')
+
+		# Constraint - Maximum available reserve
+		m.addConstr(ra_1 <= uc_1 * (1.0 - gf_1) * mx_dispatch[1], 'reserve_avail_1_1')
+		m.addConstr(ra_1 <= uc_1 * NUMBER_OF_MINUTES * mx_reserve[1], 'reserve_avail_1_2')
+		m.addConstr(ra_2 <= uc_2 * (1.0 - gf_2) * mx_dispatch[2], 'reserve_avail_2_1')
+		m.addConstr(ra_2 <= uc_2 * NUMBER_OF_MINUTES * mx_reserve[2], 'reserve_avail_2_2')
+		m.addConstr(ra_3 <= uc_3 * (1.0 - gf_3) * mx_dispatch[3], 'reserve_avail_3_1')
+		m.addConstr(ra_3 <= uc_3 * NUMBER_OF_MINUTES * mx_reserve[3], 'reserve_avail_3_2')
+		m.addConstr(ra_4 <= uc_4 * (1.0 - gf_4) * mx_dispatch[4], 'reserve_avail_4_1')
+		m.addConstr(ra_4 <= uc_4 * NUMBER_OF_MINUTES * mx_reserve[4], 'reserve_avail_4_2')
+		m.addConstr(ra_5 <= uc_5 * (1.0 - gf_5) * mx_dispatch[5], 'reserve_avail_5_1')
+		m.addConstr(ra_5 <= uc_5 * NUMBER_OF_MINUTES * mx_reserve[5], 'reserve_avail_5_2')
+		m.addConstr(ra_6 <= uc_6 * (1.0 - gf_6) * mx_dispatch[6], 'reserve_avail_6_1')
+		m.addConstr(ra_6 <= uc_6 * NUMBER_OF_MINUTES * mx_reserve[6], 'reserve_avail_6_2')
+		m.addConstr(ra_7 <= uc_7 * (1.0 - gf_7) * mx_dispatch[7], 'reserve_avail_7_1')
+		m.addConstr(ra_7 <= uc_7 * NUMBER_OF_MINUTES * mx_reserve[7], 'reserve_avail_7_2')
+		m.addConstr(ra_8 <= uc_8 * (1.0 - gf_8) * mx_dispatch[8], 'reserve_avail_8_1')
+		m.addConstr(ra_8 <= uc_8 * NUMBER_OF_MINUTES * mx_reserve[8], 'reserve_avail_8_2')
+		m.addConstr(ra_9 <= (1.0 - gf_9) * mx_dispatch[9], 'reserve_avail_9_1')
+		m.addConstr(ra_9 <= NUMBER_OF_MINUTES * mx_reserve[9], 'reserve_avail_9_2')
+
+		# Solve
+		m.params.outputFlag = 0
+		m.optimize()
+
+		reserves = 0.0
+		for elem in m.getVars():
+			if elem.varName == 'gf_1':
+				dispatch_factor[1] = float(elem.x)
+			elif elem.varName == 'gf_2':
+				dispatch_factor[2] = float(elem.x)
+			elif elem.varName == 'gf_3':
+				dispatch_factor[3] = float(elem.x)
+			elif elem.varName == 'gf_4':
+				dispatch_factor[4] = float(elem.x)
+			elif elem.varName == 'gf_5':
+				dispatch_factor[5] = float(elem.x)
+			elif elem.varName == 'gf_6':
+				dispatch_factor[6] = float(elem.x)
+			elif elem.varName == 'gf_7':
+				dispatch_factor[7] = float(elem.x)
+			elif elem.varName == 'gf_8':
+				dispatch_factor[8] = float(elem.x)
+			elif elem.varName == 'gf_9':
+				dispatch_factor[9] = float(elem.x)
+			elif elem.varName == 'ra_1':
+				reserves += float(elem.x)
+			elif elem.varName == 'ra_2':
+				reserves += float(elem.x)
+			elif elem.varName == 'ra_3':
+				reserves += float(elem.x)
+			elif elem.varName == 'ra_4':
+				reserves += float(elem.x)
+			elif elem.varName == 'ra_5':
+				reserves += float(elem.x)
+			elif elem.varName == 'ra_6':
+				reserves += float(elem.x)
+			elif elem.varName == 'ra_7':
+				reserves += float(elem.x)
+			elif elem.varName == 'ra_8':
+				reserves += float(elem.x)
+			elif elem.varName == 'ra_9':
+				reserves += float(elem.x)
+
+		for row in object_generator.matrix:
+			row[ODC.Generator.REAL_GENERATION] = row[ODC.Generator.REAL_GENERATION_MAX_RATING] * dispatch_factor[GEN_PRIORITY_KEY[int(row[ODC.Generator.ID])]]
+			row[ODC.Generator.REAL_GENERATION] = row[ODC.Generator.REAL_GENERATION] * row[ODC.Generator.OPERATIONAL_STATUS]
+
+		needed_reserves_1 = uc_1*dispatch_factor[1]*mx_dispatch[1]*0.05 + (uc_1*dispatch_factor[2]*mx_dispatch[2] + uc_1*dispatch_factor[3]*mx_dispatch[3] + uc_1*dispatch_factor[4]*mx_dispatch[4] + uc_1*dispatch_factor[5]*mx_dispatch[5] + uc_1*dispatch_factor[6]*mx_dispatch[6] + uc_1*dispatch_factor[7]*mx_dispatch[7] + uc_1*dispatch_factor[8]*mx_dispatch[8] + uc_1*dispatch_factor[9]*mx_dispatch[9])*0.07
+		needed_reserves_2 = max(uc_1*dispatch_factor[1]*mx_dispatch[1], uc_2*dispatch_factor[2]*mx_dispatch[2], uc_3*dispatch_factor[3]*mx_dispatch[3], uc_4*dispatch_factor[4]*mx_dispatch[4], uc_5*dispatch_factor[5]*mx_dispatch[5], uc_6*dispatch_factor[6]*mx_dispatch[6], uc_7*dispatch_factor[7]*mx_dispatch[7], uc_8*dispatch_factor[8]*mx_dispatch[8], uc_9*dispatch_factor[9]*mx_dispatch[9])
+		needed_reserves = max(needed_reserves_1, needed_reserves_2)
+
+		return reserves, needed_reserves
+
+	except gurobipy.GurobiError:
+		print('Gurobi error reported in power dispatch')
+'''

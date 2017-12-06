@@ -18,7 +18,7 @@ import numpy as np
 import subprocess
 import sys
 
-number_of_sims = 101
+number_of_sims = 501
 
 power_load_lb = 0.3388
 power_load_ub = 1.0
@@ -28,5 +28,5 @@ plf_array = np.linspace(power_load_lb, power_load_ub, number_of_sims)
 for i in range(0, len(plf_array)):
 	if (i+1)%10 == 0:
 		print(i+1)
-	# if plf_array[i] >= 0.530548:
+
 	pid = subprocess.call('python power_only_n1.py {}'.format(plf_array[i]), shell=True)

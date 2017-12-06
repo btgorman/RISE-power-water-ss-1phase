@@ -383,11 +383,11 @@ def main(dss_debug, write_cols, plf):
 		if load[ODC.Load.ID] == 4.0 or load[ODC.Load.ID] == 20.0:
 			load[ODC.Load.REAL_LOAD] = load[ODC.Load.REAL_LOAD_MAX]
 
-	water_demand_scale = np.exp(0.0144362) # exponential, AIC = 582.27
-	water_demand_lb = 0.256
-	water_demand_ub = 4.21
-	water_demand_factor = min(water_demand_lb+np.random.exponential(water_demand_scale, size=None), water_demand_ub)
-	object_junction.multiplyLoadFactor(water_demand_factor)
+	# water_demand_scale = np.exp(0.0144362) # exponential, AIC = 582.27
+	# water_demand_lb = 0.256
+	# water_demand_ub = 4.21
+	# water_demand_factor = min(water_demand_lb+np.random.exponential(water_demand_scale, size=None), water_demand_ub)
+	# object_junction.multiplyLoadFactor(water_demand_factor)
 
 	# SIM STEP 2: SET GENERATOR DISPATCH
 	# ----------------------------------
@@ -398,7 +398,7 @@ def main(dss_debug, write_cols, plf):
 		counter = 0
 		lost_min = 10000000.0
 		while True:
-			grb_solvers.power_dispatch(object_load, object_generator, losses, exports) # unit commitment is variable
+			needreserves, actualreserves = grb_solvers.unit_commitment_priority_list(object_load, object_generator, losses, exports) # unit commitment is variable
 			new_loss = run_OpenDSS(0, True)
 			counter += 1
 
@@ -409,23 +409,23 @@ def main(dss_debug, write_cols, plf):
 				elif counter > 150:
 					while True:
 						object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS] = dispatcher_max
-						grb_solvers.power_dispatch_2(object_load, object_generator, losses, exports) # unit commitment is input
+						needreserves, actualreserves = grb_solvers.unit_commitment_priority_list_2(object_load, object_generator, losses, exports) # unit commitment is input
 						new_loss = run_OpenDSS(0, True)
 						counter +=1
 
 						if math.fabs(losses - new_loss) < 1.0:
-							return 0
+							return needreserves, actualreserves
 						else:
 							losses += 0.8 * (new_loss - losses)
 				elif counter > 100:
 					while True:
 						object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS] = dispatcher_min
-						grb_solvers.power_dispatch_2(object_load, object_generator, losses, exports) # unit commitment is input
+						needreserves, actualreserves = grb_solvers.unit_commitment_priority_list_2(object_load, object_generator, losses, exports) # unit commitment is input
 						new_loss = run_OpenDSS(0, True)
 						counter +=1
 
 						if math.fabs(losses - new_loss) < 1.0:
-							return 0
+							return needreserves, actualreserves
 						else:
 							losses += 0.8 * (new_loss - losses)
 				elif counter > 50:
@@ -436,11 +436,13 @@ def main(dss_debug, write_cols, plf):
 						dispatcher_max = np.array(object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS], copy=True)
 				losses += 0.8*(new_loss - losses)
 			else:
-				return 0
+				return needreserves, actualreserves
 
-	fun_set_power_dispatch(object_load, object_generator, losses, exports)
+	needed_reserves, actual_reserves = fun_set_power_dispatch(object_load, object_generator, losses, exports)
 	# print('exports #1', 0.5 * (object_cable.matrix[33, ODC.Cable.REAL_POWER_2] - object_cable.matrix[33, ODC.Cable.REAL_POWER_1]))
 	# print('')
+	# print('needed_reserves', needed_reserves)
+	# print('actual_reserves', actual_reserves)
 
 	base_gen_commitment = np.array(object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS], copy=True)
 	base_gen_dispatch = np.array(object_generator.matrix[:, ODC.Generator.REAL_GENERATION], copy=True)
@@ -462,6 +464,7 @@ def main(dss_debug, write_cols, plf):
 		run_OpenDSS(0, True)
 
 		if row[ODC.Generator.REAL_GENERATION] != 0.0:
+			# print('GEN ID', row[ODC.Generator.ID])
 			row[ODC.Generator.REAL_GENERATION] = 0.0
 			row[ODC.Generator.OPERATIONAL_STATUS] = 0.0
 			run_OpenDSS(0, True)
@@ -472,9 +475,14 @@ def main(dss_debug, write_cols, plf):
 				if abs(object_cable.matrix[idx, ODC.Cable.A_PU_CAPACITY]) > branch_max:
 					branch_idx = idx
 					branch_max = abs(object_cable.matrix[idx, ODC.Cable.A_PU_CAPACITY])
+			# print(branch_idx)
+			# print(branch_max)
 
 			list_gen_post_branch_load.append(abs(object_cable.matrix[branch_idx, ODC.Cable.A_PU_CAPACITY]))
 			list_gen_mint.append(grb_solvers.contingency_response(object_load, object_generator, object_cable))
+			if list_gen_mint[-1] > 10.0:
+				print('GEN ID', list_gen_mint[-1])
+				print(list_gen_mint[-1])
 			run_OpenDSS(0, True)
 			list_gen_resp_branch_load.append(abs(object_cable.matrix[branch_idx, ODC.Cable.A_PU_CAPACITY]))
 			list_gen_error.append(0.5*(object_cable.matrix[34-1, ODC.Cable.REAL_POWER_2] - object_cable.matrix[34-1, ODC.Cable.REAL_POWER_1]))
@@ -531,6 +539,10 @@ def main(dss_debug, write_cols, plf):
 	max_branch_branch_idx = list_branch_post_branch_load.index(max_branch_branch_load)
 	max_branch_post_branch_load = list_branch_post_branch_load[max_branch_branch_idx]
 	max_branch_resp_branch_load = list_branch_resp_branch_load[max_branch_branch_idx]
+
+	with open('reserves.csv', 'a', newline='') as file:
+		writer = csv.writer(file)
+		writer.writerow([power_load_factor, needed_reserves, actual_reserves])
 
 	with open('gen_response.csv', 'a', newline='') as file:
 		writer = csv.writer(file)
