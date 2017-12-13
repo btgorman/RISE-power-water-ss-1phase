@@ -22,10 +22,8 @@ class PumpLoad:
 	
 	ID = 0
 	TYPE = 1
-	LOAD_ID = 2
-	PUMP_ID = 3
-	CHECK_LOAD_DEMAND = 4
-	CHECK_PUMP_STATUS = 5
+	PUMP_ID = 2
+	LOAD_ID = 3
 
 	def __init__(self, dframe):
 		self.cols = list(dframe.columns)
@@ -54,16 +52,13 @@ class PumpLoad:
 				return row
 		return 0
 
-class TankGenerator:
+class GeneratorJunction:
 	CLID = 9001
 	
 	ID = 0
 	TYPE = 1
 	GENERATOR_ID = 2
 	JUNCTION_ID = 3
-	TANK_ID = 4
-	CHECK_GENERATOR_PRODUCTION = 5
-	CHECK_TANK_LEVEL = 6
 
 	def __init__(self, dframe):
 		self.cols = list(dframe.columns)
@@ -78,22 +73,16 @@ class TankGenerator:
 		try:
 			return getattr(cls, str)
 		except:
-			print('INTERCONN ERROR in TankGenerator0')
+			print('INTERCONN ERROR in GeneratorJunction0')
 
 	def GeneratorRow(self, ID):
 		for row in self.matrix:
-			if row[TankGenerator.GENERATOR_ID] == ID:
+			if row[GeneratorJunction.GENERATOR_ID] == ID:
 				return row
 		return 0
 
 	def JunctionRow(self, ID):
 		for row in self.matrix:
-			if row[TankGenerator.JUNCTION_ID] == ID:
-				return row
-		return 0
-
-	def TankRow(self, ID):
-		for row in self.matrix:
-			if row[TankGenerator.TANK_ID] == ID:
+			if row[GeneratorJunction.JUNCTION_ID] == ID:
 				return row
 		return 0

@@ -1,2 +1,4 @@
-INPUT,INPUT,INPUT,INPUT,INPUT,INPUT
-ID,type,load_ID,pump_ID,check_load_demand,check_pump_status
+INPUT,INPUT,INPUT,INPUT
+ID,type,pump_ID,load_ID
+1,9000,4,4
+2,9000,20,20

@@ -66,9 +66,6 @@ def main(dss_debug, write_cols):
 	csv_reactor = pd.read_csv('./data_power/network-power/1405reactor.csv', sep=',', header=1, index_col=None, dtype=np.float64)
 	# csv_allcolumns= pd.read_csv('./data_power/network-power/allcolumns.csv', sep=',', header=1, index_col=None, dtype=np.float64)
 
-	csv_pumpload = pd.read_csv('./data_interconnection/network-interconnection/9000pump-load.csv', sep=',', header=1, index_col=None, dtype=np.float64)
-	csv_tankgenerator = pd.read_csv('./data_interconnection/network-interconnection/9001tank-generator.csv', sep=',', header=1, index_col=None, dtype=np.float64)
-
 	# -----------------
 	# CREATE COMPONENTS
 	# -----------------
@@ -98,9 +95,6 @@ def main(dss_debug, write_cols):
 	object_capacitor = ODC.Capacitor(csv_capacitor)
 	object_reactor = ODC.Reactor(csv_reactor)
 
-	object_pumpload = ICC.PumpLoad(csv_pumpload)
-	object_tankgenerator = ICC.TankGenerator(csv_tankgenerator)
-
 	# -----------------------
 	# ADD COMPONENTS TO LISTS
 	# -----------------------
@@ -114,15 +108,14 @@ def main(dss_debug, write_cols):
 	object_directconnection, object_cable, object_overheadline, object_twowindingtransformer, object_capacitor, object_reactor, # CONNECTIONS
 	object_regcontrol] # CONTROLS
 
-	interconn_dict = {'pumpload': object_pumpload, 'tankgenerator': object_tankgenerator,
-	'pump': object_pump, 'load': object_load, 'tank': object_tank,
-	'generator': object_generator, 'junction': object_junction}
+	interconn_dict = {'generator': object_generator, 'load': object_load, 'pump': object_pump, 'junction': object_junction}
 
 	# ---------
 	# RUN EPANET and OPENDSS
 	# ---------
 
 	def run_EPANET():
+		print("Running EPANET")
 		filedir = 'C:/Users/'+os_username+'/Documents/git/RISE-power-water-ss-1phase/data_water/en-inputs/en-input.inp'
 		with open(filedir, 'w', newline='\n') as csvfile:
 			writer = csv.writer(csvfile, delimiter=' ')
@@ -163,11 +156,11 @@ def main(dss_debug, write_cols):
 
 			templist = ['[TIMES]']
 			writer.writerow(templist)
-			templist = ['Duration', '0:01:00']
+			templist = ['Duration', '1:00']
 			writer.writerow(templist)
-			templist = ['Hydraulic', 'Timestep', '0:01:00']
+			templist = ['Hydraulic', 'Timestep', '1:00']
 			writer.writerow(templist)
-			templist = ['Quality', 'Timestep', '0:05']
+			templist = ['Quality', 'Timestep', '0:06']
 			writer.writerow(templist)
 			templist = ['Pattern', 'Timestep', '1:00']
 			writer.writerow(templist)
@@ -185,11 +178,11 @@ def main(dss_debug, write_cols):
 
 			templist = ['[REPORT]']
 			writer.writerow(templist)
-			templist = ['Status', 'Yes']
+			templist = ['Status', 'No']
 			writer.writerow(templist)
-			templist = ['Summary', 'Yes']
+			templist = ['Summary', 'No']
 			writer.writerow(templist)
-			templist = ['Page', 5]
+			templist = ['Page', 0]
 			writer.writerow(templist)
 			writer.writerow('')
 
@@ -197,7 +190,7 @@ def main(dss_debug, write_cols):
 			writer.writerow(templist)
 			templist = ['Units', 'GPM'] #GPM is US Customary units
 			writer.writerow(templist)
-			templist = ['Headloss', 'H-W']
+			templist = ['Headloss', 'C-M']
 			writer.writerow(templist)
 			templist = ['Specific', 'Gravity', 1]
 			writer.writerow(templist)
@@ -260,15 +253,37 @@ def main(dss_debug, write_cols):
 			if errorcode != 0:
 				print(4, 'ERRORCODE is', errorcode)
 
-			for water_object in w_object_list:
-				water_object.readAllENoutputs(epalib)
-
 			errorcode = epalib.ENnextH(timestep)
 			if errorcode != 0:
 				print(5, 'ERRORCODE is', errorcode)
 
 			if timestep.contents.value == 0:
 				break
+
+		for water_object in w_object_list:
+			water_object.readAllENoutputs(epalib)
+
+			if water_object.CLID == 2102:
+				for tank in water_object.matrix:
+					calc_tank_GPM = math.pi * ((0.5*tank[ENC.Tank.DIAMETER])**2) * (tank[ENC.Tank.ELEVATION]+tank[ENC.Tank.INITIAL_LEVEL]-tank[ENC.Tank.HEAD]) / (60*60*0.002228)
+					max_tank_GPM = math.pi * ((0.5*tank[ENC.Tank.DIAMETER])**2) * (tank[ENC.Tank.INITIAL_LEVEL]) / (60*60*0.002228)
+					
+					if calc_tank_GPM < -0.03 or calc_tank_GPM > max_tank_GPM + 0.03:
+						print('Tank GPM error', calc_tank_GPM, max_tank_GPM)
+					
+					if tank[ENC.Tank.DEMAND] != 0.0:
+						print('Tank', tank[ENC.Tank.ID], 'actual GPM demand', tank[ENC.Tank.DEMAND], 'calculated GPM demand', math.pi * ((0.5*tank[ENC.Tank.DIAMETER])**2) * (tank[ENC.Tank.ELEVATION]+tank[ENC.Tank.INITIAL_LEVEL]-tank[ENC.Tank.HEAD]) / (60*60*0.002228), 'max GPM demand', math.pi * ((0.5*tank[ENC.Tank.DIAMETER])**2) * (tank[ENC.Tank.INITIAL_LEVEL]) / (60*60*0.002228))
+
+			if water_object.CLID == 2100:
+				for junction in water_object.matrix:
+					print('Junction', junction[ENC.Junction.ID], 'has pressure', junction[ENC.Junction.PRESSURE], junction[ENC.Junction.PERCENT_PRESSURE])
+			# 		if math.fabs(junction[ENC.Junction.DEMAND] - junction[ENC.Junction.BASE_DEMAND]) > 1.0:
+			# 			print('junction', junciton[ENC.Junction.ID], 'has demand ratio of', junction[ENC.Junction.DEMAND] / junction[ENC.Junction.BASE_DEMAND])
+
+			# if water_object.CLID == 2101:
+			# 	for reservoir in water_object.matrix:
+			# 		if reservoir[ENC.Reservoir.DEMAND] != 0.0:
+			# 			print('Reservoir', reservoir[ENC.Reservoir.ID], 'has GPM flow of', reservoir[ENC.Reservoir.DEMAND])
 
 		errorcode = epalib.ENcloseH()
 		if errorcode != 0:
@@ -376,20 +391,28 @@ def main(dss_debug, write_cols):
 	power_load_factor = min(np.random.lognormal(power_load_mu, power_load_sigma, size=None), power_load_ub)
 	power_load_factor = max(power_load_factor, power_load_lb)
 	power_factor = 0.0
+	power_load_factor = 0.9056676461440474
 	object_load.multiplyLoadFactor(power_load_factor, power_factor)
 	print('power load factor', power_load_factor)
-	for load in object_load.matrix:
-		if load[ODC.Load.ID] == 4.0 or load[ODC.Load.ID] == 20.0:
-			load[ODC.Load.REAL_LOAD] = load[ODC.Load.REAL_LOAD_MAX]
 
 	water_demand_scale = np.exp(-0.4559995) # exponential, AIC = 314.27
 	water_demand_lb = 0.372453
-	water_demand_ub = 1.9 #2.984
+	water_demand_ub = 2.984 #1.9 #2.984
 	water_demand_factor = min(water_demand_lb+np.random.exponential(water_demand_scale, size=None), water_demand_ub)
+	water_demand_factor = 2.984
 	object_junction.multiplyLoadFactor(water_demand_factor)
 	print('water demand factor', water_demand_factor)
 
-	# SIM STEP 2: SET GENERATOR DISPATCH
+	for row in object_reservoir.matrix:
+		if row[ENC.Reservoir.ID] < 1000.0:
+			row[ENC.Reservoir.TOTAL_HEAD] = water_demand_factor * row[ENC.Reservoir.TOTAL_HEAD]
+	print(object_reservoir.matrix[:, ENC.Reservoir.TOTAL_HEAD])
+
+	# SIM STEP 2: SET LOAD INTERCONNECTIONS
+	# ----------------------------------
+	object_load.setInterconnectionLoad(interconn_dict)
+
+	# SIM STEP 3: SET GENERATOR DISPATCH
 	# ----------------------------------
 	exports = 0.0 # kW
 	losses = 0.0 # kW
@@ -442,6 +465,34 @@ def main(dss_debug, write_cols):
 	print('exports #1', 0.5 * (object_cable.matrix[33, ODC.Cable.REAL_POWER_2] - object_cable.matrix[33, ODC.Cable.REAL_POWER_1]))
 	print('')
 
+	# SIM STEP 4: SET JUNCTION INTERCONNECTIONS
+	# -----------------------------------------
+	object_junction.setInterconnectionDemand(interconn_dict)
+
+	# SIM STEP 5:
+	# Set water tank levels assuming that water tank levels start at 0
+	# Set water valve flow control
+	# ----------------------------
+	for junction in object_junction.matrix:
+		max_groundwater_flow = 12399.0
+
+		for tank in object_tank.matrix:
+			if tank[ENC.Tank.ID] - 1000.0 == junction[ENC.Junction.ID]:
+				level_inc = round(junction[ENC.Junction.BASE_DEMAND]*60.0*0.133681 / (math.pi * (0.5*tank[ENC.Tank.DIAMETER])**2), 2)
+				tank[ENC.Tank.INITIAL_LEVEL] += level_inc
+				tank[ENC.Tank.MAX_LEVEL] += level_inc
+
+				for generator in object_generator.matrix:
+					if generator[ODC.Generator.JUNCTION_ID] == junction[ENC.Junction.ID]:
+						level_inc = round(generator[ODC.Generator.OPERATIONAL_STATUS]*generator[ODC.Generator.REAL_GENERATION]*generator[ODC.Generator.WATER_CONSUMPTION]*0.001*60*0.133681 / (math.pi * (0.5*tank[ENC.Tank.DIAMETER])**2), 2)
+						tank[ENC.Tank.INITIAL_LEVEL] += level_inc
+						tank[ENC.Tank.MAX_LEVEL] += level_inc
+
+		for valve in object_valve.matrix:
+			if valve[ENC.Valve.ID] - 2000.0 == junction[ENC.Junction.ID]:
+				# valve[ENC.Valve.SETTING] = min(junction[ENC.Junction.BASE_DEMAND], max_groundwater_flow)
+				valve[ENC.Valve.SETTING] = max_groundwater_flow
+
 	# counter = 0
 	# for row in object_generator.matrix:
 	# 	if row[ODC.Generator.REAL_GENERATION] != 0.0:
@@ -492,12 +543,14 @@ def main(dss_debug, write_cols):
 	# print('max line load pt2', max(np.absolute(object_cable.matrix[:, ODC.Cable.A_PU_CAPACITY])))
 	# print('')
 
-	# SIM STEP 3: RUN POWER-WATER SIMULATION
+	# SIM STEP 6: RUN POWER-WATER SIMULATION
 	# --------------------------------------
-	input_list_continuous, input_list_categorical, _, input_tensor_continuous, input_tensor_categorical, _ = run_OpenDSS(dss_debug, False)
-	input_list_continuous1, input_list_categorical1, _, input_tensor_continuous1, input_tensor_categorical1, _ = run_EPANET()
-	_, _, output_list, _, _, output_tensor = run_OpenDSS(dss_debug, False)
-	_, _, output_list1, _, _, output_tensor1 = run_EPANET()
+	# Interconnections have no effect
+	input_list_continuous, input_list_categorical, output_list, input_tensor_continuous, input_tensor_categorical, output_tensor = run_OpenDSS(dss_debug, False)
+	input_list_continuous1, input_list_categorical1, output_list1, input_tensor_continuous1, input_tensor_categorical1, output_tensor1 = run_EPANET()
+	# Interconnections have an effect
+	# _, _, output_list, _, _, output_tensor = run_OpenDSS(dss_debug, False)
+	# _, _, output_list1, _, _, output_tensor1 = run_EPANET()
 
 	# RESULTS STEP 1: FORMAT INPUT/OUTPUT TENSORS
 	# -------------------------------------------

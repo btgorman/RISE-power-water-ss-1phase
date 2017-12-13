@@ -18,6 +18,8 @@ import numpy as np
 import pandas as pd
 import math, random
 
+import classes_water as ENC
+
 SQRTTHREE = math.sqrt(3.)
 
 class TemperatureDerating:
@@ -651,18 +653,19 @@ class Generator: #errors -1200 to -1224
 	WATER_CONSUMPTION = 13
 	WATER_DERATING = 14
 	WIRING = 15
-	MIN_PU_VOLTAGE = 16
-	MAX_PU_VOLTAGE = 17
-	OPERATIONAL_STATUS = 18 # switch
-	REAL_GENERATION_CONTROL = 19 # stochastic TODO unused
-	REACTIVE_GENERATION_CONTROL = 20 # stochastic TODO unused
-	A_PU_VOLTAGE = 21
-	A_VOLTAGE = 22
-	A_VOLTAGE_ANGLE = 23
-	A_CURRENT = 24
-	A_CURRENT_ANGLE = 25
-	REAL_POWER = 26
-	REACTIVE_POWER = 27
+	JUNCTION_ID = 16
+	MIN_PU_VOLTAGE = 17
+	MAX_PU_VOLTAGE = 18
+	OPERATIONAL_STATUS = 19 # switch
+	REAL_GENERATION_CONTROL = 20 # stochastic TODO unused
+	REACTIVE_GENERATION_CONTROL = 21 # stochastic TODO unused
+	A_PU_VOLTAGE = 22
+	A_VOLTAGE = 23
+	A_VOLTAGE_ANGLE = 24
+	A_CURRENT = 25
+	A_CURRENT_ANGLE = 26
+	REAL_POWER = 27
+	REACTIVE_POWER = 28
 
 	def __init__(self, dframe):
 		self.cols = list(dframe.columns)
@@ -717,15 +720,6 @@ class Generator: #errors -1200 to -1224
 				busid = int(row[Generator.ID]) % 100
 				str_self_name = str(int(row[Generator.TYPE])) + '_' + str(int(row[Generator.ID]))
 				str_bus_name = str(Bus.CLID) + '_' + str(busid)
-
-				for interconn_row in interconn_dict['tankgenerator'].matrix:
-					if interconn_row[interconn_dict['tankgenerator'].classValue('CHECK_TANK_LEVEL')] ==  1.0:
-						if interconn_row[interconn_dict['tankgenerator'].classValue('GENERATOR_ID')] == row[Generator.ID]:
-							for tank_row in interconn_dict['tank'].matrix:
-								if tank_row[interconn_dict['tank'].classValue('ID')] == interconn_row[interconn_dict['tankgenerator'].classValue('TANK_ID')]:
-									if tank_row[interconn_dict['tank'].classValue('HEAD')] < tank_row[interconn_dict['tank'].classValue('MIN_LEVEL')] + 0.25*(tank_row[interconn_dict['tank'].classValue('MAX_LEVEL')] - tank_row[interconn_dict['tank'].classValue('MIN_LEVEL')]):
-										derating = 1.0 - row[Generator.WATER_DERATING]
-# TO DO: chose 50% of MAX - MIN
 
 				if debug == 1:
 					print('New \'Generator.{}\' Bus1=\'{}{}\' Phases=\'{}\' Kv=\'{:f}\' Kw=\'{:f}\' Kvar=\'{:f}\' Model=\'{}\' Conn=\'{}\'\n'.format(
@@ -874,16 +868,17 @@ class Load: #errors -1225 to -1249
 	WIRING = 8
 	REAL_LOAD = 9
 	REACTIVE_LOAD = 10
-	MIN_PU_VOLTAGE = 11
-	MAX_PU_VOLTAGE = 12
-	OPERATIONAL_STATUS = 13 # switch
-	A_PU_VOLTAGE = 14
-	A_VOLTAGE = 15
-	A_VOLTAGE_ANGLE = 16
-	A_CURRENT = 17
-	A_CURRENT_ANGLE = 18
-	REAL_POWER = 19
-	REACTIVE_POWER = 20
+	INTERCONNECTION_LOAD = 11
+	MIN_PU_VOLTAGE = 12
+	MAX_PU_VOLTAGE = 13
+	OPERATIONAL_STATUS = 14 # switch
+	A_PU_VOLTAGE = 15
+	A_VOLTAGE = 16
+	A_VOLTAGE_ANGLE = 17
+	A_CURRENT = 18
+	A_CURRENT_ANGLE = 19
+	REAL_POWER = 20
+	REACTIVE_POWER = 21
 
 	def __init__(self, dframe):
 		self.cols = list(dframe.columns)
@@ -905,7 +900,6 @@ class Load: #errors -1225 to -1249
 				str_conn = 'wye'
 				num_phases = 0
 				num_kv = row[Load.NOMINAL_LL_VOLTAGE]
-				interconn_demand = 0.0
 
 				if row[Load.A] == 1.0:
 					str_bus_conn = str_bus_conn + '.1'
@@ -922,14 +916,6 @@ class Load: #errors -1225 to -1249
 				str_self_name = str(int(row[Load.TYPE])) + '_' + str(int(row[Load.ID])) + '_' + str(int(row[Load.A]))
 				str_bus_name = str(Bus.CLID) + '_' + str(int(row[Load.ID]))
 
-				for interconn_row in interconn_dict['pumpload'].matrix:
-					if interconn_row[interconn_dict['pumpload'].classValue('LOAD_ID')] == row[Load.ID]:
-						for pump_row in interconn_dict['pump'].matrix:
-							if pump_row[interconn_dict['pump'].classValue('ID')] == interconn_row[interconn_dict['pumpload'].classValue('PUMP_ID')]:
-								if pump_row[interconn_dict['pump'].classValue('FUNCTIONAL_STATUS')]*pump_row[interconn_dict['pump'].classValue('OPERATIONAL_STATUS')] != 0.0:
-									interconn_demand += pump_row[interconn_dict['pump'].classValue('POWER')]
-									# TO DO: verify that interonn_demand is in kW
-
 				if row[Load.REAL_LOAD] < 0.0:
 					row[Load.REAL_LOAD] = 0.0
 				elif row[Load.REAL_LOAD] > row[Load.REAL_LOAD_MAX]:
@@ -945,14 +931,14 @@ class Load: #errors -1225 to -1249
 						print('Zip model not included!\n')
 						print('New \'Load.{}\' Bus1=\'{}{}\' Phases=\'{}\' Kv=\'{:f}\' Kw=\'{:f}\' Kvar=\'{:f}\' Model=\'{}\' ZIPV=[{:f} {:f} {:f} {:f} {:f} {:f} {:f}] Conn=\'{}\' Vminpu=\'{:f}\' Vmaxpu=\'{:f}\'\n'.format(
 							str_self_name, str_bus_name, str_bus_conn, num_phases,
-							num_kv, row[Load.REAL_LOAD]+interconn_demand, row[Load.REACTIVE_LOAD], int(row[Load.MODEL]),
+							num_kv, row[Load.REAL_LOAD] + row[Load.INTERCONNECTION_LOAD], row[Load.REACTIVE_LOAD], int(row[Load.MODEL]),
 							row[Load.ZIP_REAL_POWER], row[Load.ZIP_REAL_CURRENT], row[Load.ZIP_REAL_IMPEDANCE], row[Load.ZIP_REACTIVE_POWER],
 							row[Load.ZIP_REACTIVE_CURRENT], row[Load.ZIP_REACTIVE_IMPEDANCE], row[Load.ZIP_PU_VOLTAGE_CUTOFF], str_conn,
 							row[Load.MIN_PU_VOLTAGE], row[Load.MAX_PU_VOLTAGE]))
 					else:
 						print('New \'Load.{}\' Bus1=\'{}{}\' Phases=\'{}\' Kv=\'{:f}\' Kw=\'{:f}\' Kvar=\'{:f}\' Model=\'{}\' Conn=\'{}\' Vminpu=\'{:f}\' Vmaxpu=\'{:f}\'\n'.format(
 							str_self_name, str_bus_name, str_bus_conn, num_phases,
-							num_kv, row[Load.REAL_LOAD]+interconn_demand, row[Load.REACTIVE_LOAD], int(row[Load.MODEL]),
+							num_kv, row[Load.REAL_LOAD] + row[Load.INTERCONNECTION_LOAD], row[Load.REACTIVE_LOAD], int(row[Load.MODEL]),
 							str_conn, row[Load.MIN_PU_VOLTAGE], row[Load.MAX_PU_VOLTAGE]))
 					if row[Load.FUNCTIONAL_STATUS]*row[Load.OPERATIONAL_STATUS] == 0.0:
 						print('Disable \'Load.{}\''.format(str_self_name))
@@ -960,7 +946,7 @@ class Load: #errors -1225 to -1249
 				if row[Load.MODEL] == 8.0:
 					dss.Command = 'New \'Load.{}\' Bus1=\'{}{}\' Phases=\'{}\' Kv=\'{:f}\' Kw=\'{:f}\' Kvar=\'{:f}\' Model=\'{}\' ZIPV=[{:f} {:f} {:f} {:f} {:f} {:f} {:f}] Conn=\'{}\' Vminpu=\'{:f}\' Vmaxpu=\'{:f}\''.format(
 						str_self_name, str_bus_name, str_bus_conn, num_phases,
-						num_kv, row[Load.REAL_LOAD]+interconn_demand, row[Load.REACTIVE_LOAD], int(row[Load.MODEL]),
+						num_kv, row[Load.REAL_LOAD] + row[Load.INTERCONNECTION_LOAD], row[Load.REACTIVE_LOAD], int(row[Load.MODEL]),
 						row[Load.ZIP_REAL_POWER], row[Load.ZIP_REAL_CURRENT], row[Load.ZIP_REAL_IMPEDANCE], row[Load.ZIP_REACTIVE_POWER],
 						row[Load.ZIP_REACTIVE_CURRENT], row[Load.ZIP_REACTIVE_IMPEDANCE], row[Load.ZIP_PU_VOLTAGE_CUTOFF], str_conn,
 						row[Load.MIN_PU_VOLTAGE], row[Load.MAX_PU_VOLTAGE])
@@ -969,7 +955,7 @@ class Load: #errors -1225 to -1249
 				else:
 					dss.Command = 'New \'Load.{}\' Bus1=\'{}{}\' Phases=\'{}\' Kv=\'{:f}\' Kw=\'{:f}\' Kvar=\'{:f}\' Model=\'{}\' Conn=\'{}\' Vminpu=\'{:f}\' Vmaxpu=\'{:f}\''.format(
 						str_self_name, str_bus_name, str_bus_conn, num_phases,
-						num_kv, row[Load.REAL_LOAD]+interconn_demand, row[Load.REACTIVE_LOAD], int(row[Load.MODEL]),
+						num_kv, row[Load.REAL_LOAD] + row[Load.INTERCONNECTION_LOAD], row[Load.REACTIVE_LOAD], int(row[Load.MODEL]),
 						str_conn, row[Load.MIN_PU_VOLTAGE], row[Load.MAX_PU_VOLTAGE])
 				if row[Load.FUNCTIONAL_STATUS]*row[Load.OPERATIONAL_STATUS] == 0.0:
 					dss.Command = 'Disable \'Load.{}\''.format(str_self_name)
@@ -1092,6 +1078,19 @@ class Load: #errors -1225 to -1249
 		except:
 			print('Error: #-1238')
 			return -1238
+
+	def setInterconnectionLoad(self, interconn_dict):
+		try:
+			object_pump = interconn_dict['pump']
+
+			for load in self.matrix:
+				for pump in object_pump.matrix:
+					if load[Load.ID] == pump[ENC.Pump.LOAD_ID]:
+						load[Load.INTERCONNECTION_LOAD] += pump[ENC.Pump.OPERATIONAL_STATUS] * pump[ENC.Pump.POWER]
+
+		except:
+			print('Error: #-1240')
+			return -1240
 
 class SolarPV: #errors -1250 to -1274
 	CLID = 1304

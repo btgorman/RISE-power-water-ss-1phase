@@ -26,6 +26,8 @@ import pandas as pd
 import numpy as np
 import random
 
+import classes_power as ODC
+
 class ENnodeparam(object): # different for QUALITY SOURCES
 	ELEVATION = ct.c_int(0)
 	BASEDEMAND = ct.c_int(1)
@@ -177,16 +179,17 @@ class Junction:
 	# INPUT VARIABLES
 	BASE_DEMAND_AVERAGE = 5
 	PATTERN_ID = 6
+	INTERCONNECTION_DEMAND = 7
 	# RELIABILITY
-	MIN_PRESSURE = 7
+	MIN_PRESSURE = 8
 	# CONTROLS
 	# OUTPUTS
-	DEMAND = 8
-	HEAD = 9
-	PERCENT_DEMAND = 10
-	PERCENT_PRESSURE = 11
-	PRESSURE = 12
-	QUALITY = 13
+	DEMAND = 9
+	HEAD = 10
+	PERCENT_DEMAND = 11
+	PERCENT_PRESSURE = 12
+	PRESSURE = 13
+	QUALITY = 14
 
 	def __init__(self, dframe):
 		self.cols = list(dframe.columns)
@@ -207,28 +210,10 @@ class Junction:
 
 			for row in self.matrix:
 				pattern = ''
-				interconn_demand = 0.0
-				time_step = 10.0 # seconds
 				if row[Junction.PATTERN_ID] != 0.0:
 					pattern = int(row[Junction.PATTERN_ID])
 
-				for interconn_row in interconn_dict['tankgenerator'].matrix:
-					if interconn_row[interconn_dict['tankgenerator'].classValue('JUNCTION_ID')] == row[Junction.ID]:
-						for generator_row in interconn_dict['generator'].matrix:
-							if generator_row[interconn_dict['generator'].classValue('ID')] == interconn_row[interconn_dict['tankgenerator'].classValue('GENERATOR_ID')]:
-								if generator_row[interconn_dict['generator'].classValue('FUNCTIONAL_STATUS')]*generator_row[interconn_dict['generator'].classValue('OPERATIONAL_STATUS')] != 0.0:
-									interconn_demand = time_step * (generator_row[interconn_dict['generator'].classValue('GENERATION')] * generator_row[interconn_dict['generator'].classValue('WATER_CONSUMPTION')]) / (1000.0 * 3600.0)
-									if interconn_row[interconn_dict['tankgenerator'].classValue('CHECK_TANK_LEVEL')] == 1.0:
-										for tank_row in interconn_dict['tank'].matrix:
-											if tank_row[Tank.ID] == interconn_row[interconn_dict['tankgenerator'].classValue('TANK_ID')]:
-												if tank_row[Tank.HEAD] < tank_row[Tank.MIN_LEVEL] + 0.25*(tank_row[Tank.MAX_LEVEL] - tank_row[Tank.MIN_LEVEL]):
-#chose 25% of MAX - MIN
-													interconn_demand = 0.0
-										interconn_row[interconn_dict['tankgenerator'].classValue('CHECK_TANK_LEVEL')] = 0.0
-									else:
-										interconn_row[interconn_dict['tankgenerator'].classValue('CHECK_TANK_LEVEL')] = 1.0
-
-				templist = [int(row[Junction.ID]), row[Junction.ELEVATION], row[Junction.BASE_DEMAND]+interconn_demand, pattern]
+				templist = [int(row[Junction.ID]), row[Junction.ELEVATION], row[Junction.BASE_DEMAND] + row[Junction.INTERCONNECTION_DEMAND], pattern]
 				txtwriter.writerow(templist)
 
 			txtwriter.writerow('')
@@ -345,6 +330,19 @@ class Junction:
 			self.matrix[:, Junction.BASE_DEMAND] = self.matrix[:, Junction.BASE_DEMAND_AVERAGE] * demand_factor
 		except:
 			print('WATER ERROR in Junction7')
+			return -1
+
+	def setInterconnectionDemand(self, interconn_dict):
+		try:
+			object_generator = interconn_dict['generator']
+
+			for junction in self.matrix:
+				for generator in object_generator.matrix:
+					if junction[Junction.ID] == generator[ODC.Generator.JUNCTION_ID]:
+						junction[Junction.INTERCONNECTION_DEMAND] += generator[ODC.Generator.OPERATIONAL_STATUS]*generator[ODC.Generator.REAL_GENERATION]*generator[ODC.Generator.WATER_CONSUMPTION]*0.001
+
+		except:
+			print('WATER ERROR in Junction8')
 			return -1
 
 class Reservoir:
@@ -544,7 +542,11 @@ class Tank:
 					break
 				row[Tank.QUALITY] = EN_val.contents.value
 
-				row[Tank.PERCENT_LEVEL] = (row[Tank.HEAD] - row[Tank.MIN_LEVEL]) / row[Tank.MAX_LEVEL] # "fail" is less than 0
+				if row[Tank.MAX_LEVEL] == 0.0:
+					row[Tank.PERCENT_LEVEL] = 0.0
+					print('empty')
+				else:
+					row[Tank.PERCENT_LEVEL] = (row[Tank.HEAD] - row[Tank.MIN_LEVEL] - row[Tank.ELEVATION]) / row[Tank.MAX_LEVEL] # "fail" is less than 0
 		except:
 			print('WATER ERROR in Tank2')
 
@@ -614,7 +616,8 @@ class Pipe:
 	CV_STATUS = 11
 	# OUTPUTS
 	FLOW = 12
-	HEADLOSS = 13
+	HEADLOSS = 1
+
 	PERCENT_VELOCITY = 14
 	VELOCITY = 15
 
@@ -748,15 +751,16 @@ class Pump:
 	CURVE_ID = 5
 	POWER = 6
 	SPEED = 7 # stochastic
+	LOAD_ID = 8
 	# INPUT VARIABLES
 	# RELIABILITY
 	# CONTROLS
-	OPERATIONAL_STATUS = 8 # switch
+	OPERATIONAL_STATUS = 9 # switch
 	# OUTPUTS
-	POWER_CONSUMPTION = 9
-	FLOW = 10
-	HEADLOSS = 11
-	VELOCITY = 12
+	POWER_CONSUMPTION = 10
+	FLOW = 11
+	HEADLOSS = 12
+	VELOCITY = 13
 
 	def __init__(self, dframe):
 		self.cols = list(dframe.columns)
@@ -776,17 +780,6 @@ class Pump:
 			txtwriter.writerow(['[PUMPS]'])
 
 			for row in self.matrix:
-				for interconn_row in interconn_dict['pumpload'].matrix:
-					if interconn_row[interconn_dict['pumpload'].classValue('PUMP_ID')] == row[Pump.ID]:
-						if interconn_row[interconn_dict['pumpload'].classValue('CHECK_LOAD_DEMAND')] == 1.0:
-							for load_row in interconn_dict['load'].matrix:
-								if load_row[interconn_dict['load'].classValue('ID')] == interconn_row[interconn_dict['pumpload'].classValue('LOAD_ID')]:
-									if 0.95 * row[Pump.POWER] > load_row[interconn_dict['load'].classValue('REAL_POWER')]:
-										row[Pump.OPERATIONAL_STATUS] = 0.0
-							interconn_row[interconn_dict['pumpload'].classValue('CHECK_LOAD_DEMAND')] = 0.0
-						else:
-							interconn_row[interconn_dict['pumpload'].classValue('CHECK_LOAD_DEMAND')] = 1.0
-
 				if row[Pump.CURVE_ID] != 0.0:
 					templist = [int(row[Pump.ID]), int(row[Pump.TERMINAL_1_ID]), int(row[Pump.TERMINAL_2_ID]), 'HEAD',
 					int(row[Pump.CURVE_ID]), 'SPEED', row[Pump.OPERATIONAL_STATUS]*row[Pump.SPEED]]
@@ -944,8 +937,13 @@ class Valve:
 			txtwriter.writerow(['[VALVES]'])
 
 			for row in self.matrix:
+				multiplier = 1
+
+				# if self.valveType(row[Valve.MODEL] == 'FCV'):
+				# 	multiplier = 0
+
 				templist = [int(row[Valve.ID]), int(row[Valve.TERMINAL_1_ID]), int(row[Valve.TERMINAL_2_ID]), row[Valve.DIAMETER],
-				self.valveType(row[Valve.MODEL]), row[Valve.SETTING], row[Valve.LOSS_COEFFICIENT]]
+				self.valveType(row[Valve.MODEL]), multiplier*row[Valve.SETTING], row[Valve.LOSS_COEFFICIENT]]
 				txtwriter.writerow(templist)
 
 			txtwriter.writerow('')
