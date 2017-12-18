@@ -274,9 +274,9 @@ def main(dss_debug, write_cols):
 					if tank[ENC.Tank.DEMAND] != 0.0:
 						print('Tank', tank[ENC.Tank.ID], 'actual GPM demand', tank[ENC.Tank.DEMAND], 'calculated GPM demand', math.pi * ((0.5*tank[ENC.Tank.DIAMETER])**2) * (tank[ENC.Tank.ELEVATION]+tank[ENC.Tank.INITIAL_LEVEL]-tank[ENC.Tank.HEAD]) / (60*60*0.002228), 'max GPM demand', math.pi * ((0.5*tank[ENC.Tank.DIAMETER])**2) * (tank[ENC.Tank.INITIAL_LEVEL]) / (60*60*0.002228))
 
-			if water_object.CLID == 2100:
-				for junction in water_object.matrix:
-					print('Junction', junction[ENC.Junction.ID], 'has pressure', junction[ENC.Junction.PRESSURE], junction[ENC.Junction.PERCENT_PRESSURE])
+			# if water_object.CLID == 2100:
+			# 	for junction in water_object.matrix:
+			# 		print('Junction', junction[ENC.Junction.ID], 'has pressure', junction[ENC.Junction.PRESSURE], junction[ENC.Junction.PERCENT_PRESSURE])
 			# 		if math.fabs(junction[ENC.Junction.DEMAND] - junction[ENC.Junction.BASE_DEMAND]) > 1.0:
 			# 			print('junction', junciton[ENC.Junction.ID], 'has demand ratio of', junction[ENC.Junction.DEMAND] / junction[ENC.Junction.BASE_DEMAND])
 
@@ -382,7 +382,7 @@ def main(dss_debug, write_cols):
 			return float(losses[0])*0.001 # kW
 
 
-	# SIM STEP 1: SET LOAD CURVES
+	# SIM STEP 1: SET LOAD AND DEMAND CURVES
 	# ------------------------------
 	power_load_mu = -0.51385 # lognormal, AIC -9693.48
 	power_load_sigma = 0.23256 # lognormal, AIC -9693.48
@@ -405,8 +405,7 @@ def main(dss_debug, write_cols):
 
 	for row in object_reservoir.matrix:
 		if row[ENC.Reservoir.ID] < 1000.0:
-			row[ENC.Reservoir.TOTAL_HEAD] = water_demand_factor * row[ENC.Reservoir.TOTAL_HEAD]
-	print(object_reservoir.matrix[:, ENC.Reservoir.TOTAL_HEAD])
+			row[ENC.Reservoir.TOTAL_HEAD] = max(1.0, water_demand_factor) * row[ENC.Reservoir.TOTAL_HEAD]
 
 	# SIM STEP 2: SET LOAD INTERCONNECTIONS
 	# ----------------------------------
@@ -417,13 +416,69 @@ def main(dss_debug, write_cols):
 	exports = 0.0 # kW
 	losses = 0.0 # kW
 
+	# def fun_set_power_dispatch(object_load, object_generator, losses, exports):
+	# 	counter = 0
+	# 	lost_min = 10000000.0
+	# 	while True:
+	# 		grb_solvers.unit_commitment_priority_list(object_load, object_generator, losses, exports) # unit commitment is variable
+	# 		new_loss = run_OpenDSS(0, True)
+	# 		counter += 1
+
+	# 		if math.fabs(losses - new_loss) > 1.0:
+	# 			if counter > 199:
+	# 				print('Dispatcher - Losses/Exports did not converge')
+	# 				sys.exit()
+	# 			elif counter > 150:
+	# 				while True:
+	# 					object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS] = dispatcher_max
+	# 					grb_solvers.unit_commitment_priority_list_2(object_load, object_generator, losses, exports) # unit commitment is input
+	# 					new_loss = run_OpenDSS(0, True)
+	# 					counter +=1
+
+	# 					if math.fabs(losses - new_loss) < 1.0:
+	# 						return 0
+	# 					else:
+	# 						losses += 0.8 * (new_loss - losses)
+	# 			elif counter > 100:
+	# 				while True:
+	# 					object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS] = dispatcher_min
+	# 					grb_solvers.unit_commitment_priority_list_2(object_load, object_generator, losses, exports) # unit commitment is input
+	# 					new_loss = run_OpenDSS(0, True)
+	# 					counter +=1
+
+	# 					if math.fabs(losses - new_loss) < 1.0:
+	# 						return 0
+	# 					else:
+	# 						losses += 0.8 * (new_loss - losses)
+	# 			elif counter > 50:
+	# 				if math.fabs(new_loss) < math.fabs(lost_min):
+	# 					lost_min = new_loss
+	# 					dispatcher_min = np.array(object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS], copy=True)
+	# 				else:
+	# 					dispatcher_max = np.array(object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS], copy=True)
+	# 			losses += 0.8*(new_loss - losses)
+	# 		else:
+	# 			return 0
+
+	node_water_constraint = {1.0: 10000.0,
+	2.0: 10000.0,
+	7.0: 10000.0,
+	13.0: 10000.0,
+	15.0: 10000.0,
+	16.0: 10000.0,
+	18.0: 10000.0,
+	21.0: 10000.0,
+	22.0: 10000.0,
+	23.0: 10000.0,
+	}
 	def fun_set_power_dispatch(object_load, object_generator, losses, exports):
 		counter = 0
 		lost_min = 10000000.0
 		while True:
-			grb_solvers.unit_commitment_priority_list(object_load, object_generator, losses, exports) # unit commitment is variable
+			grb_solvers.unit_commitment_priority_list_water(object_load, object_generator, losses, exports, node_water_constraint) # unit commitment is variable
 			new_loss = run_OpenDSS(0, True)
 			counter += 1
+			# print(counter)
 
 			if math.fabs(losses - new_loss) > 1.0:
 				if counter > 199:
@@ -432,7 +487,7 @@ def main(dss_debug, write_cols):
 				elif counter > 150:
 					while True:
 						object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS] = dispatcher_max
-						grb_solvers.unit_commitment_priority_list_2(object_load, object_generator, losses, exports) # unit commitment is input
+						grb_solvers.unit_commitment_priority_list_water_2(object_load, object_generator, losses, exports, node_water_constraint) # unit commitment is input
 						new_loss = run_OpenDSS(0, True)
 						counter +=1
 
@@ -443,7 +498,7 @@ def main(dss_debug, write_cols):
 				elif counter > 100:
 					while True:
 						object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS] = dispatcher_min
-						grb_solvers.unit_commitment_priority_list_2(object_load, object_generator, losses, exports) # unit commitment is input
+						grb_solvers.unit_commitment_priority_list_water_2(object_load, object_generator, losses, exports, node_water_constraint) # unit commitment is input
 						new_loss = run_OpenDSS(0, True)
 						counter +=1
 
@@ -468,6 +523,10 @@ def main(dss_debug, write_cols):
 	# SIM STEP 4: SET JUNCTION INTERCONNECTIONS
 	# -----------------------------------------
 	object_junction.setInterconnectionDemand(interconn_dict)
+
+	for row in object_junction.matrix:
+		if row[ENC.Junction.INTERCONNECTION_DISPATCH_DEMAND] != 0.0 or row[ENC.Junction.INTERCONNECTION_RESPONSE_DEMAND] != 0.0:
+			print('Junction', row[ENC.Junction.ID], 'has DISPATCH_RESPONSE_DEMAND of', row[ENC.Junction.INTERCONNECTION_DISPATCH_DEMAND] + row[ENC.Junction.INTERCONNECTION_RESPONSE_DEMAND], 'GPM')
 
 	# SIM STEP 5:
 	# Set water tank levels assuming that water tank levels start at 0

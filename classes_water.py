@@ -179,17 +179,18 @@ class Junction:
 	# INPUT VARIABLES
 	BASE_DEMAND_AVERAGE = 5
 	PATTERN_ID = 6
-	INTERCONNECTION_DEMAND = 7
+	INTERCONNECTION_DISPATCH_DEMAND = 7
+	INTERCONNECTION_RESPONSE_DEMAND = 8
 	# RELIABILITY
-	MIN_PRESSURE = 8
+	MIN_PRESSURE = 9
 	# CONTROLS
 	# OUTPUTS
-	DEMAND = 9
-	HEAD = 10
-	PERCENT_DEMAND = 11
-	PERCENT_PRESSURE = 12
-	PRESSURE = 13
-	QUALITY = 14
+	DEMAND = 10
+	HEAD = 11
+	PERCENT_DEMAND = 12
+	PERCENT_PRESSURE = 13
+	PRESSURE = 14
+	QUALITY = 15
 
 	def __init__(self, dframe):
 		self.cols = list(dframe.columns)
@@ -213,7 +214,7 @@ class Junction:
 				if row[Junction.PATTERN_ID] != 0.0:
 					pattern = int(row[Junction.PATTERN_ID])
 
-				templist = [int(row[Junction.ID]), row[Junction.ELEVATION], row[Junction.BASE_DEMAND] + row[Junction.INTERCONNECTION_DEMAND], pattern]
+				templist = [int(row[Junction.ID]), row[Junction.ELEVATION], row[Junction.BASE_DEMAND] + row[Junction.INTERCONNECTION_DISPATCH_DEMAND], pattern]
 				txtwriter.writerow(templist)
 
 			txtwriter.writerow('')
@@ -336,10 +337,17 @@ class Junction:
 		try:
 			object_generator = interconn_dict['generator']
 
+			self.matrix[:, Junction.INTERCONNECTION_DISPATCH_DEMAND] = 0.0
+			self.matrix[:, Junction.INTERCONNECTION_RESPONSE_DEMAND] = 0.0
+
 			for junction in self.matrix:
 				for generator in object_generator.matrix:
 					if junction[Junction.ID] == generator[ODC.Generator.JUNCTION_ID]:
-						junction[Junction.INTERCONNECTION_DEMAND] += generator[ODC.Generator.OPERATIONAL_STATUS]*generator[ODC.Generator.REAL_GENERATION]*generator[ODC.Generator.WATER_CONSUMPTION]*0.001
+						junction[Junction.INTERCONNECTION_DISPATCH_DEMAND] += generator[ODC.Generator.OPERATIONAL_STATUS]*generator[ODC.Generator.REAL_GENERATION]*generator[ODC.Generator.WATER_CONSUMPTION]*0.001
+						if generator[ODC.Generator.ID] == 101.0 or generator[ODC.Generator.ID] == 102.0 or generator[ODC.Generator.ID] == 201.0 or generator[ODC.Generator.ID] == 202.0:
+							junction[Junction.INTERCONNECTION_RESPONSE_DEMAND] += min(generator[ODC.Generator.RAMP_RATE]*10, generator[ODC.Generator.REAL_GENERATION_MAX_RATING]-generator[ODC.Generator.OPERATIONAL_STATUS]*generator[ODC.Generator.REAL_GENERATION])*generator[ODC.Generator.WATER_CONSUMPTION] * 0.001
+						else:
+							junction[Junction.INTERCONNECTION_RESPONSE_DEMAND] += generator[ODC.Generator.OPERATIONAL_STATUS] * min(generator[ODC.Generator.RAMP_RATE]*10, generator[ODC.Generator.REAL_GENERATION_MAX_RATING]-generator[ODC.Generator.OPERATIONAL_STATUS]*generator[ODC.Generator.REAL_GENERATION])*generator[ODC.Generator.WATER_CONSUMPTION] * 0.001							
 
 		except:
 			print('WATER ERROR in Junction8')
