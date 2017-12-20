@@ -651,7 +651,12 @@ def main(dss_debug, write_cols, power_df, water_df):
 			row[ODC.Generator.OPERATIONAL_STATUS] = 0.0
 			run_OpenDSS(0, True)
 
-			grb_solvers.contingency_response(object_load, object_generator, object_cable)
+			minutes = grb_solvers.contingency_response(object_load, object_generator, object_cable)
+
+			if minutes > 10.01:
+				with open('minute_errors.csv', 'a', newline='') as file:
+					writer = csv.writer(file)
+					writer.writerow([power_load_factor, water_demand_factor, minutes])
 
 			object_junction.setInterconnectionDemand(interconn_dict)
 
@@ -712,7 +717,12 @@ def main(dss_debug, write_cols, power_df, water_df):
 				row[ODC.Cable.OPERATIONAL_STATUS_A] = 0.0
 				run_OpenDSS(0, True)
 
-				grb_solvers.contingency_response(object_load, object_generator, object_cable)
+				minutes = grb_solvers.contingency_response(object_load, object_generator, object_cable)
+
+				if minutes > 10.01:
+					with open('minute_errors.csv', 'a', newline='') as file:
+						writer = csv.writer(file)
+						writer.writerow([power_load_factor, water_demand_factor, minutes])
 
 				object_junction.setInterconnectionDemand(interconn_dict)
 
@@ -904,7 +914,12 @@ def main(dss_debug, write_cols, power_df, water_df):
 			# print('max id', max_id)
 			# print('max pu', max_val)
 
-			grb_solvers.contingency_response(object_load, object_generator, object_cable)
+			minutes = grb_solvers.contingency_response(object_load, object_generator, object_cable)
+
+			if minutes > 10.01:
+				with open('minute_errors.csv', 'a', newline='') as file:
+					writer = csv.writer(file)
+					writer.writerow([power_load_factor, water_demand_factor, minutes])
 
 			object_junction.setInterconnectionDemand(interconn_dict)
 
@@ -964,7 +979,12 @@ def main(dss_debug, write_cols, power_df, water_df):
 				row[ODC.Cable.OPERATIONAL_STATUS_A] = 0.0
 				run_OpenDSS(0, True)
 
-				grb_solvers.contingency_response(object_load, object_generator, object_cable)
+				minutes = grb_solvers.contingency_response(object_load, object_generator, object_cable)
+
+				if minutes > 10.01:
+					with open('minute_errors.csv', 'a', newline='') as file:
+						writer = csv.writer(file)
+						writer.writerow([power_load_factor, water_demand_factor, minutes])
 
 				object_junction.setInterconnectionDemand(interconn_dict)
 
