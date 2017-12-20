@@ -37,6 +37,22 @@ import win32com.client
 from operator import itemgetter
 
 def main(dss_debug, write_cols, power_df, water_df):
+	idx_tank_15 = 11
+	flag_water_power_worst_case = 0
+
+	tank_15_w = 0.0
+	tank_16_w = 0.0
+	tank_18_w = 0.0
+	tank_19_w = 0.0
+
+	tank_15_p_w = 0.0
+	tank_16_p_w = 0.0
+	tank_18_p_w = 0.0
+	tank_19_p_w = 0.0
+
+	pipe_9_deficits_w_n1 = 0.0
+	pipe_9_deficits_pw_n1 = 0.0
+
 	os_username = os.getlogin()
 
 	# --------------
@@ -593,8 +609,18 @@ def main(dss_debug, write_cols, power_df, water_df):
 						temp_subset_deficit += math.pi * ((0.5*tank[ENC.Tank.DIAMETER])**2) * (tank[ENC.Tank.ELEVATION]+tank[ENC.Tank.INITIAL_LEVEL]-tank[ENC.Tank.HEAD])
 						temp_subset_deficit_priority.append((tank[ENC.Tank.ID]-1000.0, math.pi * ((0.5*tank[ENC.Tank.DIAMETER])**2) * (tank[ENC.Tank.ELEVATION]+tank[ENC.Tank.INITIAL_LEVEL]-tank[ENC.Tank.HEAD])))
 
+			if row[ENC.Pipe.ID] == 9.0:
+				pipe_9_deficits_w_n1 += math.pi * ((0.5* object_tank.matrix[idx_tank_15, ENC.Tank.DIAMETER])**2) * (object_tank.matrix[idx_tank_15, ENC.Tank.ELEVATION]+object_tank.matrix[idx_tank_15, ENC.Tank.INITIAL_LEVEL]-object_tank.matrix[idx_tank_15, ENC.Tank.HEAD])
+				pipe_9_deficits_w_n1 += math.pi * ((0.5* object_tank.matrix[idx_tank_15+1, ENC.Tank.DIAMETER])**2) * (object_tank.matrix[idx_tank_15+1, ENC.Tank.ELEVATION]+object_tank.matrix[idx_tank_15+1, ENC.Tank.INITIAL_LEVEL]-object_tank.matrix[idx_tank_15+1, ENC.Tank.HEAD])
+				pipe_9_deficits_w_n1 += math.pi * ((0.5* object_tank.matrix[idx_tank_15+2, ENC.Tank.DIAMETER])**2) * (object_tank.matrix[idx_tank_15+2, ENC.Tank.ELEVATION]+object_tank.matrix[idx_tank_15+2, ENC.Tank.INITIAL_LEVEL]-object_tank.matrix[idx_tank_15+2, ENC.Tank.HEAD])
+				pipe_9_deficits_w_n1 += math.pi * ((0.5* object_tank.matrix[idx_tank_15+3, ENC.Tank.DIAMETER])**2) * (object_tank.matrix[idx_tank_15+3, ENC.Tank.ELEVATION]+object_tank.matrix[idx_tank_15+3, ENC.Tank.INITIAL_LEVEL]-object_tank.matrix[idx_tank_15+3, ENC.Tank.HEAD])
+
+				tank_15_w = math.pi * ((0.5* object_tank.matrix[idx_tank_15, ENC.Tank.DIAMETER])**2) * (object_tank.matrix[idx_tank_15, ENC.Tank.ELEVATION]+object_tank.matrix[idx_tank_15, ENC.Tank.INITIAL_LEVEL]-object_tank.matrix[idx_tank_15, ENC.Tank.HEAD])
+				tank_16_w = math.pi * ((0.5* object_tank.matrix[idx_tank_15+1, ENC.Tank.DIAMETER])**2) * (object_tank.matrix[idx_tank_15+1, ENC.Tank.ELEVATION]+object_tank.matrix[idx_tank_15+1, ENC.Tank.INITIAL_LEVEL]-object_tank.matrix[idx_tank_15+1, ENC.Tank.HEAD])
+				tank_18_w = math.pi * ((0.5* object_tank.matrix[idx_tank_15+2, ENC.Tank.DIAMETER])**2) * (object_tank.matrix[idx_tank_15+2, ENC.Tank.ELEVATION]+object_tank.matrix[idx_tank_15+2, ENC.Tank.INITIAL_LEVEL]-object_tank.matrix[idx_tank_15+2, ENC.Tank.HEAD])
+				tank_19_w = math.pi * ((0.5* object_tank.matrix[idx_tank_15+3, ENC.Tank.DIAMETER])**2) * (object_tank.matrix[idx_tank_15+3, ENC.Tank.ELEVATION]+object_tank.matrix[idx_tank_15+3, ENC.Tank.INITIAL_LEVEL]-object_tank.matrix[idx_tank_15+3, ENC.Tank.HEAD])
+
 			if temp_system_deficit > system_deficit and len(temp_subset_deficit_priority) > 0:
-				print('initial worst case pipe', row[ENC.Pipe.ID])
 				subset_deficit = temp_subset_deficit
 				subset_deficit_priority = sorted(temp_subset_deficit_priority, key=itemgetter(1), reverse=True)
 				
@@ -651,8 +677,21 @@ def main(dss_debug, write_cols, power_df, water_df):
 								temp_subset_deficit += math.pi * ((0.5*tank[ENC.Tank.DIAMETER])**2) * (tank[ENC.Tank.ELEVATION]+tank[ENC.Tank.INITIAL_LEVEL]-tank[ENC.Tank.HEAD])
 								temp_subset_deficit_priority.append((tank[ENC.Tank.ID]-1000.0, math.pi * ((0.5*tank[ENC.Tank.DIAMETER])**2) * (tank[ENC.Tank.ELEVATION]+tank[ENC.Tank.INITIAL_LEVEL]-tank[ENC.Tank.HEAD])))
 
+					if row[ENC.Pipe.ID] == 9.0:
+						pipe_9_deficits = math.pi * ((0.5* object_tank.matrix[idx_tank_15, ENC.Tank.DIAMETER])**2) * (object_tank.matrix[idx_tank_15, ENC.Tank.ELEVATION]+object_tank.matrix[idx_tank_15, ENC.Tank.INITIAL_LEVEL]-object_tank.matrix[idx_tank_15, ENC.Tank.HEAD])
+						pipe_9_deficits += math.pi * ((0.5* object_tank.matrix[idx_tank_15+1, ENC.Tank.DIAMETER])**2) * (object_tank.matrix[idx_tank_15+1, ENC.Tank.ELEVATION]+object_tank.matrix[idx_tank_15+1, ENC.Tank.INITIAL_LEVEL]-object_tank.matrix[idx_tank_15+1, ENC.Tank.HEAD])
+						pipe_9_deficits += math.pi * ((0.5* object_tank.matrix[idx_tank_15+2, ENC.Tank.DIAMETER])**2) * (object_tank.matrix[idx_tank_15+2, ENC.Tank.ELEVATION]+object_tank.matrix[idx_tank_15+2, ENC.Tank.INITIAL_LEVEL]-object_tank.matrix[idx_tank_15+2, ENC.Tank.HEAD])
+						pipe_9_deficits += math.pi * ((0.5* object_tank.matrix[idx_tank_15+3, ENC.Tank.DIAMETER])**2) * (object_tank.matrix[idx_tank_15+3, ENC.Tank.ELEVATION]+object_tank.matrix[idx_tank_15+3, ENC.Tank.INITIAL_LEVEL]-object_tank.matrix[idx_tank_15+3, ENC.Tank.HEAD])
+
+						if pipe_9_deficits > pipe_9_deficits_w_n1:
+							pipe_9_deficits_w_n1 = pipe_9_deficits
+							tank_15_w = math.pi * ((0.5* object_tank.matrix[idx_tank_15, ENC.Tank.DIAMETER])**2) * (object_tank.matrix[idx_tank_15, ENC.Tank.ELEVATION]+object_tank.matrix[idx_tank_15, ENC.Tank.INITIAL_LEVEL]-object_tank.matrix[idx_tank_15, ENC.Tank.HEAD])
+							tank_16_w = math.pi * ((0.5* object_tank.matrix[idx_tank_15+1, ENC.Tank.DIAMETER])**2) * (object_tank.matrix[idx_tank_15+1, ENC.Tank.ELEVATION]+object_tank.matrix[idx_tank_15+1, ENC.Tank.INITIAL_LEVEL]-object_tank.matrix[idx_tank_15+1, ENC.Tank.HEAD])
+							tank_18_w = math.pi * ((0.5* object_tank.matrix[idx_tank_15+2, ENC.Tank.DIAMETER])**2) * (object_tank.matrix[idx_tank_15+2, ENC.Tank.ELEVATION]+object_tank.matrix[idx_tank_15+2, ENC.Tank.INITIAL_LEVEL]-object_tank.matrix[idx_tank_15+2, ENC.Tank.HEAD])
+							tank_19_w = math.pi * ((0.5* object_tank.matrix[idx_tank_15+3, ENC.Tank.DIAMETER])**2) * (object_tank.matrix[idx_tank_15+3, ENC.Tank.ELEVATION]+object_tank.matrix[idx_tank_15+3, ENC.Tank.INITIAL_LEVEL]-object_tank.matrix[idx_tank_15+3, ENC.Tank.HEAD])
+
 					if temp_system_deficit > system_deficit and len(temp_subset_deficit_priority) > 0:
-						print('base-case worst case pipe', row[ENC.Pipe.ID])
+						flag_water_power_worst_case = 1
 						subset_deficit = temp_subset_deficit
 						subset_deficit_priority = sorted(temp_subset_deficit_priority, key=itemgetter(1), reverse=True)
 						
@@ -699,8 +738,21 @@ def main(dss_debug, write_cols, power_df, water_df):
 								temp_subset_deficit += math.pi * ((0.5*tank[ENC.Tank.DIAMETER])**2) * (tank[ENC.Tank.ELEVATION]+tank[ENC.Tank.INITIAL_LEVEL]-tank[ENC.Tank.HEAD])
 								temp_subset_deficit_priority.append((tank[ENC.Tank.ID]-1000.0, math.pi * ((0.5*tank[ENC.Tank.DIAMETER])**2) * (tank[ENC.Tank.ELEVATION]+tank[ENC.Tank.INITIAL_LEVEL]-tank[ENC.Tank.HEAD])))
 
+					if row[ENC.Pipe.ID] == 9.0:
+						pipe_9_deficits = math.pi * ((0.5* object_tank.matrix[idx_tank_15, ENC.Tank.DIAMETER])**2) * (object_tank.matrix[idx_tank_15, ENC.Tank.ELEVATION]+object_tank.matrix[idx_tank_15, ENC.Tank.INITIAL_LEVEL]-object_tank.matrix[idx_tank_15, ENC.Tank.HEAD])
+						pipe_9_deficits += math.pi * ((0.5* object_tank.matrix[idx_tank_15+1, ENC.Tank.DIAMETER])**2) * (object_tank.matrix[idx_tank_15+1, ENC.Tank.ELEVATION]+object_tank.matrix[idx_tank_15+1, ENC.Tank.INITIAL_LEVEL]-object_tank.matrix[idx_tank_15+1, ENC.Tank.HEAD])
+						pipe_9_deficits += math.pi * ((0.5* object_tank.matrix[idx_tank_15+2, ENC.Tank.DIAMETER])**2) * (object_tank.matrix[idx_tank_15+2, ENC.Tank.ELEVATION]+object_tank.matrix[idx_tank_15+2, ENC.Tank.INITIAL_LEVEL]-object_tank.matrix[idx_tank_15+2, ENC.Tank.HEAD])
+						pipe_9_deficits += math.pi * ((0.5* object_tank.matrix[idx_tank_15+3, ENC.Tank.DIAMETER])**2) * (object_tank.matrix[idx_tank_15+3, ENC.Tank.ELEVATION]+object_tank.matrix[idx_tank_15+3, ENC.Tank.INITIAL_LEVEL]-object_tank.matrix[idx_tank_15+3, ENC.Tank.HEAD])
+
+						if pipe_9_deficits > pipe_9_deficits_w_n1:
+							pipe_9_deficits_w_n1 = pipe_9_deficits
+							tank_15_w = math.pi * ((0.5* object_tank.matrix[idx_tank_15, ENC.Tank.DIAMETER])**2) * (object_tank.matrix[idx_tank_15, ENC.Tank.ELEVATION]+object_tank.matrix[idx_tank_15, ENC.Tank.INITIAL_LEVEL]-object_tank.matrix[idx_tank_15, ENC.Tank.HEAD])
+							tank_16_w = math.pi * ((0.5* object_tank.matrix[idx_tank_15+1, ENC.Tank.DIAMETER])**2) * (object_tank.matrix[idx_tank_15+1, ENC.Tank.ELEVATION]+object_tank.matrix[idx_tank_15+1, ENC.Tank.INITIAL_LEVEL]-object_tank.matrix[idx_tank_15+1, ENC.Tank.HEAD])
+							tank_18_w = math.pi * ((0.5* object_tank.matrix[idx_tank_15+2, ENC.Tank.DIAMETER])**2) * (object_tank.matrix[idx_tank_15+2, ENC.Tank.ELEVATION]+object_tank.matrix[idx_tank_15+2, ENC.Tank.INITIAL_LEVEL]-object_tank.matrix[idx_tank_15+2, ENC.Tank.HEAD])
+							tank_19_w = math.pi * ((0.5* object_tank.matrix[idx_tank_15+3, ENC.Tank.DIAMETER])**2) * (object_tank.matrix[idx_tank_15+3, ENC.Tank.ELEVATION]+object_tank.matrix[idx_tank_15+3, ENC.Tank.INITIAL_LEVEL]-object_tank.matrix[idx_tank_15+3, ENC.Tank.HEAD])
+
 					if temp_system_deficit > system_deficit and len(temp_subset_deficit_priority) > 0:
-						print('base-case worst case pipe', row[ENC.Pipe.ID])
+						flag_water_power_worst_case = 1
 						subset_deficit = temp_subset_deficit
 						subset_deficit_priority = sorted(temp_subset_deficit_priority, key=itemgetter(1), reverse=True)
 						
@@ -710,10 +762,9 @@ def main(dss_debug, write_cols, power_df, water_df):
 	object_cable.matrix[:, ODC.Cable.OPERATIONAL_STATUS_A] = np.array(base_branch_commitment, copy=True)
 	print('')
 
-	print('base-case system deficit', system_deficit, 'subset deficit', subset_deficit)
 	with open('main_analysis_power_only.csv', 'a', newline='') as file:
 		writer = csv.writer(file)
-		writer.writerow([power_load_factor, water_demand_factor, system_deficit, subset_deficit_priority])
+		writer.writerow([power_load_factor, water_demand_factor, system_deficit, subset_deficit_priority, tank_15_w, tank_16_w, tank_18_w, tank_19_w, flag_water_power_worst_case])
 
 	# ANALYSIS STEP 7: Re-dispatch to reduce maximum water deficit
 	# -----------------------------------------------------
@@ -781,10 +832,6 @@ def main(dss_debug, write_cols, power_df, water_df):
 
 	needed_reserves, avail_reserves = fun_set_power_dispatch(object_load, object_generator, losses, exports)
 	print('exports #1', 0.5 * (object_cable.matrix[33, ODC.Cable.REAL_POWER_2] - object_cable.matrix[33, ODC.Cable.REAL_POWER_1]))
-	print('needed_reserves', needed_reserves)
-	print('avail_reserves', avail_reserves)
-	print(avail_reserves/needed_reserves)
-	print('')
 
 	# ANALYSIS STEP 8: SET JUNCTION INTERCONNECTIONS
 	# -----------------------------------------
@@ -863,9 +910,6 @@ def main(dss_debug, write_cols, power_df, water_df):
 
 			for pipe in object_pipe.matrix:
 				if pipe[ENC.Pipe.ID] < 1000.0:
-					if pipe[ENC.Pipe.ID] == 10.0:
-						print(pipe[ENC.Pipe.ID])
-						time.sleep(20)
 					# print('SHUT DOWN PIPE:', pipe[ENC.Pipe.ID])
 
 					object_pipe.matrix[:, ENC.Pipe.OPERATIONAL_STATUS] = base_pipe_status
@@ -886,12 +930,20 @@ def main(dss_debug, write_cols, power_df, water_df):
 								temp_subset_deficit += math.pi * ((0.5*tank[ENC.Tank.DIAMETER])**2) * (tank[ENC.Tank.ELEVATION]+tank[ENC.Tank.INITIAL_LEVEL]-tank[ENC.Tank.HEAD])
 								temp_subset_deficit_priority.append((tank[ENC.Tank.ID]-1000.0, math.pi * ((0.5*tank[ENC.Tank.DIAMETER])**2) * (tank[ENC.Tank.ELEVATION]+tank[ENC.Tank.INITIAL_LEVEL]-tank[ENC.Tank.HEAD])))
 
-					if row[ODC.Generator.ID] == 301.0:
-						if pipe[ENC.Pipe.ID] == 36.0 or pipe[ENC.Pipe.ID] == 9.0:
-							print('Pipe', pipe[ENC.Pipe.ID], 'has system deficit', temp_system_deficit, 'and subset deficit', temp_subset_deficit)
+					if row[ENC.Pipe.ID] == 9.0:
+						pipe_9_deficits = math.pi * ((0.5* object_tank.matrix[idx_tank_15, ENC.Tank.DIAMETER])**2) * (object_tank.matrix[idx_tank_15, ENC.Tank.ELEVATION]+object_tank.matrix[idx_tank_15, ENC.Tank.INITIAL_LEVEL]-object_tank.matrix[idx_tank_15, ENC.Tank.HEAD])
+						pipe_9_deficits += math.pi * ((0.5* object_tank.matrix[idx_tank_15+1, ENC.Tank.DIAMETER])**2) * (object_tank.matrix[idx_tank_15+1, ENC.Tank.ELEVATION]+object_tank.matrix[idx_tank_15+1, ENC.Tank.INITIAL_LEVEL]-object_tank.matrix[idx_tank_15+1, ENC.Tank.HEAD])
+						pipe_9_deficits += math.pi * ((0.5* object_tank.matrix[idx_tank_15+2, ENC.Tank.DIAMETER])**2) * (object_tank.matrix[idx_tank_15+2, ENC.Tank.ELEVATION]+object_tank.matrix[idx_tank_15+2, ENC.Tank.INITIAL_LEVEL]-object_tank.matrix[idx_tank_15+2, ENC.Tank.HEAD])
+						pipe_9_deficits += math.pi * ((0.5* object_tank.matrix[idx_tank_15+3, ENC.Tank.DIAMETER])**2) * (object_tank.matrix[idx_tank_15+3, ENC.Tank.ELEVATION]+object_tank.matrix[idx_tank_15+3, ENC.Tank.INITIAL_LEVEL]-object_tank.matrix[idx_tank_15+3, ENC.Tank.HEAD])
+
+						if pipe_9_deficits > pipe_9_deficits_pw_n1:
+							pipe_9_deficits_pw_n1 = pipe_9_deficits
+							tank_15_p_w = math.pi * ((0.5* object_tank.matrix[idx_tank_15, ENC.Tank.DIAMETER])**2) * (object_tank.matrix[idx_tank_15, ENC.Tank.ELEVATION]+object_tank.matrix[idx_tank_15, ENC.Tank.INITIAL_LEVEL]-object_tank.matrix[idx_tank_15, ENC.Tank.HEAD])
+							tank_16_p_w = math.pi * ((0.5* object_tank.matrix[idx_tank_15+1, ENC.Tank.DIAMETER])**2) * (object_tank.matrix[idx_tank_15+1, ENC.Tank.ELEVATION]+object_tank.matrix[idx_tank_15+1, ENC.Tank.INITIAL_LEVEL]-object_tank.matrix[idx_tank_15+1, ENC.Tank.HEAD])
+							tank_18_p_w = math.pi * ((0.5* object_tank.matrix[idx_tank_15+2, ENC.Tank.DIAMETER])**2) * (object_tank.matrix[idx_tank_15+2, ENC.Tank.ELEVATION]+object_tank.matrix[idx_tank_15+2, ENC.Tank.INITIAL_LEVEL]-object_tank.matrix[idx_tank_15+2, ENC.Tank.HEAD])
+							tank_19_p_w = math.pi * ((0.5* object_tank.matrix[idx_tank_15+3, ENC.Tank.DIAMETER])**2) * (object_tank.matrix[idx_tank_15+3, ENC.Tank.ELEVATION]+object_tank.matrix[idx_tank_15+3, ENC.Tank.INITIAL_LEVEL]-object_tank.matrix[idx_tank_15+3, ENC.Tank.HEAD])
 
 					if temp_system_deficit > system_deficit and len(temp_subset_deficit_priority) > 0:
-						print('power-water worst case pipe', pipe[ENC.Pipe.ID])
 						subset_deficit = temp_subset_deficit
 						subset_deficit_priority = sorted(temp_subset_deficit_priority, key=itemgetter(1), reverse=True)
 						
@@ -938,8 +990,20 @@ def main(dss_debug, write_cols, power_df, water_df):
 								temp_subset_deficit += math.pi * ((0.5*tank[ENC.Tank.DIAMETER])**2) * (tank[ENC.Tank.ELEVATION]+tank[ENC.Tank.INITIAL_LEVEL]-tank[ENC.Tank.HEAD])
 								temp_subset_deficit_priority.append((tank[ENC.Tank.ID]-1000.0, math.pi * ((0.5*tank[ENC.Tank.DIAMETER])**2) * (tank[ENC.Tank.ELEVATION]+tank[ENC.Tank.INITIAL_LEVEL]-tank[ENC.Tank.HEAD])))
 
+					if row[ENC.Pipe.ID] == 9.0:
+						pipe_9_deficits = math.pi * ((0.5* object_tank.matrix[idx_tank_15, ENC.Tank.DIAMETER])**2) * (object_tank.matrix[idx_tank_15, ENC.Tank.ELEVATION]+object_tank.matrix[idx_tank_15, ENC.Tank.INITIAL_LEVEL]-object_tank.matrix[idx_tank_15, ENC.Tank.HEAD])
+						pipe_9_deficits += math.pi * ((0.5* object_tank.matrix[idx_tank_15+1, ENC.Tank.DIAMETER])**2) * (object_tank.matrix[idx_tank_15+1, ENC.Tank.ELEVATION]+object_tank.matrix[idx_tank_15+1, ENC.Tank.INITIAL_LEVEL]-object_tank.matrix[idx_tank_15+1, ENC.Tank.HEAD])
+						pipe_9_deficits += math.pi * ((0.5* object_tank.matrix[idx_tank_15+2, ENC.Tank.DIAMETER])**2) * (object_tank.matrix[idx_tank_15+2, ENC.Tank.ELEVATION]+object_tank.matrix[idx_tank_15+2, ENC.Tank.INITIAL_LEVEL]-object_tank.matrix[idx_tank_15+2, ENC.Tank.HEAD])
+						pipe_9_deficits += math.pi * ((0.5* object_tank.matrix[idx_tank_15+3, ENC.Tank.DIAMETER])**2) * (object_tank.matrix[idx_tank_15+3, ENC.Tank.ELEVATION]+object_tank.matrix[idx_tank_15+3, ENC.Tank.INITIAL_LEVEL]-object_tank.matrix[idx_tank_15+3, ENC.Tank.HEAD])
+
+						if pipe_9_deficits > pipe_9_deficits_pw_n1:
+							pipe_9_deficits_pw_n1 = pipe_9_deficits
+							tank_15_p_w = math.pi * ((0.5* object_tank.matrix[idx_tank_15, ENC.Tank.DIAMETER])**2) * (object_tank.matrix[idx_tank_15, ENC.Tank.ELEVATION]+object_tank.matrix[idx_tank_15, ENC.Tank.INITIAL_LEVEL]-object_tank.matrix[idx_tank_15, ENC.Tank.HEAD])
+							tank_16_p_w = math.pi * ((0.5* object_tank.matrix[idx_tank_15+1, ENC.Tank.DIAMETER])**2) * (object_tank.matrix[idx_tank_15+1, ENC.Tank.ELEVATION]+object_tank.matrix[idx_tank_15+1, ENC.Tank.INITIAL_LEVEL]-object_tank.matrix[idx_tank_15+1, ENC.Tank.HEAD])
+							tank_18_p_w = math.pi * ((0.5* object_tank.matrix[idx_tank_15+2, ENC.Tank.DIAMETER])**2) * (object_tank.matrix[idx_tank_15+2, ENC.Tank.ELEVATION]+object_tank.matrix[idx_tank_15+2, ENC.Tank.INITIAL_LEVEL]-object_tank.matrix[idx_tank_15+2, ENC.Tank.HEAD])
+							tank_19_p_w = math.pi * ((0.5* object_tank.matrix[idx_tank_15+3, ENC.Tank.DIAMETER])**2) * (object_tank.matrix[idx_tank_15+3, ENC.Tank.ELEVATION]+object_tank.matrix[idx_tank_15+3, ENC.Tank.INITIAL_LEVEL]-object_tank.matrix[idx_tank_15+3, ENC.Tank.HEAD])
+
 					if temp_system_deficit > system_deficit and len(temp_subset_deficit_priority) > 0:
-						print('power-water worst case pipe', pipe[ENC.Pipe.ID])
 						subset_deficit = temp_subset_deficit
 						subset_deficit_priority = sorted(temp_subset_deficit_priority, key=itemgetter(1), reverse=True)
 						
@@ -951,7 +1015,7 @@ def main(dss_debug, write_cols, power_df, water_df):
 
 	with open('main_analysis_power_water.csv', 'a', newline='') as file:
 		writer = csv.writer(file)
-		writer.writerow([power_load_factor, water_demand_factor, system_deficit, subset_deficit_priority])
+		writer.writerow([power_load_factor, water_demand_factor, system_deficit, subset_deficit_priority, tank_15_p_w, tank_16_p_w, tank_18_p_w, tank_19_p_w])
 
 	# SIM STEP 6: RUN POWER-WATER SIMULATION
 	# --------------------------------------

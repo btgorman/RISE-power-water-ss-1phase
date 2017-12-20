@@ -1,4 +1,4 @@
-  Page 1                                    Sat Dec 16 23:07:40 2017
+  Page 1                                    Tue Dec 19 19:02:19 2017
 
   ******************************************************************
   *                           E P A N E T                          *
@@ -7,27 +7,23 @@
   *                         Version 2.00.12                        *
   ******************************************************************
   
-  Analysis begun Sat Dec 16 23:07:40 2017
+  Analysis begun Tue Dec 19 19:02:19 2017
 
+  WARNING: Maximum trials exceeded at 0:00:00 hrs. System may be unstable.
   WARNING: FCV 2001 open but cannot deliver flow at 0:00:00 hrs.
   WARNING: FCV 2002 open but cannot deliver flow at 0:00:00 hrs.
   WARNING: FCV 2003 open but cannot deliver flow at 0:00:00 hrs.
   WARNING: FCV 2007 open but cannot deliver flow at 0:00:00 hrs.
-  WARNING: FCV 2008 open but cannot deliver flow at 0:00:00 hrs.
   WARNING: FCV 2016 open but cannot deliver flow at 0:00:00 hrs.
   WARNING: FCV 2018 open but cannot deliver flow at 0:00:00 hrs.
+  WARNING: FCV 2019 open but cannot deliver flow at 0:00:00 hrs.
   
-  WARNING: FCV 2001 open but cannot deliver flow at 0:22:32 hrs.
-  WARNING: FCV 2002 open but cannot deliver flow at 0:22:32 hrs.
-  WARNING: FCV 2003 open but cannot deliver flow at 0:22:32 hrs.
-  WARNING: FCV 2007 open but cannot deliver flow at 0:22:32 hrs.
-  WARNING: FCV 2008 open but cannot deliver flow at 0:22:32 hrs.
-  
-  WARNING: Negative pressures at 1:00:00 hrs.
+  WARNING: Maximum trials exceeded at 1:00:00 hrs. System may be unstable.
   WARNING: FCV 2001 open but cannot deliver flow at 1:00:00 hrs.
-  WARNING: FCV 2002 open but cannot deliver flow at 1:00:00 hrs.
   WARNING: FCV 2003 open but cannot deliver flow at 1:00:00 hrs.
   WARNING: FCV 2007 open but cannot deliver flow at 1:00:00 hrs.
-  WARNING: FCV 2008 open but cannot deliver flow at 1:00:00 hrs.
+  WARNING: FCV 2016 open but cannot deliver flow at 1:00:00 hrs.
+  WARNING: FCV 2018 open but cannot deliver flow at 1:00:00 hrs.
+  WARNING: FCV 2019 open but cannot deliver flow at 1:00:00 hrs.
   
-  Analysis ended Sat Dec 16 23:07:40 2017
+  Analysis ended Tue Dec 19 19:02:19 2017
