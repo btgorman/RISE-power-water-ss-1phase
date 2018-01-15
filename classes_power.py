@@ -1086,7 +1086,8 @@ class Load: #errors -1225 to -1249
 			for load in self.matrix:
 				for pump in object_pump.matrix:
 					if load[Load.ID] == pump[ENC.Pump.LOAD_ID]:
-						load[Load.INTERCONNECTION_LOAD] += pump[ENC.Pump.OPERATIONAL_STATUS] * pump[ENC.Pump.POWER]
+						print('Load {}'.format(load[Load.ID]))
+						load[Load.INTERCONNECTION_LOAD] += pump[ENC.Pump.OPERATIONAL_STATUS] * pump[ENC.Pump.POWER_CONSUMPTION]
 
 		except:
 			print('Error: #-1240')

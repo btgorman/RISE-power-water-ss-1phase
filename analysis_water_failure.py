@@ -126,19 +126,11 @@ def main(water_df):
 
 			templist = ['[REPORT]']
 			writer.writerow(templist)
-			templist = ['Status', 'Yes']
+			templist = ['Status', 'No']
 			writer.writerow(templist)
-			templist = ['Summary', 'Yes']
+			templist = ['Summary', 'No']
 			writer.writerow(templist)
-			templist = ['Page', 20]
-			writer.writerow(templist)
-			templist = ['Nodes', 'All']
-			writer.writerow(templist)
-			templist = ['Links', 'All']
-			writer.writerow(templist)
-			templist = ['Pressure', 'Yes']
-			writer.writerow(templist)
-			templist = ['Flow', 'Yes']
+			templist = ['Page', 0]
 			writer.writerow(templist)
 			writer.writerow('')
 
@@ -268,22 +260,26 @@ def main(water_df):
 	# SIM STEP 6: RUN POWER-WATER SIMULATION
 	# --------------------------------------
 
+	base_curve_matrix  = np.array(object_curve.matrix, copy=True)
+	base_junction_matrix = np.array(object_junction.matrix, copy=True)
+	base_reservoir_matrix = np.array(object_reservoir.matrix, copy=True)
+	base_tank_matrix = np.array(object_tank.matrix, copy=True)
+	base_pipe_matrix = np.array(object_pipe.matrix, copy=True)
+	base_pump_matrix = np.array(object_pump.matrix, copy=True)
+	base_valve_matrix = np.array(object_valve.matrix, copy=True)
+
 	# Begin failure analysis loop
 
 	for pipe_fail_id in [pid for pid in object_pipe.matrix[:, ENC.Pipe.ID] if 0.0 <= pid < 1000.0]:
 
-		# Reset pipes
-		for pipe in object_pipe.matrix:
-			if 0.0 <= pipe[ENC.Pipe.ID] < 1000.0:
-				pipe[ENC.Pipe.OPERATIONAL_STATUS] = 1.0
-			elif 1000.0 <= pipe[ENC.Pipe.ID] < 2000.0:
-				pipe[ENC.Pipe.OPERATIONAL_STATUS] = 0.0
-			elif 2000.0 <= pipe[ENC.Pipe.ID] < 3000.0:
-				print('WRONG Pipe ID between 2000 and 3000')
-			elif 3000.0 <= pipe[ENC.Pipe.ID] < 4000.0:
-				pipe[ENC.Pipe.OPERATIONAL_STATUS] = 1.0
-			else:
-				print('WRONG Pipe ID above 4000')
+		# Reset objects
+		object_curve.matrix = np.array(base_curve_matrix, copy=True)
+		object_junction.matrix = np.array(base_junction_matrix, copy=True)
+		object_reservoir.matrix = np.array(base_reservoir_matrix, copy=True)
+		object_tank.matrix = np.array(base_tank_matrix, copy=True)
+		object_pipe.matrix = np.array(base_pipe_matrix, copy=True)
+		object_pump.matrix = np.array(base_pump_matrix, copy=True)
+		object_valve.matrix = np.array(base_valve_matrix, copy=True)
 
 		for pipe in object_pipe.matrix:
 			if pipe[ENC.Pipe.ID] == pipe_fail_id:
@@ -377,7 +373,7 @@ def main(water_df):
 						if map_to_junction[junction_id][ENC.Junction.PRESSURE] > map_to_junction[max_pres_id][ENC.Junction.PRESSURE] and map_to_pipe[junction_id][ENC.Pipe.OPERATIONAL_STATUS] == 0.0:
 							max_pres_id = junction_id
 					# this uses the MINIMUM ALLOWABLE PRESSURE
-					if map_to_junction[max_pres_id][ENC.Junction.PRESSURE] > (map_to_junction[max_pres_id][ENC.Junction.MIN_PRESSURE]-0.01) and map_to_pipe[max_pres_id][ENC.Pipe.OPERATIONAL_STATUS] == 0.0:
+					if map_to_junction[max_pres_id][ENC.Junction.PRESSURE] > (map_to_junction[max_pres_id][ENC.Junction.MIN_PRESSURE] -0.01) and map_to_pipe[max_pres_id][ENC.Pipe.OPERATIONAL_STATUS] == 0.0:
 						map_to_pipe[max_pres_id][ENC.Pipe.OPERATIONAL_STATUS] = 1.0
 						pos_pres_bool = True
 					run_EPANET()
@@ -516,24 +512,24 @@ def main(water_df):
 		system_deficit += j_18_deficit
 		system_deficit += j_19_deficit
 		system_deficit += j_28_deficit
+	
+		# print('')
+		# for row in object_reservoir.matrix:
+		# 	print('Reservoir {} has outflow {:.2f}'.format(int(row[ENC.Reservoir.ID]), row[ENC.Reservoir.DEMAND]))
+
+		# for reservoir in object_reservoir.matrix:
+		# 	if reservoir[ENC.Reservoir.DEMAND] > 0.0:
+		# 		print('Reservoir {} has demand {}'.format(int(reservoir[ENC.Reservoir.ID]), reservoir[ENC.Reservoir.DEMAND]))
+
+		# print('')
+		# for pump in object_pump.matrix:
+		# 	print('Pump {} has POWER_CONSUMPTION {:.2f} MW'.format(int(pump[ENC.Pump.ID]), pump[ENC.Pump.POWER_CONSUMPTION]*0.001))
 
 		with open('model_outputs/analysis_water_failure/water_failure_analysis_pipe_{}.csv'.format(int(pipe_fail_id)), 'a', newline='') as file:
 			writer = csv.writer(file)
 			writer.writerow([water_demand_factor, system_deficit, j_1_deficit, j_2_deficit, j_3_deficit, j_5_deficit, j_6_deficit, j_7_deficit, j_8_deficit, j_9_deficit, j_10_deficit, j_13_deficit, j_14_deficit, j_15_deficit, j_16_deficit, j_18_deficit, j_19_deficit, j_28_deficit])
 
 		# End outer loop
-	
-	# print('')
-	# for row in object_reservoir.matrix:
-	# 	print('Reservoir {} has outflow {:.2f}'.format(int(row[ENC.Reservoir.ID]), row[ENC.Reservoir.DEMAND]))
-
-	# for reservoir in object_reservoir.matrix:
-	# 	if reservoir[ENC.Reservoir.DEMAND] > 0.0:
-	# 		print('Reservoir {} has demand {}'.format(int(reservoir[ENC.Reservoir.ID]), reservoir[ENC.Reservoir.DEMAND]))
-
-	# print('')
-	# for pump in object_pump.matrix:
-	# 	print('Pump {} has POWER_CONSUMPTION {:.2f} MW'.format(int(pump[ENC.Pump.ID]), pump[ENC.Pump.POWER_CONSUMPTION]*0.001))
 
 	# RESULTS STEP 1: FORMAT INPUT/OUTPUT TENSORS
 	# -------------------------------------------

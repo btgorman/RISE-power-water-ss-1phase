@@ -23,7 +23,7 @@ GEN_PRIORITY_KEY = {122: 1, 222: 1, 322: 1, 422: 1, 522: 1, 622: 1,
 GEN_PRIORITY_COUNT = {1: 6, 2: 2, 3: 1, 4: 4, 5: 4, 6: 3, 7: 3, 8: 5, 9: 4}
 
 NUMBER_OF_MINUTES = 10
-EXTRA_RESERVE_MARGIN = 1.08 # 3%
+EXTRA_RESERVE_MARGIN = 1.07 # %
 
 def unit_commitment_priority_list(object_load, object_generator, losses, exports):
 
@@ -265,7 +265,6 @@ def unit_commitment_priority_list(object_load, object_generator, losses, exports
 			elif elem.varName[0:3] == 'u_r':
 				out_u_r[float(elem.varName[4:9])] = float(elem.x)
 
-		actual_reserves = 0.0
 		needed_reserves = 0.0
 		for row in object_generator.matrix:
 			row[ODC.Generator.OPERATIONAL_STATUS] = out_u_c[row[ODC.Generator.ID]]
@@ -273,7 +272,7 @@ def unit_commitment_priority_list(object_load, object_generator, losses, exports
 			online = row[ODC.Generator.OPERATIONAL_STATUS]
 			if GEN_PRIORITY_KEY[int(row[ODC.Generator.ID])] == 9:
 				online = 1.0
-			actual_reserves += min(row[ODC.Generator.REAL_GENERATION_MAX_RATING] - row[ODC.Generator.REAL_GENERATION], online * NUMBER_OF_MINUTES * row[ODC.Generator.RAMP_RATE])
+			# actual_reserves = min(row[ODC.Generator.REAL_GENERATION_MAX_RATING] - row[ODC.Generator.REAL_GENERATION], online * NUMBER_OF_MINUTES * row[ODC.Generator.RAMP_RATE])
 			if row[ODC.Generator.REAL_GENERATION] + min(row[ODC.Generator.REAL_GENERATION_MAX_RATING] - row[ODC.Generator.REAL_GENERATION], online * NUMBER_OF_MINUTES * row[ODC.Generator.RAMP_RATE]) > needed_reserves:
 				needed_reserves = row[ODC.Generator.REAL_GENERATION] + min(row[ODC.Generator.REAL_GENERATION_MAX_RATING] - row[ODC.Generator.REAL_GENERATION], online * NUMBER_OF_MINUTES * row[ODC.Generator.RAMP_RATE])
 
@@ -285,7 +284,7 @@ def unit_commitment_priority_list(object_load, object_generator, losses, exports
 		# 	print('actual reserves', actual_reserves)
 		# 	print('needed reserves', needed_reserves)
 
-		return needed_reserves, actual_reserves
+		return needed_reserves, sum(out_u_r.values()), out_u_r.copy()
 
 	except gurobipy.GurobiError:
 		print(gurobipy.GurobiError.message)
@@ -530,7 +529,6 @@ def unit_commitment_priority_list_2(object_load, object_generator, losses, expor
 			elif elem.varName[0:3] == 'u_r':
 				out_u_r[float(elem.varName[4:9])] = float(elem.x)
 
-		actual_reserves = 0.0
 		needed_reserves = 0.0
 		for row in object_generator.matrix:
 			row[ODC.Generator.OPERATIONAL_STATUS] = unit_commit[row[ODC.Generator.ID]]
@@ -538,7 +536,7 @@ def unit_commitment_priority_list_2(object_load, object_generator, losses, expor
 			online = row[ODC.Generator.OPERATIONAL_STATUS]
 			if GEN_PRIORITY_KEY[int(row[ODC.Generator.ID])] == 9:
 				online = 1.0
-			actual_reserves += min(row[ODC.Generator.REAL_GENERATION_MAX_RATING] - row[ODC.Generator.REAL_GENERATION], online * NUMBER_OF_MINUTES * row[ODC.Generator.RAMP_RATE])
+			# actual_reserves += min(row[ODC.Generator.REAL_GENERATION_MAX_RATING] - row[ODC.Generator.REAL_GENERATION], online * NUMBER_OF_MINUTES * row[ODC.Generator.RAMP_RATE])
 			if row[ODC.Generator.REAL_GENERATION] + min(row[ODC.Generator.REAL_GENERATION_MAX_RATING] - row[ODC.Generator.REAL_GENERATION], online * NUMBER_OF_MINUTES * row[ODC.Generator.RAMP_RATE]) > needed_reserves:
 				needed_reserves = row[ODC.Generator.REAL_GENERATION] + min(row[ODC.Generator.REAL_GENERATION_MAX_RATING] - row[ODC.Generator.REAL_GENERATION], online * NUMBER_OF_MINUTES * row[ODC.Generator.RAMP_RATE])
 
@@ -550,7 +548,7 @@ def unit_commitment_priority_list_2(object_load, object_generator, losses, expor
 		# 	print('actual reserves', actual_reserves)
 		# 	print('needed reserves', needed_reserves)
 
-		return needed_reserves, actual_reserves
+		return needed_reserves, sum(out_u_r.values()), out_u_r.copy()
 
 	except gurobipy.GurobiError:
 		print(gurobipy.GurobiError.message)
