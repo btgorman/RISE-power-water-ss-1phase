@@ -1,4 +1,4 @@
-  Page 1                                    Tue Dec 19 19:02:19 2017
+  Page 1                                    Mon Jan 15 03:36:20 2018
 
   ******************************************************************
   *                           E P A N E T                          *
@@ -7,23 +7,81 @@
   *                         Version 2.00.12                        *
   ******************************************************************
   
-  Analysis begun Tue Dec 19 19:02:19 2017
+   
+      Input Data File ................... data_water/en-inputs/en-input.inp
+      Number of Junctions................ 46
+      Number of Reservoirs............... 28
+      Number of Tanks ................... 0
+      Number of Pipes ................... 66
+      Number of Pumps ................... 2
+      Number of Valves .................. 9
+      Headloss Formula .................. Chezy-Manning
+      Hydraulic Timestep ................ 1.00 min
+      Hydraulic Accuracy ................ 0.001000
+
+  Page 2                                                                
 
-  WARNING: Maximum trials exceeded at 0:00:00 hrs. System may be unstable.
-  WARNING: FCV 2001 open but cannot deliver flow at 0:00:00 hrs.
-  WARNING: FCV 2002 open but cannot deliver flow at 0:00:00 hrs.
+      Status Check Frequency ............ 2
+      Maximum Trials Checked ............ 10
+      Damping Limit Threshold ........... 0.000000
+      Maximum Trials .................... 40
+      Quality Analysis .................. None
+      Specific Gravity .................. 1.00
+      Relative Kinematic Viscosity ...... 1.00
+      Relative Chemical Diffusivity ..... 1.00
+      Demand Multiplier ................. 1.00
+      Total Duration .................... 0.00 min
+      Reporting Criteria:
+         All Nodes
+         All Links
+   
+  Analysis begun Mon Jan 15 03:36:20 2018
+
+   
+   
+
+  Page 3                                                                
+
+   
+  Hydraulic Status:
+  -----------------------------------------------------------------------
+     0:00:00: Balanced after 7 trials
+     0:00:00: Reservoir 21 is emptying
+     0:00:00: Reservoir 22 is emptying
+     0:00:00: Reservoir 23 is emptying
+     0:00:00: Reservoir 1001 is closed
+     0:00:00: Reservoir 1002 is filling
+     0:00:00: Reservoir 1003 is closed
+     0:00:00: Reservoir 1005 is closed
+     0:00:00: Reservoir 1006 is closed
+     0:00:00: Reservoir 1007 is closed
+     0:00:00: Reservoir 1008 is closed
+     0:00:00: Reservoir 1009 is closed
+     0:00:00: Reservoir 1010 is closed
+     0:00:00: Reservoir 1013 is closed
+
+  Page 4                                                                
+
+     0:00:00: Reservoir 1014 is filling
+     0:00:00: Reservoir 1015 is closed
+     0:00:00: Reservoir 1016 is closed
+     0:00:00: Reservoir 1018 is closed
+     0:00:00: Reservoir 1019 is closed
+     0:00:00: Reservoir 1028 is closed
+     0:00:00: Reservoir 3001 is emptying
+     0:00:00: Reservoir 3002 is emptying
+     0:00:00: Reservoir 3003 is closed
+     0:00:00: Reservoir 3007 is emptying
+     0:00:00: Reservoir 3008 is emptying
+     0:00:00: Reservoir 3015 is emptying
+     0:00:00: Reservoir 3016 is emptying
+     0:00:00: Reservoir 3018 is emptying
+     0:00:00: Reservoir 3019 is emptying
+     0:00:00: CV 3003 closed
+     0:00:00: FCV 2003 open but cannot deliver flow
+
+  Page 5                                                                
+
+   
   WARNING: FCV 2003 open but cannot deliver flow at 0:00:00 hrs.
-  WARNING: FCV 2007 open but cannot deliver flow at 0:00:00 hrs.
-  WARNING: FCV 2016 open but cannot deliver flow at 0:00:00 hrs.
-  WARNING: FCV 2018 open but cannot deliver flow at 0:00:00 hrs.
-  WARNING: FCV 2019 open but cannot deliver flow at 0:00:00 hrs.
   
-  WARNING: Maximum trials exceeded at 1:00:00 hrs. System may be unstable.
-  WARNING: FCV 2001 open but cannot deliver flow at 1:00:00 hrs.
-  WARNING: FCV 2003 open but cannot deliver flow at 1:00:00 hrs.
-  WARNING: FCV 2007 open but cannot deliver flow at 1:00:00 hrs.
-  WARNING: FCV 2016 open but cannot deliver flow at 1:00:00 hrs.
-  WARNING: FCV 2018 open but cannot deliver flow at 1:00:00 hrs.
-  WARNING: FCV 2019 open but cannot deliver flow at 1:00:00 hrs.
-  
-  Analysis ended Tue Dec 19 19:02:19 2017

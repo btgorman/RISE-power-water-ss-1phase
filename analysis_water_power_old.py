@@ -268,8 +268,8 @@ def main(dss_debug, write_cols, power_df, water_df):
 		timestep = ct.pointer(ct.c_long(1))
 		while True:
 			errorcode = epalib.ENrunH(time)
-			# if errorcode != 0:
-			# 	print(4, 'ERRORCODE is', errorcode)
+			if errorcode != 0:
+				print(4, 'ERRORCODE is', errorcode)
 
 			errorcode = epalib.ENnextH(timestep)
 			if errorcode != 0:
