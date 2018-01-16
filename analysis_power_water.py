@@ -36,7 +36,7 @@ import win32com.client
 
 from operator import itemgetter
 
-def main(dss_debug, write_cols, power_df, water_df):
+def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 
 	os_username = os.getlogin()
 
@@ -366,21 +366,31 @@ def main(dss_debug, write_cols, power_df, water_df):
 	# SIM STEP 0: SOLVE PUMP POWER CONSUMPTION
 	# ----------------------------------------
 
-	water_demand_factor = water_df # %
+	for pipe in object_pipe.matrix:
+		if pipe[ENC.Pipe.ID] == pipe_fail_id:
+			pipe[ENC.Pipe.OPERATIONAL_STATUS] = 0.0
+
+	base_curve_matrix = np.array(object_curve.matrix, copy=True)
+	base_junction_matrix = np.array(object_junction.matrix, copy=True)
+	base_reservoir_matrix = np.array(object_reservoir.matrix, copy=True)
+	base_tank_matrix = np.array(object_tank.matrix, copy=True)
+	base_pipe_matrix = np.array(object_pipe.matrix, copy=True)
+	base_pump_matrix = np.array(object_pump.matrix, copy=True)
+	base_valve_matrix = np.array(object_valve.matrix, copy=True)
+
 	artificial_reservoir_id_shift = 1000.0
 	max_groundwater_flow = 12399.0 # GPM
 	groundwater_id_shift = 2000.0
 
-	# Scale reservoir heads using water_demand_factor
+	# Scale reservoir heads using water_df
 	for reservoir in object_reservoir.matrix:
 		if reservoir[ENC.Reservoir.ID] < 1000.0:
-			reservoir[ENC.Reservoir.TOTAL_HEAD] = max(1.0, water_demand_factor) * reservoir[ENC.Reservoir.TOTAL_HEAD]
+			reservoir[ENC.Reservoir.TOTAL_HEAD] = max(1.0, water_df) * reservoir[ENC.Reservoir.TOTAL_HEAD]
 
 	# Set valves to maximum amount of groundwater flow
 	for junction in object_junction.matrix:
 		for valve in object_valve.matrix:
 			if valve[ENC.Valve.ID]-groundwater_id_shift == junction[ENC.Junction.ID]:
-				# valve[ENC.Valve.SETTING] = min(junction[ENC.Junction.BASE_DEMAND], max_groundwater_flow)
 				valve[ENC.Valve.SETTING] = max_groundwater_flow
 
 	groundwater_list = []
@@ -475,8 +485,8 @@ def main(dss_debug, write_cols, power_df, water_df):
 			pda_count = 0
 			demand_list_copy = demand_list.copy()
 			for junction_id in demand_list_copy:
-				if map_to_reservoir[junction_id][ENC.Reservoir.DEMAND] >= water_demand_factor * map_to_junction[junction_id][ENC.Junction.BASE_DEMAND_AVERAGE]:
-					map_to_junction[junction_id][ENC.Junction.BASE_DEMAND] = water_demand_factor * map_to_junction[junction_id][ENC.Junction.BASE_DEMAND_AVERAGE]
+				if map_to_reservoir[junction_id][ENC.Reservoir.DEMAND] >= water_df * map_to_junction[junction_id][ENC.Junction.BASE_DEMAND_AVERAGE]:
+					map_to_junction[junction_id][ENC.Junction.BASE_DEMAND] = water_df * map_to_junction[junction_id][ENC.Junction.BASE_DEMAND_AVERAGE]
 					map_to_pipe[junction_id][ENC.Pipe.OPERATIONAL_STATUS] = 0.0
 					demand_list.remove(junction_id)
 					pda_count += 1
@@ -507,24 +517,26 @@ def main(dss_debug, write_cols, power_df, water_df):
 				groundwater_list.remove(groundwater_id)
 
 		# End middle loop
-
 	run_EPANET()
 
 	# SIM STEP 1: SET LOAD AND DEMAND CURVES
 	# ------------------------------
+
 	power_factor = 0.0
 	power_load_factor = power_df
 	object_load.multiplyLoadFactor(power_load_factor, power_factor)
 	print('power load factor', power_load_factor)
-	# object_junction.multiplyLoadFactor(water_demand_factor)
-	print('water demand factor', water_demand_factor)
+	# object_junction.multiplyLoadFactor(water_df)
+	print('water demand factor', water_df)
 
 	# SIM STEP 2: SET LOAD INTERCONNECTIONS
 	# ----------------------------------
+	
 	object_load.setInterconnectionLoad(interconn_dict)
 
 	# SIM STEP 3: SET GENERATOR DISPATCH
 	# ----------------------------------
+	
 	exports = 0.0 # kW
 	losses = 0.0 # kW
 
@@ -532,7 +544,7 @@ def main(dss_debug, write_cols, power_df, water_df):
 		counter = 0
 		lost_min = 10000000.0
 		while True:
-			need_reserves, actual_reserves, reserves_dict = grb_solvers.unit_commitment_priority_list(object_load, object_generator, losses, exports) # unit commitment is variable
+			need_reserves, actual_reserves, nominal_reserves_dict = grb_solvers.unit_commitment_priority_list(object_load, object_generator, losses, exports) # unit commitment is variable
 			new_loss = run_OpenDSS(0, True)
 			counter += 1
 
@@ -543,23 +555,23 @@ def main(dss_debug, write_cols, power_df, water_df):
 				elif counter > 150:
 					while True:
 						object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS] = dispatcher_max
-						need_reserves, actual_reserves, reserves_dict = grb_solvers.unit_commitment_priority_list_2(object_load, object_generator, losses, exports) # unit commitment is input
+						need_reserves, actual_reserves, nominal_reserves_dict = grb_solvers.unit_commitment_priority_list_2(object_load, object_generator, losses, exports) # unit commitment is input
 						new_loss = run_OpenDSS(0, True)
 						counter +=1
 
 						if math.fabs(losses - new_loss) < 1.0:
-							return need_reserves, actual_reserves, reserves_dict
+							return need_reserves, actual_reserves, nominal_reserves_dict
 						else:
 							losses += 0.8 * (new_loss - losses)
 				elif counter > 100:
 					while True:
 						object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS] = dispatcher_min
-						need_reserves, actual_reserves, reserves_dict = grb_solvers.unit_commitment_priority_list_2(object_load, object_generator, losses, exports) # unit commitment is input
+						need_reserves, actual_reserves, nominal_reserves_dict = grb_solvers.unit_commitment_priority_list_2(object_load, object_generator, losses, exports) # unit commitment is input
 						new_loss = run_OpenDSS(0, True)
 						counter +=1
 
 						if math.fabs(losses - new_loss) < 1.0:
-							return need_reserves, actual_reserves, reserves_dict
+							return need_reserves, actual_reserves, nominal_reserves_dict
 						else:
 							losses += 0.8 * (new_loss - losses)
 				elif counter > 50:
@@ -570,7 +582,7 @@ def main(dss_debug, write_cols, power_df, water_df):
 						dispatcher_max = np.array(object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS], copy=True)
 				losses += 0.8*(new_loss - losses)
 			else:
-				return need_reserves, actual_reserves, reserves_dict
+				return need_reserves, actual_reserves, nominal_reserves_dict
 
 	# node_list_constraint = []
 	# node_water_constraint = {1.0: 0.0,
@@ -583,265 +595,220 @@ def main(dss_debug, write_cols, power_df, water_df):
 	# 22.0: 0.0,
 	# 33.0: 0.0}
 	
-	need_reserves, actual_reserves, reserves_dict = fun_set_power_dispatch(object_load, object_generator, losses, exports)
+	need_reserves, actual_reserves, nominal_reserves_dict = fun_set_power_dispatch(object_load, object_generator, losses, exports)
 	print('exports #1', 0.5 * (object_cable.matrix[33, ODC.Cable.REAL_POWER_2] - object_cable.matrix[33, ODC.Cable.REAL_POWER_1]))
 	print('')
 
 	# SIM STEP 4: SET JUNCTION INTERCONNECTIONS
 	# -----------------------------------------
-	# object_junction.setInterconnectionDemand(interconn_dict)
 
 	# SIM STEP 5:
 	# Set water tank levels
 	# Set water valve flow control
 	# ----------------------------
-
-	# ANALYSIS STEP 5: Water N-1 and track base worst-case
-	# ----------------------------------------------------
-
-	# ANALYSIS STEP 6: Combined power-water N-1 and track worst-case
-	# --------------------------------------------------------------
-
-	# ANALYSIS STEP 7: Re-dispatch to reduce maximum water deficit
-	# -----------------------------------------------------
-
-	# object_generator.matrix[:, ODC.Generator.REAL_GENERATION] = 0.0
-
-	# for sdp_idx in range(0, len(subset_deficit_priority)):
-	# 	sdp_id, sdp_val = subset_deficit_priority[sdp_idx]
-	# 	node_list_constraint.append(sdp_id)
 	
-	# node_water_constraint = {1.0: 0.0,
-	# 2.0: 0.0,
-	# 7.0: 0.0,
-	# 13.0: 0.0,
-	# 15.0: 0.0,
-	# 16.0: 0.0,
-	# 18.0: 0.0,
-	# 22.0: 0.0,
-	# 33.0: 0.0}
-	
-	# def fun_set_power_dispatch(object_load, object_generator, losses, exports):
-	# 	counter = 0
-	# 	lost_min = 10000000.0
-	# 	while True:
-	# 		nres, ares = grb_solvers.unit_commitment_priority_list_water(object_load, object_generator, losses, exports, node_list_constraint, node_water_constraint) # unit commitment is variable
-	# 		new_loss = run_OpenDSS(0, True)
-	# 		counter += 1
-	# 		# print(counter)
+	object_curve.matrix = np.array(base_curve_matrix, copy=True)
+	object_junction.matrix = np.array(base_junction_matrix, copy=True)
+	object_reservoir.matrix = np.array(base_reservoir_matrix, copy=True)
+	object_tank.matrix = np.array(base_tank_matrix, copy=True)
+	object_pipe.matrix = np.array(base_pipe_matrix, copy=True)
+	object_pump.matrix = np.array(base_pump_matrix, copy=True)
+	object_valve.matrix = np.array(base_valve_matrix, copy=True)
 
-	# 		if math.fabs(losses - new_loss) > 1.0:
-	# 			if counter > 199:
-	# 				print('Dispatcher - Losses/Exports did not converge')
-	# 				sys.exit()
-	# 			elif counter > 150:
-	# 				while True:
-	# 					object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS] = dispatcher_max
-	# 					nres, ares = grb_solvers.unit_commitment_priority_list_water_2(object_load, object_generator, losses, exports, node_list_constraint, node_water_constraint) # unit commitment is input
-	# 					new_loss = run_OpenDSS(0, True)
-	# 					counter +=1
+	object_junction.setInterconnectionDemand(interconn_dict, nominal_reserves_dict)
 
-	# 					if math.fabs(losses - new_loss) < 1.0:
-	# 						return nres, ares
-	# 					else:
-	# 						losses += 0.8 * (new_loss - losses)
-	# 			elif counter > 100:
-	# 				while True:
-	# 					object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS] = dispatcher_min
-	# 					nres, ares = grb_solvers.unit_commitment_priority_list_water_2(object_load, object_generator, losses, exports, node_list_constraint, node_water_constraint) # unit commitment is input
-	# 					new_loss = run_OpenDSS(0, True)
-	# 					counter +=1
+	water_df = water_df # %
+	artificial_reservoir_id_shift = 1000.0
+	max_groundwater_flow = 12399.0 # GPM
+	groundwater_id_shift = 2000.0
 
-	# 					if math.fabs(losses - new_loss) < 1.0:
-	# 						return nres, ares
-	# 					else:
-	# 						losses += 0.8 * (new_loss - losses)
-	# 			elif counter > 50:
-	# 				if math.fabs(new_loss) < math.fabs(lost_min):
-	# 					lost_min = new_loss
-	# 					dispatcher_min = np.array(object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS], copy=True)
-	# 				else:
-	# 					dispatcher_max = np.array(object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS], copy=True)
-	# 			losses += 0.8*(new_loss - losses)
-	# 		else:
-	# 			return nres, ares
+	# Scale reservoir heads using water_df
+	for reservoir in object_reservoir.matrix:
+		if reservoir[ENC.Reservoir.ID] < 1000.0:
+			reservoir[ENC.Reservoir.TOTAL_HEAD] = max(1.0, water_df) * reservoir[ENC.Reservoir.TOTAL_HEAD]
 
-	# needed_reserves, avail_reserves = fun_set_power_dispatch(object_load, object_generator, losses, exports)
-	# print('exports #1', 0.5 * (object_cable.matrix[33, ODC.Cable.REAL_POWER_2] - object_cable.matrix[33, ODC.Cable.REAL_POWER_1]))
+	# Set valves to maximum amount of groundwater flow
+	for junction in object_junction.matrix:
+		for valve in object_valve.matrix:
+			if valve[ENC.Valve.ID]-groundwater_id_shift == junction[ENC.Junction.ID]:
+				valve[ENC.Valve.SETTING] = max_groundwater_flow
 
-	# ANALYSIS STEP 8: SET JUNCTION INTERCONNECTIONS
-	# -----------------------------------------
+	groundwater_list = []
+	map_to_groundwater_reservoir = {}
+	map_to_groundwater_pipe = {}
 
-	# ANALYSIS STEP 9:
-	# Set water tank levels
-	# Set water valve flow control
-	# ----------------------------
+	# Track real reservoirs
+	for reservoir in object_reservoir.matrix:
+		if reservoir[ENC.Reservoir.ID] >= 3000.0:
+			groundwater_list.append(reservoir[ENC.Reservoir.ID])
+			map_to_groundwater_reservoir[reservoir[ENC.Reservoir.ID]] = reservoir
+			for pipe in object_pipe.matrix:
+				if reservoir[ENC.Reservoir.ID] == pipe[ENC.Pipe.ID]:
+					map_to_groundwater_pipe[reservoir[ENC.Reservoir.ID]] = pipe
+		# WARNING THIS IS HARDCODED
+		elif reservoir[ENC.Reservoir.ID] == 23.0:
+			groundwater_list.append(reservoir[ENC.Reservoir.ID])
+			map_to_groundwater_reservoir[reservoir[ENC.Reservoir.ID]] = reservoir
+			for pipe in object_pipe.matrix:
+				# WARNING THIS IS HARDCODED
+				if pipe[ENC.Pipe.ID] == 36.0:
+					map_to_groundwater_pipe[reservoir[ENC.Reservoir.ID]] = pipe
 
-	# ANALYSIS STEP 10:
-	# -----------------
+	# Loop real reservoirs, turn off the ones with water inflow
+	while len(groundwater_list) > 0:
 
-	# system_deficit = 0.0
-	# subset_deficit = 0.0
-	# subset_deficit_priority = []
+		# initialize relevnt demand junctions
+		demand_list = []
+		map_to_junction = {}
+		map_to_reservoir = {}
+		map_to_pipe = {}
 
-	# temp_system_deficit = 0.0
-	# temp_subset_deficit = 0.0
-	# temp_subset_deficit_priority = []
+		# Track demand junctions
+		for junction in object_junction.matrix:
+			if junction[ENC.Junction.BASE_DEMAND_AVERAGE] > 0.0:
+				demand_list.append(junction[ENC.Junction.ID])
+		for junction in object_junction.matrix:
+			if junction[ENC.Junction.ID] in demand_list:
+				map_to_junction[junction[ENC.Junction.ID]] = junction
 
-	# base_pipe_status = np.array(object_pipe.matrix[:, ENC.Pipe.OPERATIONAL_STATUS], copy=True)
-	# base_tank_matrix = np.array(object_tank.matrix, copy=True)
+		# Track artificial reservoirs
+		for reservoir in object_reservoir.matrix:
+			if reservoir[ENC.Reservoir.ID]-artificial_reservoir_id_shift in demand_list:
+				map_to_reservoir[reservoir[ENC.Reservoir.ID]-artificial_reservoir_id_shift] = reservoir
 
-	# base_gen_commitment = np.array(object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS], copy=True)
-	# base_gen_dispatch = np.array(object_generator.matrix[:, ODC.Generator.REAL_GENERATION], copy=True)
-	# base_branch_commitment = np.array(object_cable.matrix[:, ODC.Cable.OPERATIONAL_STATUS_A], copy=True)
+		# Track pipes for artifical reservoirs
+		for pipe in object_pipe.matrix:
+			if pipe[ENC.Pipe.ID]-artificial_reservoir_id_shift in demand_list:
+				map_to_pipe[pipe[ENC.Pipe.ID]-artificial_reservoir_id_shift] = pipe
 
-	# print('Generators')
-	# for row in object_generator.matrix:
-	# 	object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS] = np.array(base_gen_commitment, copy=True)
-	# 	object_generator.matrix[:, ODC.Generator.REAL_GENERATION] = np.array(base_gen_dispatch, copy=True)
-	# 	run_OpenDSS(0, True)
+		# Reset demand junction demands to 0
+		for junction_id in demand_list:
+			map_to_junction[junction_id][ENC.Junction.BASE_DEMAND] = 0.0
 
-	# 	if row[ODC.Generator.REAL_GENERATION] != 0.0:
-	# 		print('GEN ID', row[ODC.Generator.ID])
-	# 		row[ODC.Generator.REAL_GENERATION] = 0.0
-	# 		row[ODC.Generator.OPERATIONAL_STATUS] = 0.0
-	# 		run_OpenDSS(0, True)
+		# Begin EPANET pressure-driven analysis for artificial reservoirs
+		while len(demand_list) > 0:
 
-	# 		# max_val = 0.0
-	# 		# max_id = 0
-	# 		# for cabidx in range(0, len(object_cable.matrix)):
-	# 		# 	if object_cable.matrix[cabidx, ODC.Cable.A_PU_CAPACITY] > max_val:
-	# 		# 		max_val = object_cable.matrix[cabidx, ODC.Cable.A_PU_CAPACITY]
-	# 		# 		max_id = object_cable.matrix[cabidx, ODC.Cable.ID]
+			# Close artifical reservoirs pipes
+			for junction_id in demand_list:
+				map_to_pipe[junction_id][ENC.Pipe.OPERATIONAL_STATUS] = 0.0
+			run_EPANET()
 
-	# 		# print('max id', max_id)
-	# 		# print('max pu', max_val)
+			# Open demand junctions with positive pressure ratio
+			# Can take multiple iterations
+			pos_pres_bool = True
+			while pos_pres_bool:
+				pos_pres_bool = False
+				max_pres_id = demand_list[0]
+				for junction_id in demand_list:
+					if map_to_junction[junction_id][ENC.Junction.PRESSURE] > map_to_junction[max_pres_id][ENC.Junction.PRESSURE] and map_to_pipe[junction_id][ENC.Pipe.OPERATIONAL_STATUS] == 0.0:
+						max_pres_id = junction_id
+				# this uses the MINIMUM ALLOWABLE PRESSURE
+				if map_to_junction[max_pres_id][ENC.Junction.PRESSURE] > (map_to_junction[max_pres_id][ENC.Junction.MIN_PRESSURE]-0.01) and map_to_pipe[max_pres_id][ENC.Pipe.OPERATIONAL_STATUS] == 0.0:
+					map_to_pipe[max_pres_id][ENC.Pipe.OPERATIONAL_STATUS] = 1.0
+					pos_pres_bool = True
+				run_EPANET()
+			run_EPANET()
 
-	# 		minutes = grb_solvers.contingency_response(object_load, object_generator, object_cable)
+			# Close artifical reservoirs with inflows
+			# Can take multiple iterations
+			neg_dem_bool = True
+			while neg_dem_bool:
+				neg_dem_bool = False
+				for junction_id in demand_list:
+					if map_to_reservoir[junction_id][ENC.Reservoir.DEMAND] < 0.0:
+						map_to_pipe[junction_id][ENC.Pipe.OPERATIONAL_STATUS] = 0.0
+						neg_dem_bool = True
+				run_EPANET()
+			run_EPANET()
 
-	# 		if minutes > 10.01:
-	# 			with open('minute_errors.csv', 'a', newline='') as file:
-	# 				writer = csv.writer(file)
-	# 				writer.writerow([power_load_factor, water_demand_factor, minutes])
+			# Set base_demand to maximum if possible
+			pda_count = 0
+			demand_list_copy = demand_list.copy()
+			for junction_id in demand_list_copy:
+				if map_to_reservoir[junction_id][ENC.Reservoir.DEMAND] >= water_df * map_to_junction[junction_id][ENC.Junction.BASE_DEMAND_AVERAGE] + map_to_junction[junction_id][ENC.Junction.INTERCONNECTION_DISPATCH_DEMAND] + map_to_junction[junction_id][ENC.Junction.INTERCONNECTION_RESPONSE_DEMAND]:
+					map_to_junction[junction_id][ENC.Junction.BASE_DEMAND] = water_df * map_to_junction[junction_id][ENC.Junction.BASE_DEMAND_AVERAGE] + map_to_junction[junction_id][ENC.Junction.INTERCONNECTION_DISPATCH_DEMAND] + map_to_junction[junction_id][ENC.Junction.INTERCONNECTION_RESPONSE_DEMAND]
+					map_to_pipe[junction_id][ENC.Pipe.OPERATIONAL_STATUS] = 0.0
+					demand_list.remove(junction_id)
+					pda_count += 1
 
-	# 		object_junction.setInterconnectionDemand(interconn_dict)
+			# Set base_demand to greater than 0 and less than maximum if there are no maximums
+			if pda_count == 0:
+				for junction_id in demand_list_copy:
+					if map_to_reservoir[junction_id][ENC.Reservoir.DEMAND] >= 0.0:
+						map_to_junction[junction_id][ENC.Junction.BASE_DEMAND] = map_to_reservoir[junction_id][ENC.Reservoir.DEMAND]
+						map_to_pipe[junction_id][ENC.Pipe.OPERATIONAL_STATUS] = 0.0
+						demand_list.remove(junction_id)
 
-	# 		for pipe in object_pipe.matrix:
-	# 			if pipe[ENC.Pipe.ID] < 1000.0:
-	# 				# print('SHUT DOWN PIPE:', pipe[ENC.Pipe.ID])
+			# End inner loop
+		run_EPANET()
 
-	# 				object_pipe.matrix[:, ENC.Pipe.OPERATIONAL_STATUS] = base_pipe_status
-	# 				object_tank.matrix = base_tank_matrix
+		# Close real reservoirs with inflows if possible
+		pda_count = 0
+		groundwater_list_copy = groundwater_list.copy()
+		for groundwater_id in groundwater_list_copy:
+			if map_to_groundwater_reservoir[groundwater_id][ENC.Reservoir.DEMAND] > 0.0:
+				map_to_groundwater_pipe[groundwater_id][ENC.Pipe.OPERATIONAL_STATUS] = 0.0
+				groundwater_list.remove(groundwater_id)
+				pda_count += 1
 
-	# 				pipe[ENC.Pipe.OPERATIONAL_STATUS] = 0.0
+		# Delete real reservoirs from being tracked if no real reservoirs have inflows
+		if pda_count == 0:
+			for groundwater_id in groundwater_list_copy:
+				groundwater_list.remove(groundwater_id)
 
-	# 				run_EPANET()
-
-	# 				temp_subset_deficit = 0.0
-	# 				temp_system_deficit = 0.0
-	# 				temp_subset_deficit_priority = []
-
-	# 				for tank in object_tank.matrix:
-	# 					temp_system_deficit += math.pi * ((0.5*tank[ENC.Tank.DIAMETER])**2) * (tank[ENC.Tank.ELEVATION]+tank[ENC.Tank.INITIAL_LEVEL]-tank[ENC.Tank.HEAD])
-	# 					if tank[ENC.Tank.ID]-1000.0 in subset_junction:
-	# 						if math.fabs(tank[ENC.Tank.ELEVATION]+tank[ENC.Tank.INITIAL_LEVEL] - tank[ENC.Tank.HEAD]) > 1.0:
-	# 							temp_subset_deficit += math.pi * ((0.5*tank[ENC.Tank.DIAMETER])**2) * (tank[ENC.Tank.ELEVATION]+tank[ENC.Tank.INITIAL_LEVEL]-tank[ENC.Tank.HEAD])
-	# 							temp_subset_deficit_priority.append((tank[ENC.Tank.ID]-1000.0, math.pi * ((0.5*tank[ENC.Tank.DIAMETER])**2) * (tank[ENC.Tank.ELEVATION]+tank[ENC.Tank.INITIAL_LEVEL]-tank[ENC.Tank.HEAD])))
-
-	# 				if row[ENC.Pipe.ID] == 9.0:
-	# 					pipe_9_deficits = math.pi * ((0.5* object_tank.matrix[idx_tank_15, ENC.Tank.DIAMETER])**2) * (object_tank.matrix[idx_tank_15, ENC.Tank.ELEVATION]+object_tank.matrix[idx_tank_15, ENC.Tank.INITIAL_LEVEL]-object_tank.matrix[idx_tank_15, ENC.Tank.HEAD])
-	# 					pipe_9_deficits += math.pi * ((0.5* object_tank.matrix[idx_tank_15+1, ENC.Tank.DIAMETER])**2) * (object_tank.matrix[idx_tank_15+1, ENC.Tank.ELEVATION]+object_tank.matrix[idx_tank_15+1, ENC.Tank.INITIAL_LEVEL]-object_tank.matrix[idx_tank_15+1, ENC.Tank.HEAD])
-	# 					pipe_9_deficits += math.pi * ((0.5* object_tank.matrix[idx_tank_15+2, ENC.Tank.DIAMETER])**2) * (object_tank.matrix[idx_tank_15+2, ENC.Tank.ELEVATION]+object_tank.matrix[idx_tank_15+2, ENC.Tank.INITIAL_LEVEL]-object_tank.matrix[idx_tank_15+2, ENC.Tank.HEAD])
-	# 					pipe_9_deficits += math.pi * ((0.5* object_tank.matrix[idx_tank_15+3, ENC.Tank.DIAMETER])**2) * (object_tank.matrix[idx_tank_15+3, ENC.Tank.ELEVATION]+object_tank.matrix[idx_tank_15+3, ENC.Tank.INITIAL_LEVEL]-object_tank.matrix[idx_tank_15+3, ENC.Tank.HEAD])
-
-	# 					if pipe_9_deficits > pipe_9_deficits_pw_n1:
-	# 						pipe_9_deficits_pw_n1 = pipe_9_deficits
-	# 						tank_15_p_w = math.pi * ((0.5* object_tank.matrix[idx_tank_15, ENC.Tank.DIAMETER])**2) * (object_tank.matrix[idx_tank_15, ENC.Tank.ELEVATION]+object_tank.matrix[idx_tank_15, ENC.Tank.INITIAL_LEVEL]-object_tank.matrix[idx_tank_15, ENC.Tank.HEAD])
-	# 						tank_16_p_w = math.pi * ((0.5* object_tank.matrix[idx_tank_15+1, ENC.Tank.DIAMETER])**2) * (object_tank.matrix[idx_tank_15+1, ENC.Tank.ELEVATION]+object_tank.matrix[idx_tank_15+1, ENC.Tank.INITIAL_LEVEL]-object_tank.matrix[idx_tank_15+1, ENC.Tank.HEAD])
-	# 						tank_18_p_w = math.pi * ((0.5* object_tank.matrix[idx_tank_15+2, ENC.Tank.DIAMETER])**2) * (object_tank.matrix[idx_tank_15+2, ENC.Tank.ELEVATION]+object_tank.matrix[idx_tank_15+2, ENC.Tank.INITIAL_LEVEL]-object_tank.matrix[idx_tank_15+2, ENC.Tank.HEAD])
-	# 						tank_19_p_w = math.pi * ((0.5* object_tank.matrix[idx_tank_15+3, ENC.Tank.DIAMETER])**2) * (object_tank.matrix[idx_tank_15+3, ENC.Tank.ELEVATION]+object_tank.matrix[idx_tank_15+3, ENC.Tank.INITIAL_LEVEL]-object_tank.matrix[idx_tank_15+3, ENC.Tank.HEAD])
-
-	# 				if temp_system_deficit > system_deficit and len(temp_subset_deficit_priority) > 0:
-	# 					subset_deficit = temp_subset_deficit
-	# 					subset_deficit_priority = sorted(temp_subset_deficit_priority, key=itemgetter(1), reverse=True)
-						
-	# 					system_deficit = temp_system_deficit
-	# 		object_pipe.matrix[:, ENC.Pipe.OPERATIONAL_STATUS] = base_pipe_status
-	# 		object_tank.matrix = base_tank_matrix
-	# object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS] = np.array(base_gen_commitment, copy=True)
-	# object_generator.matrix[:, ODC.Generator.REAL_GENERATION] = np.array(base_gen_dispatch, copy=True)
-
-	# print('Cables')
-	# for row in object_cable.matrix:
-	# 	object_cable.matrix[:, ODC.Cable.OPERATIONAL_STATUS_A] = np.array(base_branch_commitment, copy=True)
-	# 	run_OpenDSS(0, True)
- 
-	# 	if row[ODC.Cable.ID] != 10.0 or row[ODC.Cable.ID] != 100.0:
-	# 		if row[ODC.Cable.OPERATIONAL_STATUS_A] == 1.0:
-	# 			print('CABLE ID', row[ODC.Cable.ID])
-	# 			row[ODC.Cable.OPERATIONAL_STATUS_A] = 0.0
-	# 			run_OpenDSS(0, True)
-
-	# 			minutes = grb_solvers.contingency_response(object_load, object_generator, object_cable)
-
-	# 			if minutes > 10.01:
-	# 				with open('minute_errors.csv', 'a', newline='') as file:
-	# 					writer = csv.writer(file)
-	# 					writer.writerow([power_load_factor, water_demand_factor, minutes])
-
-	# 			object_junction.setInterconnectionDemand(interconn_dict)
-
-	# 		for pipe in object_pipe.matrix:
-	# 			if pipe[ENC.Pipe.ID] < 1000.0:
-	# 				# print('SHUT DOWN PIPE:', pipe[ENC.Pipe.ID])
-
-	# 				object_pipe.matrix[:, ENC.Pipe.OPERATIONAL_STATUS] = base_pipe_status
-	# 				object_tank.matrix = base_tank_matrix
-
-	# 				pipe[ENC.Pipe.OPERATIONAL_STATUS] = 0.0
-
-	# 				run_EPANET()
-
-	# 				temp_subset_deficit = 0.0
-	# 				temp_system_deficit = 0.0
-	# 				temp_subset_deficit_priority = []
-
-	# 				for tank in object_tank.matrix:
-	# 					temp_system_deficit += math.pi * ((0.5*tank[ENC.Tank.DIAMETER])**2) * (tank[ENC.Tank.ELEVATION]+tank[ENC.Tank.INITIAL_LEVEL]-tank[ENC.Tank.HEAD])
-	# 					if tank[ENC.Tank.ID]-1000.0 in subset_junction:
-	# 						if math.fabs(tank[ENC.Tank.ELEVATION]+tank[ENC.Tank.INITIAL_LEVEL] - tank[ENC.Tank.HEAD]) > 1.0:
-	# 							temp_subset_deficit += math.pi * ((0.5*tank[ENC.Tank.DIAMETER])**2) * (tank[ENC.Tank.ELEVATION]+tank[ENC.Tank.INITIAL_LEVEL]-tank[ENC.Tank.HEAD])
-	# 							temp_subset_deficit_priority.append((tank[ENC.Tank.ID]-1000.0, math.pi * ((0.5*tank[ENC.Tank.DIAMETER])**2) * (tank[ENC.Tank.ELEVATION]+tank[ENC.Tank.INITIAL_LEVEL]-tank[ENC.Tank.HEAD])))
-
-	# 				if row[ENC.Pipe.ID] == 9.0:
-	# 					pipe_9_deficits = math.pi * ((0.5* object_tank.matrix[idx_tank_15, ENC.Tank.DIAMETER])**2) * (object_tank.matrix[idx_tank_15, ENC.Tank.ELEVATION]+object_tank.matrix[idx_tank_15, ENC.Tank.INITIAL_LEVEL]-object_tank.matrix[idx_tank_15, ENC.Tank.HEAD])
-	# 					pipe_9_deficits += math.pi * ((0.5* object_tank.matrix[idx_tank_15+1, ENC.Tank.DIAMETER])**2) * (object_tank.matrix[idx_tank_15+1, ENC.Tank.ELEVATION]+object_tank.matrix[idx_tank_15+1, ENC.Tank.INITIAL_LEVEL]-object_tank.matrix[idx_tank_15+1, ENC.Tank.HEAD])
-	# 					pipe_9_deficits += math.pi * ((0.5* object_tank.matrix[idx_tank_15+2, ENC.Tank.DIAMETER])**2) * (object_tank.matrix[idx_tank_15+2, ENC.Tank.ELEVATION]+object_tank.matrix[idx_tank_15+2, ENC.Tank.INITIAL_LEVEL]-object_tank.matrix[idx_tank_15+2, ENC.Tank.HEAD])
-	# 					pipe_9_deficits += math.pi * ((0.5* object_tank.matrix[idx_tank_15+3, ENC.Tank.DIAMETER])**2) * (object_tank.matrix[idx_tank_15+3, ENC.Tank.ELEVATION]+object_tank.matrix[idx_tank_15+3, ENC.Tank.INITIAL_LEVEL]-object_tank.matrix[idx_tank_15+3, ENC.Tank.HEAD])
-
-	# 					if pipe_9_deficits > pipe_9_deficits_pw_n1:
-	# 						pipe_9_deficits_pw_n1 = pipe_9_deficits
-	# 						tank_15_p_w = math.pi * ((0.5* object_tank.matrix[idx_tank_15, ENC.Tank.DIAMETER])**2) * (object_tank.matrix[idx_tank_15, ENC.Tank.ELEVATION]+object_tank.matrix[idx_tank_15, ENC.Tank.INITIAL_LEVEL]-object_tank.matrix[idx_tank_15, ENC.Tank.HEAD])
-	# 						tank_16_p_w = math.pi * ((0.5* object_tank.matrix[idx_tank_15+1, ENC.Tank.DIAMETER])**2) * (object_tank.matrix[idx_tank_15+1, ENC.Tank.ELEVATION]+object_tank.matrix[idx_tank_15+1, ENC.Tank.INITIAL_LEVEL]-object_tank.matrix[idx_tank_15+1, ENC.Tank.HEAD])
-	# 						tank_18_p_w = math.pi * ((0.5* object_tank.matrix[idx_tank_15+2, ENC.Tank.DIAMETER])**2) * (object_tank.matrix[idx_tank_15+2, ENC.Tank.ELEVATION]+object_tank.matrix[idx_tank_15+2, ENC.Tank.INITIAL_LEVEL]-object_tank.matrix[idx_tank_15+2, ENC.Tank.HEAD])
-	# 						tank_19_p_w = math.pi * ((0.5* object_tank.matrix[idx_tank_15+3, ENC.Tank.DIAMETER])**2) * (object_tank.matrix[idx_tank_15+3, ENC.Tank.ELEVATION]+object_tank.matrix[idx_tank_15+3, ENC.Tank.INITIAL_LEVEL]-object_tank.matrix[idx_tank_15+3, ENC.Tank.HEAD])
-
-	# 				if temp_system_deficit > system_deficit and len(temp_subset_deficit_priority) > 0:
-	# 					subset_deficit = temp_subset_deficit
-	# 					subset_deficit_priority = sorted(temp_subset_deficit_priority, key=itemgetter(1), reverse=True)
-						
-	# 					system_deficit = temp_system_deficit
-	# 		object_pipe.matrix[:, ENC.Pipe.OPERATIONAL_STATUS] = base_pipe_status
-	# 		object_tank.matrix = base_tank_matrix
-	# object_cable.matrix[:, ODC.Cable.OPERATIONAL_STATUS_A] = np.array(base_branch_commitment, copy=True)
-	# print('')
-
-	# with open('main_analysis_power_water.csv', 'a', newline='') as file:
-	# 	writer = csv.writer(file)
-	# 	writer.writerow([power_load_factor, water_demand_factor, system_deficit, subset_deficit_priority, tank_15_p_w, tank_16_p_w, tank_18_p_w, tank_19_p_w])
+		# End middle loop
+	run_EPANET()
 
 	# SIM STEP 6: RUN POWER-WATER SIMULATION
 	# --------------------------------------
+
+	genid_to_genobject = {}
+	juncid_to_genid_water = {}
+	reduced_reserves_dict = {}
+
+	for generator in object_generator.matrix:
+		genid_to_genobject[generator[ODC.Generator.ID]] = generator
+
+	for junction in object_junction.matrix:
+		juncid_to_genid_water[junction[ENC.Junction.ID]] = []
+		for generator in object_generator.matrix:
+			if junction[ENC.Junction.ID] == generator[ODC.Generator.JUNCTION_ID]:
+				juncid_to_genid_water[junction[ENC.Junction.ID]].append((generator[ODC.Generator.ID], generator[ODC.Generator.WATER_CONSUMPTION]))
+
+	for junction in object_junction.matrix:
+		if junction[ENC.Junction.BASE_DEMAND_AVERAGE] > 0.0:
+			# Water demand is met for nominal reserves
+			if junction[ENC.Junction.BASE_DEMAND] >= junction[ENC.Junction.INTERCONNECTION_DISPATCH_DEMAND] + junction[ENC.Junction.INTERCONNECTION_RESPONSE_DEMAND]:
+				for genid, _ in juncid_to_genid_water[junction[ENC.Junction.ID]]:
+					reduced_reserves_dict[genid] = nominal_reserves_dict[genid]
+			elif junction[ENC.Junction.BASE_DEMAND] <= junction[ENC.Junction.INTERCONNECTION_DISPATCH_DEMAND]:
+				for genid, _ in juncid_to_genid_water[junction[ENC.Junction.ID]]:
+					reduced_reserves_dict[genid] = 0.0
+			elif junction[ENC.Junction.INTERCONNECTION_DISPATCH_DEMAND] < junction[ENC.Junction.BASE_DEMAND] < junction[ENC.Junction.INTERCONNECTION_DISPATCH_DEMAND] + junction[ENC.Junction.INTERCONNECTION_RESPONSE_DEMAND]:
+				def getWaterConsumption(genid_genwater):
+					return genid_genwater[1]
+
+				demand_for_reserves = junction[ENC.Junction.INTERCONNECTION_DISPATCH_DEMAND] + junction[ENC.Junction.INTERCONNECTION_RESPONSE_DEMAND] - junction[ENC.Junction.BASE_DEMAND]
+				for genid, genwater in sorted(juncid_to_genid_water[junction[ENC.Junction.ID]], key=getWaterConsumption, reverse=True):
+					if demand_for_reserves > 0.0:
+						if nominal_reserves_dict[genid] * genid_to_genobject[genid][ODC.Generator.WATER_CONSUMPTION] * 0.001 <= demand_for_reserves:
+							reduced_reserves_dict[genid] = 0.0
+							demand_for_reserves -= nominal_reserves_dict[genid] * genid_to_genobject[genid][ODC.Generator.WATER_CONSUMPTION] * 0.001
+						else:
+							fraction = 1.0 - (demand_for_reserves/(nominal_reserves_dict[genid]*0.001*genid_to_genobject[genid][ODC.Generator.WATER_CONSUMPTION]))
+							reduced_reserves_dict[genid] = fraction * nominal_reserves_dict[genid]
+							demand_for_reserves -= (nominal_reserves_dict[genid] - reduced_reserves_dict[genid]) * genid_to_genobject[genid][ODC.Generator.WATER_CONSUMPTION] * 0.001
+					else:
+						reduced_reserves_dict[genid] = nominal_reserves_dict[genid]
+
+			else:
+				print("ERROR IN CALCULATING REDUCED RESERVES!")
+
+
+	with open('C:\\Users\\' + os_username + '\\Documents\\git\\RISE-power-water-ss-1phase\\model_outputs\\analysis_power_water\\power_water_pipe_{}.csv'.format(int(pipe_fail_id)), 'a', newline='') as file:
+		writer = csv.writer(file)
+		writer.writerow([water_df, power_df, need_reserves, actual_reserves, sum(reduced_reserves_dict.values())])
+
 	# Interconnections have no effect
 	# input_list_continuous, input_list_categorical, output_list, input_tensor_continuous, input_tensor_categorical, output_tensor = run_OpenDSS(dss_debug, False)
 	# input_list_continuous1, input_list_categorical1, output_list1, input_tensor_continuous1, input_tensor_categorical1, output_tensor1 = run_EPANET()
@@ -851,6 +818,7 @@ def main(dss_debug, write_cols, power_df, water_df):
 
 	# RESULTS STEP 1: FORMAT INPUT/OUTPUT TENSORS
 	# -------------------------------------------
+	
 	# input_list_continuous = input_list_continuous + input_list_continuous1
 	# input_list_categorical = input_list_categorical + input_list_categorical1
 	# output_list = output_list + output_list1
@@ -861,6 +829,7 @@ def main(dss_debug, write_cols, power_df, water_df):
 
 	# RESULTS STEP 2: WRITE INPUT/OUTPUT TENSORS TO FILE
 	# --------------------------------------------------
+	
 	# if write_cols:
 	# 	with open('C:/Users/'+os_username+'/Documents/git/RISE-power-water-ss-1phase/tensor_outputs/input_list_continuous_columns.csv', 'w') as f:
 	# 		writer = csv.writer(f, delimiter=',')
@@ -879,8 +848,8 @@ def main(dss_debug, write_cols, power_df, water_df):
 	# with open('C:/Users/'+os_username+'/Documents/git/RISE-power-water-ss-1phase/tensor_outputs/output_tensor.csv', 'ab') as f:
 	# 	np.savetxt(f, output_tensor[None, :], fmt='%0.6f', delimiter=' ', newline='\n')
 
-	# END
-	# ---
+	# END SIMULATION
+	# --------------
 
 if __name__ == '__main__':
 	write_cols = False # Write column names to seperate file
@@ -888,136 +857,6 @@ if __name__ == '__main__':
 
 	power_df = float(sys.argv[1])
 	water_df = float(sys.argv[2])
+	pipe_fid = float(sys.argv[3])
 
-	main(dss_debug, write_cols, power_df, water_df)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# ///////////////////////////////////////////////////////////////////////////////////
-# OLD STUFF
-# \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
-
-	# ------------------------
-	# STOCHASTICITY PARAMETERS
-	# ------------------------
-
-	# water_num_switch = 0
-	# water_num_stochastic = 0
-	# power_num_switch = 0
-	# power_num_stochastic = 0
-	# for object in w_object_list:
-	# 	water_num_switch += object.num_switches
-	# 	water_num_stochastic += object.num_stochastic
-	# for object in object_list:
-	# 	power_num_switch += object.num_switches
-	# 	power_num_stochastic += object.num_stochastic
-	
-	# def calc_probabilities():
-		# temp = 0.0
-		# switch_chanceval = 0.0
-		# stochastic_chanceval = 0.0
-		# for object in w_object_list:
-		# 	if object.num_switches == 0:
-		# 		object.switch_chance = (0.0, 0.0)
-		# 	else:
-		# 		try:
-		# 			temp = switch_chanceval
-		# 			switch_chanceval += object.num_switches / water_num_switch
-		# 			object.switch_chance = (temp, switch_chanceval)
-		# 		except:
-		# 			object.switch_chance = (0.0, 0.0)
-		# 	if object.num_stochastic == 0:
-		# 		object.stochastic_chance = (0.0, 0.0)
-		# 	else:
-		# 		try:
-		# 			temp = stochastic_chanceval
-		# 			stochastic_chanceval += object.num_stochastic / water_num_stochastic
-		# 			object.stochastic_chance = (temp, stochastic_chanceval)
-		# 		except:
-		# 			object.stochastic_chance = (0.0, 0.0)
-		
-		# temp = 0.0
-		# switch_chanceval = 0.0
-		# stochastic_chanceval = 0.0
-		# for object in object_list:
-		# 	if object.num_switches == 0:
-		# 		object.switch_chance = (0.0, 0.0)
-		# 	else:
-		# 		try:
-		# 			temp = switch_chanceval
-		# 			switch_chanceval += object.num_switches / power_num_switch
-		# 			object.switch_chance = (temp, switch_chanceval)
-		# 		except:
-		# 			object.switch_chance = (0.0, 0.0)
-		# 	if object.num_stochastic == 0:
-		# 		object.stochastic_chance = (0.0, 0.0)
-		# 	else:
-		# 		try:
-		# 			temp = stochastic_chanceval
-		# 			stochastic_chanceval += object.num_stochastic / power_num_stochastic
-		# 			object.stochastic_chance = (temp, stochastic_chanceval)
-		# 		except:
-		# 			object.stochastic_chance = (0.0, 0.0)
-
-	# def run_stochasticity(stoch_num):
-	# 	# STOCHASTIC VALUES (e.g., demand)
-	# 	for i in range(0, stoch_num):
-	# 		if random.randrange(1, water_num_stochastic+power_num_stochastic+1) <= water_num_stochastic:
-	# 			rval = random.random()
-	# 			for object in w_object_list: # water list
-	# 				lower, upper = object.stochastic_chance
-	# 				if lower <= rval <= upper:
-	# 					pass
-	# 					# object.randomStochasticity()
-	# 		else:
-	# 			rval = random.random()
-	# 			for object in object_list: # power list
-	# 				lower, upper = object.stochastic_chance
-	# 				if lower <= rval <= upper:
-	# 					pass
-	# 					# object.randomStochasticity()
-
-	# 	# SWITCHING VALUES (e.g., on/off)
-	# 	if random.random() <= 0.65: # 65% chance to shutoff
-	# 		if random.randrange(1, water_num_switch+power_num_switch+1) <= water_num_switch:
-	# 			rval = random.random()
-	# 			for object in w_object_list: # water list
-	# 				lower, upper = object.switch_chance
-	# 				if lower <= rval <= upper:
-	# 					pass
-	# 					# object.randomSwitching()
-	# 		else:
-	# 			rval = random.random()
-	# 			for object in object_list: # power list
-	# 				lower, upper = object.switch_chance
-	# 				if lower <= rval <= upper:
-	# 					pass
-	# 					# object.randomSwitching()
-
-	# # SIM STEP 1: CALCULATE UNIFORM PROBABILITIES FOR COMPONENTS
-	# calc_probabilities()
-
-	# # SIM STEP 2: STOCHASTICITY OF OBJECT CONTROLS AND "FAILURE"
-	# run_stochasticity(stoch_num)
+	main(dss_debug, write_cols, power_df, water_df, pipe_fid)
