@@ -296,7 +296,7 @@ def unit_commitment_priority_list_2(object_load, object_generator, losses, expor
 	out_u_d = {}
 	out_u_r = {}
 	unit_min_dispatch = {}
-	unti_commit = {}
+	unit_commit = {}
 
 	obj_coeff_list = []
 	hydro_coeff_list = []

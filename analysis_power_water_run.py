@@ -26,7 +26,7 @@ power_load_lb = 0.3388
 power_load_ub = 1.0
 power_sims = 201
 
-pipe_fid = 9.0
+pipe_fid = 1.0
 
 wdf_array = np.linspace(water_demand_lb, water_demand_ub, water_sims)
 pdf_array = np.linspace(power_load_lb, power_load_ub, power_sims)
