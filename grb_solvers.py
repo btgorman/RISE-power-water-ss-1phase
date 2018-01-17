@@ -511,9 +511,9 @@ def unit_commitment_priority_list_2(object_load, object_generator, losses, expor
 		m.addConstr(unit_reserves.sum() >= EXTRA_RESERVE_MARGIN * unit_commit[323.0] * (unit_dispatch[323.0] + unit_reserves[323.0]))
 
 		# Maximum reserves bounded by unit max dispatch for non-combustion units
-		m.addConstrs(unit_reserves.select()[idx] <= [a*b for a,b in zip(unit_commit.select(), [i-j for i,j in zip(object_generator.matrix[:, ODC.Generator.REAL_GENERATION_MAX_RATING], unit_dispatch.select())]) ][idx] for idx in range(len(unit_reserves.select())) if idx not in combustion_ids)
+		m.addConstrs(unit_reserves.select()[idx] <= [a*b for a,b in zip(unit_commit.values(), [i-j for i,j in zip(object_generator.matrix[:, ODC.Generator.REAL_GENERATION_MAX_RATING], unit_dispatch.select())]) ][idx] for idx in range(len(unit_reserves.select())) if idx not in combustion_ids)
 		# Maximum reserves bounded by unit max reserve for non-combustion units
-		m.addConstrs(unit_reserves.select()[idx] <= [a*b for a,b in zip(unit_commit.select(), [NUMBER_OF_MINUTES*i for i in object_generator.matrix[:, ODC.Generator.RAMP_RATE]])][idx] for idx in range(len(unit_reserves.select())) if idx not in combustion_ids)
+		m.addConstrs(unit_reserves.select()[idx] <= [a*b for a,b in zip(unit_commit.values(), [NUMBER_OF_MINUTES*i for i in object_generator.matrix[:, ODC.Generator.RAMP_RATE]])][idx] for idx in range(len(unit_reserves.select())) if idx not in combustion_ids)
 
 		# Maximum reserves bounded by unit max dispatch for combustion units
 		m.addConstrs(unit_reserves.select()[idx] <= [i-j for i,j in zip(object_generator.matrix[:, ODC.Generator.REAL_GENERATION_MAX_RATING], unit_dispatch.select())][idx] for idx in range(len(unit_reserves.select())) if idx in combustion_ids)

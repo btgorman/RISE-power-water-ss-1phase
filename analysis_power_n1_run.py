@@ -29,4 +29,4 @@ for i in range(0, len(plf_array)):
 	if (i+1)%10 == 0:
 		print(i+1)
 
-	pid = subprocess.call('python power_only_n1.py {}'.format(plf_array[i]), shell=True)
+	pid = subprocess.call('python analysis_power_n1.py {}'.format(plf_array[i]), shell=True)

@@ -596,6 +596,12 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 	# 33.0: 0.0}
 	
 	need_reserves, actual_reserves, nominal_reserves_dict = fun_set_power_dispatch(object_load, object_generator, losses, exports)
+	for generator in object_generator.matrix:
+		if generator[ODC.Generator.ID] in [101.0, 102.0, 201.0, 202.0]:
+			pass
+		else:
+			if nominal_reserves_dict[generator[ODC.Generator.ID]] > 0.0 and generator[ODC.Generator.OPERATIONAL_STATUS] == 0.0:
+				print('*********************** YOU GOOFED *******************************')
 	print('exports #1', 0.5 * (object_cable.matrix[33, ODC.Cable.REAL_POWER_2] - object_cable.matrix[33, ODC.Cable.REAL_POWER_1]))
 	print('')
 
@@ -617,7 +623,6 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 
 	object_junction.setInterconnectionDemand(interconn_dict, nominal_reserves_dict)
 
-	water_df = water_df # %
 	artificial_reservoir_id_shift = 1000.0
 	max_groundwater_flow = 12399.0 # GPM
 	groundwater_id_shift = 2000.0
@@ -804,13 +809,15 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 			else:
 				print("ERROR IN CALCULATING REDUCED RESERVES!")
 
+	nominal_reserves_list = []
 	reduced_reserves_list = []
 	for generator in object_generator.matrix:
-		reduced_reserves_list.append(reduced_reserves_dict.get(generator[ODC.Generator.ID], 0.0))
+		nominal_reserves_list.append(nominal_reserves_dict.get(generator[ODC.Generator.ID], 0.0))
+		reduced_reserves_list.append(nominal_reserves_dict.get(generator[ODC.Generator.ID], 0.0) - reduced_reserves_dict.get(generator[ODC.Generator.ID], 0.0))
 
 	with open('C:\\Users\\' + os_username + '\\Documents\\git\\RISE-power-water-ss-1phase\\model_outputs\\analysis_power_water\\power_water_pipe_{}.csv'.format(int(pipe_fail_id)), 'a', newline='') as file:
 		writer = csv.writer(file)
-		writer.writerow([water_df, power_df, need_reserves, actual_reserves, sum(reduced_reserves_dict.values())] + reduced_reserves_list)
+		writer.writerow([water_df, power_df, need_reserves, actual_reserves, sum(reduced_reserves_dict.values())] + nominal_reserves_list + reduced_reserves_list)
 
 	# Interconnections have no effect
 	# input_list_continuous, input_list_categorical, output_list, input_tensor_continuous, input_tensor_categorical, output_tensor = run_OpenDSS(dss_debug, False)

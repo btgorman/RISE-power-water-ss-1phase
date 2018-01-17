@@ -67,7 +67,7 @@ def main(dss_debug, write_cols, plf):
 	# csv_allcolumns= pd.read_csv('./data_power/network-power/allcolumns.csv', sep=',', header=1, index_col=None, dtype=np.float64)
 
 	csv_pumpload = pd.read_csv('./data_interconnection/network-interconnection/9000pump-load.csv', sep=',', header=1, index_col=None, dtype=np.float64)
-	csv_tankgenerator = pd.read_csv('./data_interconnection/network-interconnection/9001tank-generator.csv', sep=',', header=1, index_col=None, dtype=np.float64)
+	csv_tankgenerator = pd.read_csv('./data_interconnection/network-interconnection/9001generator-junction.csv', sep=',', header=1, index_col=None, dtype=np.float64)
 
 	# -----------------
 	# CREATE COMPONENTS
@@ -99,7 +99,7 @@ def main(dss_debug, write_cols, plf):
 	object_reactor = ODC.Reactor(csv_reactor)
 
 	object_pumpload = ICC.PumpLoad(csv_pumpload)
-	object_tankgenerator = ICC.TankGenerator(csv_tankgenerator)
+	object_tankgenerator = ICC.GeneratorJunction(csv_tankgenerator)
 
 	# -----------------------
 	# ADD COMPONENTS TO LISTS
@@ -369,25 +369,11 @@ def main(dss_debug, write_cols, plf):
 
 	# SIM STEP 1: SET LOAD CURVES
 	# ------------------------------
-	power_load_mu = -0.51385 # lognormal, AIC -9693.48
-	power_load_sigma = 0.23256 # lognormal, AIC -9693.48
-	power_load_lb = 0.3388
-	power_load_ub = 1.0
-	power_load_factor = min(np.random.lognormal(power_load_mu, power_load_sigma, size=None), power_load_ub)
-	power_load_factor = max(power_load_factor, power_load_lb)
 	power_load_factor = plf
 	power_factor = 0.0
 	object_load.multiplyLoadFactor(power_load_factor, power_factor)
 	print('power load factor', power_load_factor)
-	for load in object_load.matrix:
-		if load[ODC.Load.ID] == 4.0 or load[ODC.Load.ID] == 20.0:
-			load[ODC.Load.REAL_LOAD] = load[ODC.Load.REAL_LOAD_MAX]
 
-	# water_demand_scale = np.exp(0.0144362) # exponential, AIC = 582.27
-	# water_demand_lb = 0.256
-	# water_demand_ub = 4.21
-	# water_demand_factor = min(water_demand_lb+np.random.exponential(water_demand_scale, size=None), water_demand_ub)
-	# object_junction.multiplyLoadFactor(water_demand_factor)
 
 	# SIM STEP 2: SET GENERATOR DISPATCH
 	# ----------------------------------
@@ -398,7 +384,7 @@ def main(dss_debug, write_cols, plf):
 		counter = 0
 		lost_min = 10000000.0
 		while True:
-			needreserves, actualreserves = grb_solvers.unit_commitment_priority_list(object_load, object_generator, losses, exports) # unit commitment is variable
+			needreserves, actualreserves, _ = grb_solvers.unit_commitment_priority_list(object_load, object_generator, losses, exports) # unit commitment is variable
 			new_loss = run_OpenDSS(0, True)
 			counter += 1
 
@@ -409,23 +395,23 @@ def main(dss_debug, write_cols, plf):
 				elif counter > 150:
 					while True:
 						object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS] = dispatcher_max
-						needreserves, actualreserves = grb_solvers.unit_commitment_priority_list_2(object_load, object_generator, losses, exports) # unit commitment is input
+						needreserves, actualreserves, _ = grb_solvers.unit_commitment_priority_list_2(object_load, object_generator, losses, exports) # unit commitment is input
 						new_loss = run_OpenDSS(0, True)
 						counter +=1
 
 						if math.fabs(losses - new_loss) < 1.0:
-							return needreserves, actualreserves
+							return needreserves, actualreserves, _
 						else:
 							losses += 0.8 * (new_loss - losses)
 				elif counter > 100:
 					while True:
 						object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS] = dispatcher_min
-						needreserves, actualreserves = grb_solvers.unit_commitment_priority_list_2(object_load, object_generator, losses, exports) # unit commitment is input
+						needreserves, actualreserves, _ = grb_solvers.unit_commitment_priority_list_2(object_load, object_generator, losses, exports) # unit commitment is input
 						new_loss = run_OpenDSS(0, True)
 						counter +=1
 
 						if math.fabs(losses - new_loss) < 1.0:
-							return needreserves, actualreserves
+							return needreserves, actualreserves, _
 						else:
 							losses += 0.8 * (new_loss - losses)
 				elif counter > 50:
@@ -436,13 +422,19 @@ def main(dss_debug, write_cols, plf):
 						dispatcher_max = np.array(object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS], copy=True)
 				losses += 0.8*(new_loss - losses)
 			else:
-				return needreserves, actualreserves
+				return needreserves, actualreserves, _
 
-	needed_reserves, actual_reserves = fun_set_power_dispatch(object_load, object_generator, losses, exports)
-	# print('exports #1', 0.5 * (object_cable.matrix[33, ODC.Cable.REAL_POWER_2] - object_cable.matrix[33, ODC.Cable.REAL_POWER_1]))
-	# print('')
-	# print('needed_reserves', needed_reserves)
-	# print('actual_reserves', actual_reserves)
+	needed_reserves, actual_reserves, _ = fun_set_power_dispatch(object_load, object_generator, losses, exports)
+	print('exports #1', 0.5 * (object_cable.matrix[33, ODC.Cable.REAL_POWER_2] - object_cable.matrix[33, ODC.Cable.REAL_POWER_1]))
+	print('')
+
+	pre_contingency_branch_max = 0.0
+	for cable in object_cable.matrix:
+		if cable[ODC.Cable.ID] in [10.0, 100.0]:
+			pass
+		else:
+			if abs(cable[ODC.Cable.A_PU_CAPACITY]) > pre_contingency_branch_max:
+				pre_contingency_branch_max = abs(cable[ODC.Cable.A_PU_CAPACITY])
 
 	base_gen_commitment = np.array(object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS], copy=True)
 	base_gen_dispatch = np.array(object_generator.matrix[:, ODC.Generator.REAL_GENERATION], copy=True)
@@ -546,11 +538,11 @@ def main(dss_debug, write_cols, plf):
 
 	with open('gen_response.csv', 'a', newline='') as file:
 		writer = csv.writer(file)
-		writer.writerow([power_load_factor, max_gen_post_branch_load, max_gen_resp_branch_load, max_gen_mint, med_gen_mint, avg_gen_mint, max_gen_error, med_gen_error, avg_gen_error])
+		writer.writerow([power_load_factor, pre_contingency_branch_max, max_gen_post_branch_load, max_gen_resp_branch_load, max_gen_mint, med_gen_mint, avg_gen_mint, max_gen_error, med_gen_error, avg_gen_error])
 
 	with open('branch_response.csv', 'a', newline='') as file:
 		writer = csv.writer(file)
-		writer.writerow([power_load_factor, max_branch_post_branch_load, max_branch_resp_branch_load, max_branch_mint, med_branch_mint, avg_branch_mint, max_branch_error, med_branch_error, avg_branch_error])
+		writer.writerow([power_load_factor, pre_contingency_branch_max, max_branch_post_branch_load, max_branch_resp_branch_load, max_branch_mint, med_branch_mint, avg_branch_mint, max_branch_error, med_branch_error, avg_branch_error])
 
 	# counter = 0
 	# for row in object_generator.matrix:
@@ -648,134 +640,3 @@ if __name__ == '__main__':
 	power_load_factor = float(sys.argv[1])
 
 	main(dss_debug, write_cols, power_load_factor)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# ///////////////////////////////////////////////////////////////////////////////////
-# OLD STUFF
-# \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
-
-	# ------------------------
-	# STOCHASTICITY PARAMETERS
-	# ------------------------
-
-	# water_num_switch = 0
-	# water_num_stochastic = 0
-	# power_num_switch = 0
-	# power_num_stochastic = 0
-	# for object in w_object_list:
-	# 	water_num_switch += object.num_switches
-	# 	water_num_stochastic += object.num_stochastic
-	# for object in object_list:
-	# 	power_num_switch += object.num_switches
-	# 	power_num_stochastic += object.num_stochastic
-	
-	# def calc_probabilities():
-		# temp = 0.0
-		# switch_chanceval = 0.0
-		# stochastic_chanceval = 0.0
-		# for object in w_object_list:
-		# 	if object.num_switches == 0:
-		# 		object.switch_chance = (0.0, 0.0)
-		# 	else:
-		# 		try:
-		# 			temp = switch_chanceval
-		# 			switch_chanceval += object.num_switches / water_num_switch
-		# 			object.switch_chance = (temp, switch_chanceval)
-		# 		except:
-		# 			object.switch_chance = (0.0, 0.0)
-		# 	if object.num_stochastic == 0:
-		# 		object.stochastic_chance = (0.0, 0.0)
-		# 	else:
-		# 		try:
-		# 			temp = stochastic_chanceval
-		# 			stochastic_chanceval += object.num_stochastic / water_num_stochastic
-		# 			object.stochastic_chance = (temp, stochastic_chanceval)
-		# 		except:
-		# 			object.stochastic_chance = (0.0, 0.0)
-		
-		# temp = 0.0
-		# switch_chanceval = 0.0
-		# stochastic_chanceval = 0.0
-		# for object in object_list:
-		# 	if object.num_switches == 0:
-		# 		object.switch_chance = (0.0, 0.0)
-		# 	else:
-		# 		try:
-		# 			temp = switch_chanceval
-		# 			switch_chanceval += object.num_switches / power_num_switch
-		# 			object.switch_chance = (temp, switch_chanceval)
-		# 		except:
-		# 			object.switch_chance = (0.0, 0.0)
-		# 	if object.num_stochastic == 0:
-		# 		object.stochastic_chance = (0.0, 0.0)
-		# 	else:
-		# 		try:
-		# 			temp = stochastic_chanceval
-		# 			stochastic_chanceval += object.num_stochastic / power_num_stochastic
-		# 			object.stochastic_chance = (temp, stochastic_chanceval)
-		# 		except:
-		# 			object.stochastic_chance = (0.0, 0.0)
-
-	# def run_stochasticity(stoch_num):
-	# 	# STOCHASTIC VALUES (e.g., demand)
-	# 	for i in range(0, stoch_num):
-	# 		if random.randrange(1, water_num_stochastic+power_num_stochastic+1) <= water_num_stochastic:
-	# 			rval = random.random()
-	# 			for object in w_object_list: # water list
-	# 				lower, upper = object.stochastic_chance
-	# 				if lower <= rval <= upper:
-	# 					pass
-	# 					# object.randomStochasticity()
-	# 		else:
-	# 			rval = random.random()
-	# 			for object in object_list: # power list
-	# 				lower, upper = object.stochastic_chance
-	# 				if lower <= rval <= upper:
-	# 					pass
-	# 					# object.randomStochasticity()
-
-	# 	# SWITCHING VALUES (e.g., on/off)
-	# 	if random.random() <= 0.65: # 65% chance to shutoff
-	# 		if random.randrange(1, water_num_switch+power_num_switch+1) <= water_num_switch:
-	# 			rval = random.random()
-	# 			for object in w_object_list: # water list
-	# 				lower, upper = object.switch_chance
-	# 				if lower <= rval <= upper:
-	# 					pass
-	# 					# object.randomSwitching()
-	# 		else:
-	# 			rval = random.random()
-	# 			for object in object_list: # power list
-	# 				lower, upper = object.switch_chance
-	# 				if lower <= rval <= upper:
-	# 					pass
-	# 					# object.randomSwitching()
-
-	# # SIM STEP 1: CALCULATE UNIFORM PROBABILITIES FOR COMPONENTS
-	# calc_probabilities()
-
-	# # SIM STEP 2: STOCHASTICITY OF OBJECT CONTROLS AND "FAILURE"
-	# run_stochasticity(stoch_num)
