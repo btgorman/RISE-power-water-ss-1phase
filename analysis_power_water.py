@@ -804,10 +804,13 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 			else:
 				print("ERROR IN CALCULATING REDUCED RESERVES!")
 
+	reduced_reserves_list = []
+	for generator in object_generator.matrix:
+		reduced_reserves_list.append(reduced_reserves_dict.get(generator[ODC.Generator.ID], 0.0))
 
 	with open('C:\\Users\\' + os_username + '\\Documents\\git\\RISE-power-water-ss-1phase\\model_outputs\\analysis_power_water\\power_water_pipe_{}.csv'.format(int(pipe_fail_id)), 'a', newline='') as file:
 		writer = csv.writer(file)
-		writer.writerow([water_df, power_df, need_reserves, actual_reserves, sum(reduced_reserves_dict.values())])
+		writer.writerow([water_df, power_df, need_reserves, actual_reserves, sum(reduced_reserves_dict.values())] + reduced_reserves_list)
 
 	# Interconnections have no effect
 	# input_list_continuous, input_list_categorical, output_list, input_tensor_continuous, input_tensor_categorical, output_tensor = run_OpenDSS(dss_debug, False)

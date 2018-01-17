@@ -327,7 +327,7 @@ def unit_commitment_priority_list_2(object_load, object_generator, losses, expor
 
 	for row in object_generator.matrix:
 		unit_min_dispatch[row[ODC.Generator.ID]] = row[ODC.Generator.REAL_GENERATION_MIN_RATING]
-		unit_commit[row[ODC.Generator.ID]] == row[ODC.Generator.OPERATIONAL_STATUS]
+		unit_commit[row[ODC.Generator.ID]] = row[ODC.Generator.OPERATIONAL_STATUS]
 
 	SUM_LOAD = float(sum(object_load.matrix[:, ODC.Load.REAL_LOAD]) + sum(object_load.matrix[:, ODC.Load.INTERCONNECTION_LOAD]))
 	losses = float(losses)

@@ -37,7 +37,7 @@ pdf_array = np.linspace(power_load_lb, power_load_ub, power_sims)
 # pumps 25-28
 # pumps 36 & 37
 # NOT pumps 13-17
-# NOT pump 24
+# pump 24
 # pumps 1, 2, 4
 # pump 34
 
