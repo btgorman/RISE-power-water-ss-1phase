@@ -21,6 +21,8 @@ import random, csv, sys, os
 import math
 import time
 
+np.set_printoptions(suppress=True)
+
 from statistics import median
 
 import classes_water as ENC
@@ -453,6 +455,11 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 				map_to_pipe[junction_id][ENC.Pipe.OPERATIONAL_STATUS] = 0.0
 			run_EPANET()
 
+			for row in object_junction.matrix:
+				if row[ENC.Junction.ID] == 1.0 or row[ENC.Junction.ID] == 7.0 or row[ENC.Junction.ID] == 8.0:
+					print(1, row)
+			print('')
+
 			# Open demand junctions with positive pressure ratio
 			# Can take multiple iterations
 			pos_pres_bool = True
@@ -532,7 +539,7 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 	# SIM STEP 2: SET LOAD INTERCONNECTIONS
 	# ----------------------------------
 	
-	object_load.setInterconnectionLoad(interconn_dict)
+	# object_load.setInterconnectionLoad(interconn_dict)
 
 	# SIM STEP 3: SET GENERATOR DISPATCH
 	# ----------------------------------
@@ -670,7 +677,7 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 
 		# Track demand junctions
 		for junction in object_junction.matrix:
-			if junction[ENC.Junction.BASE_DEMAND_AVERAGE] > 0.0:
+			if junction[ENC.Junction.BASE_DEMAND_AVERAGE]+junction[ENC.Junction.INTERCONNECTION_DISPATCH_DEMAND]+junction[ENC.Junction.INTERCONNECTION_RESPONSE_DEMAND] > 0.0:
 				demand_list.append(junction[ENC.Junction.ID])
 		for junction in object_junction.matrix:
 			if junction[ENC.Junction.ID] in demand_list:
@@ -697,7 +704,7 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 			for junction_id in demand_list:
 				map_to_pipe[junction_id][ENC.Pipe.OPERATIONAL_STATUS] = 0.0
 			run_EPANET()
-
+						
 			# Open demand junctions with positive pressure ratio
 			# Can take multiple iterations
 			pos_pres_bool = True
