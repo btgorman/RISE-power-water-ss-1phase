@@ -455,11 +455,6 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 				map_to_pipe[junction_id][ENC.Pipe.OPERATIONAL_STATUS] = 0.0
 			run_EPANET()
 
-			for row in object_junction.matrix:
-				if row[ENC.Junction.ID] == 1.0 or row[ENC.Junction.ID] == 7.0 or row[ENC.Junction.ID] == 8.0:
-					print(1, row)
-			print('')
-
 			# Open demand junctions with positive pressure ratio
 			# Can take multiple iterations
 			pos_pres_bool = True
