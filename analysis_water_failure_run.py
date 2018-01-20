@@ -28,7 +28,6 @@ wdf_array = np.linspace(water_demand_lb, water_demand_ub, water_sims)
 
 # for pidx in range(0, power_sims):
 for widx in range(0, water_sims):
-	if wdf_array[widx] >= 1.591:
-		print('')
-		print(wdf_array[widx])
-		pid = subprocess.call('python analysis_water_failure.py {}'.format(wdf_array[widx]), shell=True)
+	print('')
+	print(wdf_array[widx])
+	pid = subprocess.call('python analysis_water_failure.py {}'.format(wdf_array[widx]), shell=True)

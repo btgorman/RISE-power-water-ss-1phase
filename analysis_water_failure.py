@@ -104,7 +104,7 @@ def main(water_df):
 
 			templist = ['[TIMES]']
 			writer.writerow(templist)
-			templist = ['Duration', '0:00']
+			templist = ['Duration', '00:00']
 			writer.writerow(templist)
 			templist = ['Hydraulic', 'Timestep', '0:01:00']
 			writer.writerow(templist)
@@ -293,8 +293,12 @@ def main(water_df):
 
 		# Scale reservoir heads using water_demand_factor
 		for reservoir in object_reservoir.matrix:
-			if reservoir[ENC.Reservoir.ID] < 1000.0:
-				reservoir[ENC.Reservoir.TOTAL_HEAD] = max(1.0, water_demand_factor) * reservoir[ENC.Reservoir.TOTAL_HEAD]
+			if reservoir[ENC.Reservoir.ID] == 21.0:
+				reservoir[ENC.Reservoir.TOTAL_HEAD] = max(reservoir[ENC.Reservoir.TOTAL_HEAD], 688.75 + 1043.2*water_demand_factor)
+			elif reservoir[ENC.Reservoir.ID] == 22.0:
+				reservoir[ENC.Reservoir.TOTAL_HEAD] = max(reservoir[ENC.Reservoir.TOTAL_HEAD], 738.21 + 1161.8*water_demand_factor)
+			elif reservoir[ENC.Reservoir.ID] == 23.0:
+				reservoir[ENC.Reservoir.TOTAL_HEAD] = max(reservoir[ENC.Reservoir.TOTAL_HEAD], 567.31 + 773.69*water_demand_factor)
 
 		# Set valves to maximum amount of groundwater flow
 		for junction in object_junction.matrix:
@@ -496,6 +500,7 @@ def main(water_df):
 			elif row[ENC.Junction.ID] == 28.0:
 				j_28_deficit = max(0.0, water_demand_factor * row[ENC.Junction.BASE_DEMAND_AVERAGE] - row[ENC.Junction.DEMAND])		
 		
+		system_deficit = 0.0
 		system_deficit += j_1_deficit
 		system_deficit += j_2_deficit
 		system_deficit += j_3_deficit
@@ -512,7 +517,7 @@ def main(water_df):
 		system_deficit += j_18_deficit
 		system_deficit += j_19_deficit
 		system_deficit += j_28_deficit
-	
+		
 		# print('')
 		# for row in object_reservoir.matrix:
 		# 	print('Reservoir {} has outflow {:.2f}'.format(int(row[ENC.Reservoir.ID]), row[ENC.Reservoir.DEMAND]))
@@ -529,7 +534,7 @@ def main(water_df):
 			writer = csv.writer(file)
 			writer.writerow([water_demand_factor, system_deficit, j_1_deficit, j_2_deficit, j_3_deficit, j_5_deficit, j_6_deficit, j_7_deficit, j_8_deficit, j_9_deficit, j_10_deficit, j_13_deficit, j_14_deficit, j_15_deficit, j_16_deficit, j_18_deficit, j_19_deficit, j_28_deficit])
 
-		# End outer loop
+	# End outer loop
 
 	# RESULTS STEP 1: FORMAT INPUT/OUTPUT TENSORS
 	# -------------------------------------------
