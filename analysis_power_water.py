@@ -387,7 +387,12 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 	# Scale reservoir heads using water_df
 	for reservoir in object_reservoir.matrix:
 		if reservoir[ENC.Reservoir.ID] < 1000.0:
-			reservoir[ENC.Reservoir.TOTAL_HEAD] = max(1.0, water_df) * reservoir[ENC.Reservoir.TOTAL_HEAD]
+			if reservoir[ENC.Reservoir.ID] == 21.0:
+				reservoir[ENC.Reservoir.TOTAL_HEAD] = max(reservoir[ENC.Reservoir.TOTAL_HEAD], 488.75 + 1043.2*water_df)
+			elif reservoir[ENC.Reservoir.ID] == 22.0:
+				reservoir[ENC.Reservoir.TOTAL_HEAD] = max(reservoir[ENC.Reservoir.TOTAL_HEAD], 538.21 + 1161.8*water_df)
+			elif reservoir[ENC.Reservoir.ID] == 23.0:
+				reservoir[ENC.Reservoir.TOTAL_HEAD] = max(reservoir[ENC.Reservoir.TOTAL_HEAD], 467.31 + 823.69*water_df)
 
 	# Set valves to maximum amount of groundwater flow
 	for junction in object_junction.matrix:
@@ -633,7 +638,12 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 	# Scale reservoir heads using water_df
 	for reservoir in object_reservoir.matrix:
 		if reservoir[ENC.Reservoir.ID] < 1000.0:
-			reservoir[ENC.Reservoir.TOTAL_HEAD] = max(1.0, water_df) * reservoir[ENC.Reservoir.TOTAL_HEAD]
+			if reservoir[ENC.Reservoir.ID] == 21.0:
+				reservoir[ENC.Reservoir.TOTAL_HEAD] = max(reservoir[ENC.Reservoir.TOTAL_HEAD], 488.75 + 1043.2*water_df)
+			elif reservoir[ENC.Reservoir.ID] == 22.0:
+				reservoir[ENC.Reservoir.TOTAL_HEAD] = max(reservoir[ENC.Reservoir.TOTAL_HEAD], 538.21 + 1161.8*water_df)
+			elif reservoir[ENC.Reservoir.ID] == 23.0:
+				reservoir[ENC.Reservoir.TOTAL_HEAD] = max(reservoir[ENC.Reservoir.TOTAL_HEAD], 467.31 + 823.69*water_df)
 
 	# Set valves to maximum amount of groundwater flow
 	for junction in object_junction.matrix:
