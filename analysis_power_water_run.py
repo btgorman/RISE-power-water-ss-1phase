@@ -33,9 +33,9 @@ pdf_array = np.linspace(power_load_lb, power_load_ub, power_sims)
 
 pipe_array = [9.0, 25.0, 36.0, 24.0, 1.0, 34.0]
 pipe_array.remove(9.0)
-pipe_array.remove(25.0)
-pipe_array.remove(36.0)
+pipe_array.remove(24.0)
 pipe_array.remove(1.0)
+pipe_array.remove(34.0)
 
 # POWER-WATER ANALYSIS
 # --------------------
