@@ -386,13 +386,12 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 
 	# Scale reservoir heads using water_df
 	for reservoir in object_reservoir.matrix:
-		if reservoir[ENC.Reservoir.ID] < 1000.0:
-			if reservoir[ENC.Reservoir.ID] == 21.0:
-				reservoir[ENC.Reservoir.TOTAL_HEAD] = max(reservoir[ENC.Reservoir.TOTAL_HEAD], 488.75 + 1043.2*water_df)
-			elif reservoir[ENC.Reservoir.ID] == 22.0:
-				reservoir[ENC.Reservoir.TOTAL_HEAD] = max(reservoir[ENC.Reservoir.TOTAL_HEAD], 538.21 + 1161.8*water_df)
-			elif reservoir[ENC.Reservoir.ID] == 23.0:
-				reservoir[ENC.Reservoir.TOTAL_HEAD] = max(reservoir[ENC.Reservoir.TOTAL_HEAD], 467.31 + 823.69*water_df)
+		if reservoir[ENC.Reservoir.ID] == 21.0:
+			reservoir[ENC.Reservoir.TOTAL_HEAD] = max(reservoir[ENC.Reservoir.TOTAL_HEAD], 864.92*water_df + 817.08)
+		elif reservoir[ENC.Reservoir.ID] == 22.0:
+			reservoir[ENC.Reservoir.TOTAL_HEAD] = max(reservoir[ENC.Reservoir.TOTAL_HEAD], 951.11*water_df + 898.89)
+		elif reservoir[ENC.Reservoir.ID] == 23.0:
+			reservoir[ENC.Reservoir.TOTAL_HEAD] = max(reservoir[ENC.Reservoir.TOTAL_HEAD], 668.35*water_df + 631.65)
 
 	# Set valves to maximum amount of groundwater flow
 	for junction in object_junction.matrix:
@@ -582,7 +581,6 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 						else:
 							losses += 0.8 * (new_loss - losses)
 				elif counter > 50:
-					print(1)
 					if math.fabs(new_loss) < math.fabs(lost_min):
 						lost_min = new_loss
 						dispatcher_min = np.array(object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS], copy=True)
@@ -637,13 +635,12 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 
 	# Scale reservoir heads using water_df
 	for reservoir in object_reservoir.matrix:
-		if reservoir[ENC.Reservoir.ID] < 1000.0:
-			if reservoir[ENC.Reservoir.ID] == 21.0:
-				reservoir[ENC.Reservoir.TOTAL_HEAD] = max(reservoir[ENC.Reservoir.TOTAL_HEAD], 488.75 + 1043.2*water_df)
-			elif reservoir[ENC.Reservoir.ID] == 22.0:
-				reservoir[ENC.Reservoir.TOTAL_HEAD] = max(reservoir[ENC.Reservoir.TOTAL_HEAD], 538.21 + 1161.8*water_df)
-			elif reservoir[ENC.Reservoir.ID] == 23.0:
-				reservoir[ENC.Reservoir.TOTAL_HEAD] = max(reservoir[ENC.Reservoir.TOTAL_HEAD], 467.31 + 823.69*water_df)
+		if reservoir[ENC.Reservoir.ID] == 21.0:
+			reservoir[ENC.Reservoir.TOTAL_HEAD] = max(reservoir[ENC.Reservoir.TOTAL_HEAD], 864.92*water_df + 817.08)
+		elif reservoir[ENC.Reservoir.ID] == 22.0:
+			reservoir[ENC.Reservoir.TOTAL_HEAD] = max(reservoir[ENC.Reservoir.TOTAL_HEAD], 951.11*water_df + 898.89)
+		elif reservoir[ENC.Reservoir.ID] == 23.0:
+			reservoir[ENC.Reservoir.TOTAL_HEAD] = max(reservoir[ENC.Reservoir.TOTAL_HEAD], 668.35*water_df + 631.65)
 
 	# Set valves to maximum amount of groundwater flow
 	for junction in object_junction.matrix:
@@ -794,7 +791,7 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 				juncid_to_genid_water[junction[ENC.Junction.ID]].append((generator[ODC.Generator.ID], generator[ODC.Generator.WATER_CONSUMPTION]))
 
 	for junction in object_junction.matrix:
-		if junction[ENC.Junction.BASE_DEMAND_AVERAGE] > 0.0:
+		if junction[ENC.Junction.BASE_DEMAND_AVERAGE] + junction[ENC.Junction.INTERCONNECTION_DISPATCH_DEMAND] + junction[ENC.Junction.INTERCONNECTION_RESPONSE_DEMAND] > 0.0:
 			# Water demand is met for nominal reserves
 			if junction[ENC.Junction.BASE_DEMAND] >= junction[ENC.Junction.INTERCONNECTION_DISPATCH_DEMAND] + junction[ENC.Junction.INTERCONNECTION_RESPONSE_DEMAND]:
 				for genid, _ in juncid_to_genid_water[junction[ENC.Junction.ID]]:

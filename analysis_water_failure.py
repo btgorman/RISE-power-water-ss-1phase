@@ -286,19 +286,18 @@ def main(water_df):
 				pipe[ENC.Pipe.OPERATIONAL_STATUS] = 0.0
 				print('Failing Pipe ID {}'.format(int(pipe_fail_id)))
 
-		water_demand_factor = water_df # %
 		artificial_reservoir_id_shift = 1000.0
 		max_groundwater_flow = 12399.0 # GPM
 		groundwater_id_shift = 2000.0
 
-		# Scale reservoir heads using water_demand_factor
+		# Scale reservoir heads using water_df
 		for reservoir in object_reservoir.matrix:
 			if reservoir[ENC.Reservoir.ID] == 21.0:
-				reservoir[ENC.Reservoir.TOTAL_HEAD] = max(reservoir[ENC.Reservoir.TOTAL_HEAD], 488.75 + 1043.2*water_demand_factor)
+				reservoir[ENC.Reservoir.TOTAL_HEAD] = max(reservoir[ENC.Reservoir.TOTAL_HEAD], 864.92*water_df + 817.08)
 			elif reservoir[ENC.Reservoir.ID] == 22.0:
-				reservoir[ENC.Reservoir.TOTAL_HEAD] = max(reservoir[ENC.Reservoir.TOTAL_HEAD], 538.21 + 1161.8*water_demand_factor)
+				reservoir[ENC.Reservoir.TOTAL_HEAD] = max(reservoir[ENC.Reservoir.TOTAL_HEAD], 951.11*water_df + 898.89)
 			elif reservoir[ENC.Reservoir.ID] == 23.0:
-				reservoir[ENC.Reservoir.TOTAL_HEAD] = max(reservoir[ENC.Reservoir.TOTAL_HEAD], 467.31 + 823.69*water_demand_factor)
+				reservoir[ENC.Reservoir.TOTAL_HEAD] = max(reservoir[ENC.Reservoir.TOTAL_HEAD], 668.35*water_df + 631.65)
 
 		# Set valves to maximum amount of groundwater flow
 		for junction in object_junction.matrix:
@@ -399,8 +398,8 @@ def main(water_df):
 				pda_count = 0
 				demand_list_copy = demand_list.copy()
 				for junction_id in demand_list_copy:
-					if map_to_reservoir[junction_id][ENC.Reservoir.DEMAND] >= water_demand_factor * map_to_junction[junction_id][ENC.Junction.BASE_DEMAND_AVERAGE]:
-						map_to_junction[junction_id][ENC.Junction.BASE_DEMAND] = water_demand_factor * map_to_junction[junction_id][ENC.Junction.BASE_DEMAND_AVERAGE]
+					if map_to_reservoir[junction_id][ENC.Reservoir.DEMAND] >= water_df * map_to_junction[junction_id][ENC.Junction.BASE_DEMAND_AVERAGE]:
+						map_to_junction[junction_id][ENC.Junction.BASE_DEMAND] = water_df * map_to_junction[junction_id][ENC.Junction.BASE_DEMAND_AVERAGE]
 						map_to_pipe[junction_id][ENC.Pipe.OPERATIONAL_STATUS] = 0.0
 						demand_list.remove(junction_id)
 						pda_count += 1
@@ -466,41 +465,40 @@ def main(water_df):
 		for row in object_junction.matrix:
 			if row[ENC.Junction.BASE_DEMAND_AVERAGE] > 0.0:
 				pass
-				# print('Junction {} has pressure {:.2f} and outflow {:.2f} with deficit {:.2f} GPM and {:.2f} %'.format(int(row[ENC.Junction.ID]), row[ENC.Junction.PRESSURE], row[ENC.Junction.DEMAND], water_demand_factor * row[ENC.Junction.BASE_DEMAND_AVERAGE] - row[ENC.Junction.DEMAND], (1.0 - row[ENC.Junction.DEMAND] / (water_demand_factor * row[ENC.Junction.BASE_DEMAND_AVERAGE]))*100.0 ))
+				# print('Junction {} has pressure {:.2f} and outflow {:.2f} with deficit {:.2f} GPM and {:.2f} %'.format(int(row[ENC.Junction.ID]), row[ENC.Junction.PRESSURE], row[ENC.Junction.DEMAND], water_df * row[ENC.Junction.BASE_DEMAND_AVERAGE] - row[ENC.Junction.DEMAND], (1.0 - row[ENC.Junction.DEMAND] / (water_df * row[ENC.Junction.BASE_DEMAND_AVERAGE]))*100.0 ))
 			if row[ENC.Junction.ID] == 1.0:
-				j_1_deficit = max(0.0, water_demand_factor * row[ENC.Junction.BASE_DEMAND_AVERAGE] - row[ENC.Junction.DEMAND])
+				j_1_deficit = max(0.0, water_df * row[ENC.Junction.BASE_DEMAND_AVERAGE] - row[ENC.Junction.DEMAND])
 			elif row[ENC.Junction.ID] == 2.0:
-				j_2_deficit = max(0.0, water_demand_factor * row[ENC.Junction.BASE_DEMAND_AVERAGE] - row[ENC.Junction.DEMAND])
+				j_2_deficit = max(0.0, water_df * row[ENC.Junction.BASE_DEMAND_AVERAGE] - row[ENC.Junction.DEMAND])
 			elif row[ENC.Junction.ID] == 3.0:
-				j_3_deficit = max(0.0, water_demand_factor * row[ENC.Junction.BASE_DEMAND_AVERAGE] - row[ENC.Junction.DEMAND])
+				j_3_deficit = max(0.0, water_df * row[ENC.Junction.BASE_DEMAND_AVERAGE] - row[ENC.Junction.DEMAND])
 			elif row[ENC.Junction.ID] == 5.0:
-				j_5_deficit = max(0.0, water_demand_factor * row[ENC.Junction.BASE_DEMAND_AVERAGE] - row[ENC.Junction.DEMAND])
+				j_5_deficit = max(0.0, water_df * row[ENC.Junction.BASE_DEMAND_AVERAGE] - row[ENC.Junction.DEMAND])
 			elif row[ENC.Junction.ID] == 6.0:
-				j_6_deficit = max(0.0, water_demand_factor * row[ENC.Junction.BASE_DEMAND_AVERAGE] - row[ENC.Junction.DEMAND])
+				j_6_deficit = max(0.0, water_df * row[ENC.Junction.BASE_DEMAND_AVERAGE] - row[ENC.Junction.DEMAND])
 			elif row[ENC.Junction.ID] == 7.0:
-				j_7_deficit = max(0.0, water_demand_factor * row[ENC.Junction.BASE_DEMAND_AVERAGE] - row[ENC.Junction.DEMAND])
+				j_7_deficit = max(0.0, water_df * row[ENC.Junction.BASE_DEMAND_AVERAGE] - row[ENC.Junction.DEMAND])
 			elif row[ENC.Junction.ID] == 8.0:
-				j_8_deficit = max(0.0, water_demand_factor * row[ENC.Junction.BASE_DEMAND_AVERAGE] - row[ENC.Junction.DEMAND])
+				j_8_deficit = max(0.0, water_df * row[ENC.Junction.BASE_DEMAND_AVERAGE] - row[ENC.Junction.DEMAND])
 			elif row[ENC.Junction.ID] == 9.0:
-				j_9_deficit = max(0.0, water_demand_factor * row[ENC.Junction.BASE_DEMAND_AVERAGE] - row[ENC.Junction.DEMAND])
+				j_9_deficit = max(0.0, water_df * row[ENC.Junction.BASE_DEMAND_AVERAGE] - row[ENC.Junction.DEMAND])
 			elif row[ENC.Junction.ID] == 10.0:
-				j_10_deficit = max(0.0, water_demand_factor * row[ENC.Junction.BASE_DEMAND_AVERAGE] - row[ENC.Junction.DEMAND])
+				j_10_deficit = max(0.0, water_df * row[ENC.Junction.BASE_DEMAND_AVERAGE] - row[ENC.Junction.DEMAND])
 			elif row[ENC.Junction.ID] == 13.0:
-				j_13_deficit = max(0.0, water_demand_factor * row[ENC.Junction.BASE_DEMAND_AVERAGE] - row[ENC.Junction.DEMAND])
+				j_13_deficit = max(0.0, water_df * row[ENC.Junction.BASE_DEMAND_AVERAGE] - row[ENC.Junction.DEMAND])
 			elif row[ENC.Junction.ID] == 14.0:
-				j_14_deficit = max(0.0, water_demand_factor * row[ENC.Junction.BASE_DEMAND_AVERAGE] - row[ENC.Junction.DEMAND])
+				j_14_deficit = max(0.0, water_df * row[ENC.Junction.BASE_DEMAND_AVERAGE] - row[ENC.Junction.DEMAND])
 			elif row[ENC.Junction.ID] == 15.0:
-				j_15_deficit = max(0.0, water_demand_factor * row[ENC.Junction.BASE_DEMAND_AVERAGE] - row[ENC.Junction.DEMAND])
+				j_15_deficit = max(0.0, water_df * row[ENC.Junction.BASE_DEMAND_AVERAGE] - row[ENC.Junction.DEMAND])
 			elif row[ENC.Junction.ID] == 16.0:
-				j_16_deficit = max(0.0, water_demand_factor * row[ENC.Junction.BASE_DEMAND_AVERAGE] - row[ENC.Junction.DEMAND])
+				j_16_deficit = max(0.0, water_df * row[ENC.Junction.BASE_DEMAND_AVERAGE] - row[ENC.Junction.DEMAND])
 			elif row[ENC.Junction.ID] == 18.0:
-				j_18_deficit = max(0.0, water_demand_factor * row[ENC.Junction.BASE_DEMAND_AVERAGE] - row[ENC.Junction.DEMAND])
+				j_18_deficit = max(0.0, water_df * row[ENC.Junction.BASE_DEMAND_AVERAGE] - row[ENC.Junction.DEMAND])
 			elif row[ENC.Junction.ID] == 19.0:
-				j_19_deficit = max(0.0, water_demand_factor * row[ENC.Junction.BASE_DEMAND_AVERAGE] - row[ENC.Junction.DEMAND])
+				j_19_deficit = max(0.0, water_df * row[ENC.Junction.BASE_DEMAND_AVERAGE] - row[ENC.Junction.DEMAND])
 			elif row[ENC.Junction.ID] == 28.0:
-				j_28_deficit = max(0.0, water_demand_factor * row[ENC.Junction.BASE_DEMAND_AVERAGE] - row[ENC.Junction.DEMAND])		
+				j_28_deficit = max(0.0, water_df * row[ENC.Junction.BASE_DEMAND_AVERAGE] - row[ENC.Junction.DEMAND])		
 		
-		system_deficit = 0.0
 		system_deficit += j_1_deficit
 		system_deficit += j_2_deficit
 		system_deficit += j_3_deficit
@@ -532,7 +530,7 @@ def main(water_df):
 
 		with open('model_outputs/analysis_water_failure/water_failure_analysis_pipe_{}.csv'.format(int(pipe_fail_id)), 'a', newline='') as file:
 			writer = csv.writer(file)
-			writer.writerow([water_demand_factor, system_deficit, j_1_deficit, j_2_deficit, j_3_deficit, j_5_deficit, j_6_deficit, j_7_deficit, j_8_deficit, j_9_deficit, j_10_deficit, j_13_deficit, j_14_deficit, j_15_deficit, j_16_deficit, j_18_deficit, j_19_deficit, j_28_deficit])
+			writer.writerow([water_df, system_deficit, j_1_deficit, j_2_deficit, j_3_deficit, j_5_deficit, j_6_deficit, j_7_deficit, j_8_deficit, j_9_deficit, j_10_deficit, j_13_deficit, j_14_deficit, j_15_deficit, j_16_deficit, j_18_deficit, j_19_deficit, j_28_deficit])
 
 	# End outer loop
 

@@ -21,7 +21,7 @@ import numpy as np
 
 water_demand_lb = 0.372453
 water_demand_ub = 2.984
-water_sims = 501
+water_sims = 251
 
 wdf_array = np.linspace(water_demand_lb, water_demand_ub, water_sims)
 # wdf_array = np.linspace(1.8, 2.984, water_sims)
