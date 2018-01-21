@@ -294,11 +294,11 @@ def main(water_df):
 		# Scale reservoir heads using water_demand_factor
 		for reservoir in object_reservoir.matrix:
 			if reservoir[ENC.Reservoir.ID] == 21.0:
-				reservoir[ENC.Reservoir.TOTAL_HEAD] = max(reservoir[ENC.Reservoir.TOTAL_HEAD], 688.75 + 1043.2*water_demand_factor)
+				reservoir[ENC.Reservoir.TOTAL_HEAD] = max(reservoir[ENC.Reservoir.TOTAL_HEAD], 488.75 + 1043.2*water_demand_factor)
 			elif reservoir[ENC.Reservoir.ID] == 22.0:
-				reservoir[ENC.Reservoir.TOTAL_HEAD] = max(reservoir[ENC.Reservoir.TOTAL_HEAD], 738.21 + 1161.8*water_demand_factor)
+				reservoir[ENC.Reservoir.TOTAL_HEAD] = max(reservoir[ENC.Reservoir.TOTAL_HEAD], 538.21 + 1161.8*water_demand_factor)
 			elif reservoir[ENC.Reservoir.ID] == 23.0:
-				reservoir[ENC.Reservoir.TOTAL_HEAD] = max(reservoir[ENC.Reservoir.TOTAL_HEAD], 567.31 + 773.69*water_demand_factor)
+				reservoir[ENC.Reservoir.TOTAL_HEAD] = max(reservoir[ENC.Reservoir.TOTAL_HEAD], 467.31 + 823.69*water_demand_factor)
 
 		# Set valves to maximum amount of groundwater flow
 		for junction in object_junction.matrix:
@@ -517,7 +517,7 @@ def main(water_df):
 		system_deficit += j_18_deficit
 		system_deficit += j_19_deficit
 		system_deficit += j_28_deficit
-		
+
 		# print('')
 		# for row in object_reservoir.matrix:
 		# 	print('Reservoir {} has outflow {:.2f}'.format(int(row[ENC.Reservoir.ID]), row[ENC.Reservoir.DEMAND]))

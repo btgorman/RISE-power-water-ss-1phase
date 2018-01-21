@@ -259,7 +259,7 @@ def unit_commitment_priority_list(object_load, object_generator, losses, exports
 
 		for elem in m.getVars():
 			if elem.varName[0:3] == 'u_c':
-				out_u_c[float(elem.varName[4:9])] = float(elem.x)
+				out_u_c[float(elem.varName[4:9])] = round(float(elem.x), 0)
 			elif elem.varName[0:3] == 'u_d':
 				out_u_d[float(elem.varName[4:9])] = float(elem.x)
 			elif elem.varName[0:3] == 'u_r':

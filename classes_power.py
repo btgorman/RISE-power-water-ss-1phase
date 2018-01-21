@@ -702,6 +702,7 @@ class Generator: #errors -1200 to -1224
 				elif num_phases == 1:
 					num_kv = num_kv / math.sqrt(3.0)
 
+				# FIX THIS TO ACCOUNT FOR ROUNDING ERRORS
 				if row[Generator.OPERATIONAL_STATUS] == 0.0 or row[Generator.REAL_GENERATION] == 0.0:
 					row[Generator.REAL_GENERATION] = 0.0
 					row[Generator.REACTIVE_GENERATION] = 0.0

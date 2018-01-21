@@ -577,6 +577,7 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 						else:
 							losses += 0.8 * (new_loss - losses)
 				elif counter > 50:
+					print(1)
 					if math.fabs(new_loss) < math.fabs(lost_min):
 						lost_min = new_loss
 						dispatcher_min = np.array(object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS], copy=True)
@@ -602,7 +603,7 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 		if generator[ODC.Generator.ID] in [101.0, 102.0, 201.0, 202.0]:
 			pass
 		else:
-			if nominal_reserves_dict[generator[ODC.Generator.ID]] > 0.0 and generator[ODC.Generator.OPERATIONAL_STATUS] == 0.0:
+			if math.fabs(nominal_reserves_dict[generator[ODC.Generator.ID]]) > 1.0 and generator[ODC.Generator.OPERATIONAL_STATUS] == 0.0:
 				print('*********************** YOU GOOFED *******************************')
 	print('exports #1', 0.5 * (object_cable.matrix[33, ODC.Cable.REAL_POWER_2] - object_cable.matrix[33, ODC.Cable.REAL_POWER_1]))
 	print('')
