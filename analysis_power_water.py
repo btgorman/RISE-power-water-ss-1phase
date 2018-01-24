@@ -161,9 +161,9 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 
 			templist = ['[TIMES]']
 			writer.writerow(templist)
-			templist = ['Duration', '0:00']
+			templist = ['Duration', '0:00:01']
 			writer.writerow(templist)
-			templist = ['Hydraulic', 'Timestep', '0:01:00']
+			templist = ['Hydraulic', 'Timestep', '0:00:01']
 			writer.writerow(templist)
 			templist = ['Quality', 'Timestep', '0:06']
 			writer.writerow(templist)
@@ -589,17 +589,6 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 				losses += 0.8*(new_loss - losses)
 			else:
 				return need_reserves, actual_reserves, nominal_reserves_dict
-
-	# node_list_constraint = []
-	# node_water_constraint = {1.0: 0.0,
-	# 2.0: 0.0,
-	# 7.0: 0.0,
-	# 13.0: 0.0,
-	# 15.0: 0.0,
-	# 16.0: 0.0,
-	# 18.0: 0.0,
-	# 22.0: 0.0,
-	# 33.0: 0.0}
 	
 	need_reserves, actual_reserves, nominal_reserves_dict = fun_set_power_dispatch(object_load, object_generator, losses, exports)
 	for generator in object_generator.matrix:
@@ -824,6 +813,9 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 	for generator in object_generator.matrix:
 		nominal_reserves_list.append(nominal_reserves_dict.get(generator[ODC.Generator.ID], 0.0))
 		reduced_reserves_list.append(nominal_reserves_dict.get(generator[ODC.Generator.ID], 0.0) - reduced_reserves_dict.get(generator[ODC.Generator.ID], 0.0))
+
+	# for junction in object_junction.matrix:
+	# 	print('{} has {:.2f} PSI'.format(int(junction[ENC.Junction.ID]), junction[ENC.Junction.PRESSURE]))
 
 	with open('C:\\Users\\' + os_username + '\\Documents\\git\\RISE-power-water-ss-1phase\\model_outputs\\analysis_power_water\\power_water_pipe_{}.csv'.format(int(pipe_fail_id)), 'a', newline='') as file:
 		writer = csv.writer(file)

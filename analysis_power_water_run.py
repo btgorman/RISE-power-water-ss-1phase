@@ -31,7 +31,8 @@ pipe_fid = 1.0
 wdf_array = np.linspace(water_demand_lb, water_demand_ub, water_sims)
 pdf_array = np.linspace(power_load_lb, power_load_ub, power_sims)
 
-pipe_array = [9.0, 25.0, 36.0, 24.0, 1.0, 34.0]
+pipe_array = [9.0, 25.0, 24.0]
+pipe_array.remove(25.0)
 
 # POWER-WATER ANALYSIS
 # --------------------

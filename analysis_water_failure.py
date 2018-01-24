@@ -461,6 +461,7 @@ def main(water_df):
 		j_18_deficit = 0.0
 		j_19_deficit = 0.0
 		j_28_deficit = 0.0
+		j_33_deficit = 0.0 # j33 only has water consumption in the interconnected power-water model
 
 		for row in object_junction.matrix:
 			if row[ENC.Junction.BASE_DEMAND_AVERAGE] > 0.0:
