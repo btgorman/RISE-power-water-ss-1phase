@@ -24,9 +24,7 @@ water_demand_ub = 2.984
 water_sims = 251
 
 wdf_array = np.linspace(water_demand_lb, water_demand_ub, water_sims)
-# wdf_array = np.linspace(1.8, 2.984, water_sims)
 
-# for pidx in range(0, power_sims):
 for widx in range(0, water_sims):
 	print('')
 	print(wdf_array[widx])
