@@ -750,11 +750,13 @@ class Generator: #errors -1200 to -1224
 
 	def readAllDSSOutputs(self, dssCkt, dssActvElem, dssActvBus, var_bus, var_volt_mag, var_volt_pu, var_curr, var_pow):
 		try:
+			counter = 0
 			for row in self.matrix:
 				idxcount = 0
 				busid = int(row[Generator.ID]) % 100
 				dssCkt.SetActiveBus(str(Bus.CLID) + '_' + str(busid))
 				dssCkt.Generators.Name = str(int(row[Generator.TYPE])) + '_' + str(int(row[Generator.ID]))
+				
 				var_volt_mag = list(dssActvBus.VMagAngle)
 				var_volt_pu = list(dssActvBus.puVmagAngle)
 				var_curr = list(dssActvElem.CurrentsMagAng)

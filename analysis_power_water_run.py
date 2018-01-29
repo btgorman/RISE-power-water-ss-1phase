@@ -32,7 +32,8 @@ wdf_array = np.linspace(water_demand_lb, water_demand_ub, water_sims)
 pdf_array = np.linspace(power_load_lb, power_load_ub, power_sims)
 
 pipe_array = [9.0, 25.0, 24.0]
-pipe_array.remove(25.0)
+pipe_array.remove(9.0)
+pipe_array.remove(24.0)
 
 # POWER-WATER ANALYSIS
 # --------------------
@@ -44,7 +45,6 @@ pipe_array.remove(25.0)
 # pumps 1, 2, 4
 # pump 34
 
-for pipe in pipe_array:
-	for widx in range(0, water_sims):
-		for pidx in range(0, power_sims):
-			pid = subprocess.call('python analysis_power_water.py {} {} {}'.format(pdf_array[pidx], wdf_array[widx], pipe), shell=True)
+for widx in range(0, water_sims):
+	for pidx in range(0, power_sims):
+		pid = subprocess.call('python analysis_power_water.py {} {} {}'.format(pdf_array[pidx], wdf_array[widx], 999.0), shell=True)

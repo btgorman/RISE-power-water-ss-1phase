@@ -161,7 +161,7 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 
 			templist = ['[TIMES]']
 			writer.writerow(templist)
-			templist = ['Duration', '0:00:01']
+			templist = ['Duration', '0:00:00']
 			writer.writerow(templist)
 			templist = ['Hydraulic', 'Timestep', '0:00:01']
 			writer.writerow(templist)
@@ -369,7 +369,7 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 	# ----------------------------------------
 
 	for pipe in object_pipe.matrix:
-		if pipe[ENC.Pipe.ID] == pipe_fail_id:
+		if pipe[ENC.Pipe.ID] == 39.0 or pipe[ENC.Pipe.ID] == 40.0:
 			pipe[ENC.Pipe.OPERATIONAL_STATUS] = 0.0
 
 	base_curve_matrix = np.array(object_curve.matrix, copy=True)
@@ -814,7 +814,7 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 		nominal_reserves_list.append(nominal_reserves_dict.get(generator[ODC.Generator.ID], 0.0))
 		reduced_reserves_list.append(nominal_reserves_dict.get(generator[ODC.Generator.ID], 0.0) - reduced_reserves_dict.get(generator[ODC.Generator.ID], 0.0))
 
-	with open('C:\\Users\\' + os_username + '\\Documents\\git\\RISE-power-water-ss-1phase\\model_outputs\\analysis_power_water\\power_water_pipe_{}.csv'.format(int(pipe_fail_id)), 'a', newline='') as file:
+	with open('C:\\Users\\' + os_username + '\\Documents\\git\\RISE-power-water-ss-1phase\\model_outputs\\analysis_power_water\\power_water_pipe_{}.csv'.format(int(999.0)), 'a', newline='') as file:
 		writer = csv.writer(file)
 		writer.writerow([water_df, power_df, need_reserves, actual_reserves, sum(reduced_reserves_dict.values())] + nominal_reserves_list + reduced_reserves_list)
 
