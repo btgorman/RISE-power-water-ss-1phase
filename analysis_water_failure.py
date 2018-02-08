@@ -284,7 +284,7 @@ def main(water_df):
 		for pipe in object_pipe.matrix:
 			if pipe[ENC.Pipe.ID] == pipe_fail_id:
 				pipe[ENC.Pipe.OPERATIONAL_STATUS] = 0.0
-				print('Failing Pipe ID {}'.format(int(pipe_fail_id)))
+				print('Failing Pipe ID {}'.format(pipe_fail_id))
 
 		artificial_reservoir_id_shift = 1000.0
 		max_groundwater_flow = 12399.0 # GPM
@@ -298,13 +298,6 @@ def main(water_df):
 				reservoir[ENC.Reservoir.TOTAL_HEAD] = max(reservoir[ENC.Reservoir.TOTAL_HEAD], 951.11*water_df + 898.89)
 			elif reservoir[ENC.Reservoir.ID] == 23.0:
 				reservoir[ENC.Reservoir.TOTAL_HEAD] = max(reservoir[ENC.Reservoir.TOTAL_HEAD], 668.35*water_df + 631.65)
-
-		# Set valves to maximum amount of groundwater flow
-		for junction in object_junction.matrix:
-			for valve in object_valve.matrix:
-				if valve[ENC.Valve.ID]-groundwater_id_shift == junction[ENC.Junction.ID]:
-					# valve[ENC.Valve.SETTING] = min(junction[ENC.Junction.BASE_DEMAND], max_groundwater_flow)
-					valve[ENC.Valve.SETTING] = max_groundwater_flow
 
 		groundwater_list = []
 		map_to_groundwater_reservoir = {}
@@ -330,9 +323,10 @@ def main(water_df):
 		# Loop real reservoirs, turn off the ones with water inflow
 		while len(groundwater_list) > 0:
 
-			# initialize relevnt demand junctions
+			# initialize relevant demand junctions
 			demand_list = []
 			map_to_junction = {}
+			map_to_junction_groundwater = {}
 			map_to_reservoir = {}
 			map_to_pipe = {}
 
@@ -343,6 +337,13 @@ def main(water_df):
 			for junction in object_junction.matrix:
 				if junction[ENC.Junction.ID] in demand_list:
 					map_to_junction[junction[ENC.Junction.ID]] = junction
+					found_junction_groundwater = 0
+					for junction_groundwater in object_junction.matrix:
+						if junction[ENC.Junction.ID] + groundwater_id_shift == junction_groundwater[ENC.Junction.ID]:
+							map_to_junction_groundwater[junction[ENC.Junction.ID]] = junction_groundwater
+							found_junction_groundwater = 1
+					if found_junction_groundwater == 0:
+						map_to_junction_groundwater[junction[ENC.Junction.ID]] = junction
 
 			# Track artificial reservoirs
 			for reservoir in object_reservoir.matrix:
@@ -364,6 +365,11 @@ def main(water_df):
 				# Close artifical reservoirs pipes
 				for junction_id in demand_list:
 					map_to_pipe[junction_id][ENC.Pipe.OPERATIONAL_STATUS] = 0.0
+
+				# Set valve pressure loss to 0
+				for valve in object_valve.matrix:
+					valve[ENC.Valve.MODEL] = 2.0
+					valve[ENC.Valve.SETTING] = 0.0
 				run_EPANET()
 
 				# Open demand junctions with positive pressure ratio
@@ -373,13 +379,18 @@ def main(water_df):
 					pos_pres_bool = False
 					max_pres_id = demand_list[0]
 					for junction_id in demand_list:
-						if map_to_junction[junction_id][ENC.Junction.PRESSURE] > map_to_junction[max_pres_id][ENC.Junction.PRESSURE] and map_to_pipe[junction_id][ENC.Pipe.OPERATIONAL_STATUS] == 0.0:
+						if max(map_to_junction[junction_id][ENC.Junction.PRESSURE], map_to_junction_groundwater[junction_id][ENC.Junction.PRESSURE]) > map_to_junction[max_pres_id][ENC.Junction.MIN_PRESSURE] and map_to_pipe[junction_id][ENC.Pipe.OPERATIONAL_STATUS] == 0.0:
 							max_pres_id = junction_id
 					# this uses the MINIMUM ALLOWABLE PRESSURE
-					if map_to_junction[max_pres_id][ENC.Junction.PRESSURE] > (map_to_junction[max_pres_id][ENC.Junction.MIN_PRESSURE] -0.01) and map_to_pipe[max_pres_id][ENC.Pipe.OPERATIONAL_STATUS] == 0.0:
+					if max(map_to_junction[max_pres_id][ENC.Junction.PRESSURE], map_to_junction_groundwater[max_pres_id][ENC.Junction.PRESSURE]) > (map_to_junction[max_pres_id][ENC.Junction.MIN_PRESSURE] - 0.01) and map_to_pipe[max_pres_id][ENC.Pipe.OPERATIONAL_STATUS] == 0.0:
 						map_to_pipe[max_pres_id][ENC.Pipe.OPERATIONAL_STATUS] = 1.0
 						pos_pres_bool = True
 					run_EPANET()
+
+				# Set flow control valves to maximum amount of groundwater flow
+				for valve in object_valve.matrix:
+					valve[ENC.Valve.MODEL] = 3.0
+					valve[ENC.Valve.SETTING] = max_groundwater_flow
 				run_EPANET()
 
 				# Close artifical reservoirs with inflows
@@ -407,11 +418,10 @@ def main(water_df):
 				# Set base_demand to greater than 0 and less than maximum if there are no maximums
 				if pda_count == 0:
 					for junction_id in demand_list_copy:
-						if map_to_reservoir[junction_id][ENC.Reservoir.DEMAND] >= 0.0:
+						if map_to_reservoir[junction_id][ENC.Reservoir.DEMAND] >= -0.01:
 							map_to_junction[junction_id][ENC.Junction.BASE_DEMAND] = map_to_reservoir[junction_id][ENC.Reservoir.DEMAND]
 							map_to_pipe[junction_id][ENC.Pipe.OPERATIONAL_STATUS] = 0.0
 							demand_list.remove(junction_id)
-
 				# End inner loop
 			run_EPANET()
 
@@ -428,21 +438,12 @@ def main(water_df):
 			if pda_count == 0:
 				for groundwater_id in groundwater_list_copy:
 					groundwater_list.remove(groundwater_id)
-
 			# End middle loop
 
 		input_list_continuous1, input_list_categorical1, output_list1, input_tensor_continuous1, input_tensor_categorical1, output_tensor1 = run_EPANET()
 
 		# RESULTS STEP 0: Print
 		# ---------------------
-		# for row in object_reservoir.matrix:
-		# 	if row[ENC.Reservoir.ID] == 1.0:
-		# 		print('Reservoir 1 has head of {:.1f}'.format(row[ENC.Reservoir.HEAD]))
-
-		# print('')
-		# for row in object_pipe.matrix:
-		# 	if row[ENC.Pipe.OPERATIONAL_STATUS] == 0.0:
-		# 		print('Pipe {} is closed!'.format(int(row[ENC.Pipe.ID])))
 
 		system_deficit = 0.0
 		j_1_deficit = 0.0
@@ -466,7 +467,6 @@ def main(water_df):
 		for row in object_junction.matrix:
 			if row[ENC.Junction.BASE_DEMAND_AVERAGE] > 0.0:
 				pass
-				# print('Junction {} has pressure {:.2f} and outflow {:.2f} with deficit {:.2f} GPM and {:.2f} %'.format(int(row[ENC.Junction.ID]), row[ENC.Junction.PRESSURE], row[ENC.Junction.DEMAND], water_df * row[ENC.Junction.BASE_DEMAND_AVERAGE] - row[ENC.Junction.DEMAND], (1.0 - row[ENC.Junction.DEMAND] / (water_df * row[ENC.Junction.BASE_DEMAND_AVERAGE]))*100.0 ))
 			if row[ENC.Junction.ID] == 1.0:
 				j_1_deficit = max(0.0, water_df * row[ENC.Junction.BASE_DEMAND_AVERAGE] - row[ENC.Junction.DEMAND])
 			elif row[ENC.Junction.ID] == 2.0:
@@ -517,22 +517,9 @@ def main(water_df):
 		system_deficit += j_19_deficit
 		system_deficit += j_28_deficit
 
-		# print('')
-		# for row in object_reservoir.matrix:
-		# 	print('Reservoir {} has outflow {:.2f}'.format(int(row[ENC.Reservoir.ID]), row[ENC.Reservoir.DEMAND]))
-
-		# for reservoir in object_reservoir.matrix:
-		# 	if reservoir[ENC.Reservoir.DEMAND] > 0.0:
-		# 		print('Reservoir {} has demand {}'.format(int(reservoir[ENC.Reservoir.ID]), reservoir[ENC.Reservoir.DEMAND]))
-
-		# print('')
-		# for pump in object_pump.matrix:
-		# 	print('Pump {} has POWER_CONSUMPTION {:.2f} MW'.format(int(pump[ENC.Pump.ID]), pump[ENC.Pump.POWER_CONSUMPTION]*0.001))
-
 		with open('model_outputs/analysis_water_failure/water_failure_analysis_pipe_{}.csv'.format(int(pipe_fail_id)), 'a', newline='') as file:
 			writer = csv.writer(file)
 			writer.writerow([water_df, system_deficit, j_1_deficit, j_2_deficit, j_3_deficit, j_5_deficit, j_6_deficit, j_7_deficit, j_8_deficit, j_9_deficit, j_10_deficit, j_13_deficit, j_14_deficit, j_15_deficit, j_16_deficit, j_18_deficit, j_19_deficit, j_28_deficit])
-
 	# End outer loop
 
 	# RESULTS STEP 1: FORMAT INPUT/OUTPUT TENSORS

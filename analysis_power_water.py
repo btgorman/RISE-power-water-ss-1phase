@@ -369,7 +369,7 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 	# ----------------------------------------
 
 	for pipe in object_pipe.matrix:
-		if pipe[ENC.Pipe.ID] == 39.0 or pipe[ENC.Pipe.ID] == 40.0:
+		if pipe[ENC.Pipe.ID] == pipe_fail_id:
 			pipe[ENC.Pipe.OPERATIONAL_STATUS] = 0.0
 
 	base_curve_matrix = np.array(object_curve.matrix, copy=True)
@@ -392,12 +392,6 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 			reservoir[ENC.Reservoir.TOTAL_HEAD] = max(reservoir[ENC.Reservoir.TOTAL_HEAD], 951.11*water_df + 898.89)
 		elif reservoir[ENC.Reservoir.ID] == 23.0:
 			reservoir[ENC.Reservoir.TOTAL_HEAD] = max(reservoir[ENC.Reservoir.TOTAL_HEAD], 668.35*water_df + 631.65)
-
-	# Set valves to maximum amount of groundwater flow
-	for junction in object_junction.matrix:
-		for valve in object_valve.matrix:
-			if valve[ENC.Valve.ID]-groundwater_id_shift == junction[ENC.Junction.ID]:
-				valve[ENC.Valve.SETTING] = max_groundwater_flow
 
 	groundwater_list = []
 	map_to_groundwater_reservoir = {}
@@ -426,6 +420,7 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 		# initialize relevnt demand junctions
 		demand_list = []
 		map_to_junction = {}
+		map_to_junction_groundwater = {}
 		map_to_reservoir = {}
 		map_to_pipe = {}
 
@@ -436,6 +431,13 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 		for junction in object_junction.matrix:
 			if junction[ENC.Junction.ID] in demand_list:
 				map_to_junction[junction[ENC.Junction.ID]] = junction
+				found_junction_groundwater = 0
+				for junction_groundwater in object_junction.matrix:
+					if junction[ENC.Junction.ID] + groundwater_id_shift == junction_groundwater[ENC.Junction.ID]:
+						map_to_junction_groundwater[junction[ENC.Junction.ID]] = junction_groundwater
+						found_junction_groundwater = 1
+				if found_junction_groundwater == 0:
+					map_to_junction_groundwater[junction[ENC.Junction.ID]] = junction
 
 		# Track artificial reservoirs
 		for reservoir in object_reservoir.matrix:
@@ -457,6 +459,11 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 			# Close artifical reservoirs pipes
 			for junction_id in demand_list:
 				map_to_pipe[junction_id][ENC.Pipe.OPERATIONAL_STATUS] = 0.0
+
+			# Set valve pressure loss to 0
+			for valve in object_valve.matrix:
+				valve[ENC.Valve.MODEL] = 2.0
+				valve[ENC.Valve.SETTING] = 0.0
 			run_EPANET()
 
 			# Open demand junctions with positive pressure ratio
@@ -466,13 +473,18 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 				pos_pres_bool = False
 				max_pres_id = demand_list[0]
 				for junction_id in demand_list:
-					if map_to_junction[junction_id][ENC.Junction.PRESSURE] > map_to_junction[max_pres_id][ENC.Junction.PRESSURE] and map_to_pipe[junction_id][ENC.Pipe.OPERATIONAL_STATUS] == 0.0:
+					if max(map_to_junction[junction_id][ENC.Junction.PRESSURE], map_to_junction_groundwater[junction_id][ENC.Junction.PRESSURE]) > map_to_junction[max_pres_id][ENC.Junction.MIN_PRESSURE] and map_to_pipe[junction_id][ENC.Pipe.OPERATIONAL_STATUS] == 0.0:
 						max_pres_id = junction_id
 				# this uses the MINIMUM ALLOWABLE PRESSURE
-				if map_to_junction[max_pres_id][ENC.Junction.PRESSURE] > (map_to_junction[max_pres_id][ENC.Junction.MIN_PRESSURE]-0.01) and map_to_pipe[max_pres_id][ENC.Pipe.OPERATIONAL_STATUS] == 0.0:
+				if max(map_to_junction[max_pres_id][ENC.Junction.PRESSURE], map_to_junction_groundwater[max_pres_id][ENC.Junction.PRESSURE]) > (map_to_junction[max_pres_id][ENC.Junction.MIN_PRESSURE] - 0.01) and map_to_pipe[max_pres_id][ENC.Pipe.OPERATIONAL_STATUS] == 0.0:
 					map_to_pipe[max_pres_id][ENC.Pipe.OPERATIONAL_STATUS] = 1.0
 					pos_pres_bool = True
 				run_EPANET()
+
+			# Set flow control valves to maximum amount of groundwater flow
+			for valve in object_valve.matrix:
+				valve[ENC.Valve.MODEL] = 3.0
+				valve[ENC.Valve.SETTING] = max_groundwater_flow
 			run_EPANET()
 
 			# Close artifical reservoirs with inflows
@@ -500,11 +512,10 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 			# Set base_demand to greater than 0 and less than maximum if there are no maximums
 			if pda_count == 0:
 				for junction_id in demand_list_copy:
-					if map_to_reservoir[junction_id][ENC.Reservoir.DEMAND] >= 0.0:
+					if map_to_reservoir[junction_id][ENC.Reservoir.DEMAND] >= -0.01:
 						map_to_junction[junction_id][ENC.Junction.BASE_DEMAND] = map_to_reservoir[junction_id][ENC.Reservoir.DEMAND]
 						map_to_pipe[junction_id][ENC.Pipe.OPERATIONAL_STATUS] = 0.0
 						demand_list.remove(junction_id)
-
 			# End inner loop
 		run_EPANET()
 
@@ -521,7 +532,6 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 		if pda_count == 0:
 			for groundwater_id in groundwater_list_copy:
 				groundwater_list.remove(groundwater_id)
-
 		# End middle loop
 	run_EPANET()
 
@@ -538,7 +548,7 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 	# SIM STEP 2: SET LOAD INTERCONNECTIONS
 	# ----------------------------------
 	
-	# object_load.setInterconnectionLoad(interconn_dict)
+	object_load.setInterconnectionLoad(interconn_dict)
 
 	# SIM STEP 3: SET GENERATOR DISPATCH
 	# ----------------------------------
@@ -604,8 +614,7 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 	# -----------------------------------------
 
 	# SIM STEP 5:
-	# Set water tank levels
-	# Set water valve flow control
+	# Set water
 	# ----------------------------
 	
 	object_curve.matrix = np.array(base_curve_matrix, copy=True)
@@ -630,12 +639,6 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 			reservoir[ENC.Reservoir.TOTAL_HEAD] = max(reservoir[ENC.Reservoir.TOTAL_HEAD], 951.11*water_df + 898.89)
 		elif reservoir[ENC.Reservoir.ID] == 23.0:
 			reservoir[ENC.Reservoir.TOTAL_HEAD] = max(reservoir[ENC.Reservoir.TOTAL_HEAD], 668.35*water_df + 631.65)
-
-	# Set valves to maximum amount of groundwater flow
-	for junction in object_junction.matrix:
-		for valve in object_valve.matrix:
-			if valve[ENC.Valve.ID]-groundwater_id_shift == junction[ENC.Junction.ID]:
-				valve[ENC.Valve.SETTING] = max_groundwater_flow
 
 	groundwater_list = []
 	map_to_groundwater_reservoir = {}
@@ -664,16 +667,24 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 		# initialize relevnt demand junctions
 		demand_list = []
 		map_to_junction = {}
+		map_to_junction_groundwater = {}
 		map_to_reservoir = {}
 		map_to_pipe = {}
 
 		# Track demand junctions
 		for junction in object_junction.matrix:
-			if junction[ENC.Junction.BASE_DEMAND_AVERAGE]+junction[ENC.Junction.INTERCONNECTION_DISPATCH_DEMAND]+junction[ENC.Junction.INTERCONNECTION_RESPONSE_DEMAND] > 0.0:
+			if junction[ENC.Junction.BASE_DEMAND_AVERAGE] > 0.0:
 				demand_list.append(junction[ENC.Junction.ID])
 		for junction in object_junction.matrix:
 			if junction[ENC.Junction.ID] in demand_list:
 				map_to_junction[junction[ENC.Junction.ID]] = junction
+				found_junction_groundwater = 0
+				for junction_groundwater in object_junction.matrix:
+					if junction[ENC.Junction.ID] + groundwater_id_shift == junction_groundwater[ENC.Junction.ID]:
+						map_to_junction_groundwater[junction[ENC.Junction.ID]] = junction_groundwater
+						found_junction_groundwater = 1
+				if found_junction_groundwater == 0:
+					map_to_junction_groundwater[junction[ENC.Junction.ID]] = junction
 
 		# Track artificial reservoirs
 		for reservoir in object_reservoir.matrix:
@@ -695,8 +706,13 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 			# Close artifical reservoirs pipes
 			for junction_id in demand_list:
 				map_to_pipe[junction_id][ENC.Pipe.OPERATIONAL_STATUS] = 0.0
+
+			# Set valve pressure loss to 0
+			for valve in object_valve.matrix:
+				valve[ENC.Valve.MODEL] = 2.0
+				valve[ENC.Valve.SETTING] = 0.0
 			run_EPANET()
-						
+
 			# Open demand junctions with positive pressure ratio
 			# Can take multiple iterations
 			pos_pres_bool = True
@@ -704,13 +720,18 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 				pos_pres_bool = False
 				max_pres_id = demand_list[0]
 				for junction_id in demand_list:
-					if map_to_junction[junction_id][ENC.Junction.PRESSURE] > map_to_junction[max_pres_id][ENC.Junction.PRESSURE] and map_to_pipe[junction_id][ENC.Pipe.OPERATIONAL_STATUS] == 0.0:
+					if max(map_to_junction[junction_id][ENC.Junction.PRESSURE], map_to_junction_groundwater[junction_id][ENC.Junction.PRESSURE]) > map_to_junction[max_pres_id][ENC.Junction.MIN_PRESSURE] and map_to_pipe[junction_id][ENC.Pipe.OPERATIONAL_STATUS] == 0.0:
 						max_pres_id = junction_id
 				# this uses the MINIMUM ALLOWABLE PRESSURE
-				if map_to_junction[max_pres_id][ENC.Junction.PRESSURE] > (map_to_junction[max_pres_id][ENC.Junction.MIN_PRESSURE]-0.01) and map_to_pipe[max_pres_id][ENC.Pipe.OPERATIONAL_STATUS] == 0.0:
+				if max(map_to_junction[max_pres_id][ENC.Junction.PRESSURE], map_to_junction_groundwater[max_pres_id][ENC.Junction.PRESSURE]) > (map_to_junction[max_pres_id][ENC.Junction.MIN_PRESSURE] - 0.01) and map_to_pipe[max_pres_id][ENC.Pipe.OPERATIONAL_STATUS] == 0.0:
 					map_to_pipe[max_pres_id][ENC.Pipe.OPERATIONAL_STATUS] = 1.0
 					pos_pres_bool = True
 				run_EPANET()
+
+			# Set flow control valves to maximum amount of groundwater flow
+			for valve in object_valve.matrix:
+				valve[ENC.Valve.MODEL] = 3.0
+				valve[ENC.Valve.SETTING] = max_groundwater_flow
 			run_EPANET()
 
 			# Close artifical reservoirs with inflows
@@ -729,8 +750,8 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 			pda_count = 0
 			demand_list_copy = demand_list.copy()
 			for junction_id in demand_list_copy:
-				if map_to_reservoir[junction_id][ENC.Reservoir.DEMAND] >= water_df * map_to_junction[junction_id][ENC.Junction.BASE_DEMAND_AVERAGE] + map_to_junction[junction_id][ENC.Junction.INTERCONNECTION_DISPATCH_DEMAND] + map_to_junction[junction_id][ENC.Junction.INTERCONNECTION_RESPONSE_DEMAND]:
-					map_to_junction[junction_id][ENC.Junction.BASE_DEMAND] = water_df * map_to_junction[junction_id][ENC.Junction.BASE_DEMAND_AVERAGE] + map_to_junction[junction_id][ENC.Junction.INTERCONNECTION_DISPATCH_DEMAND] + map_to_junction[junction_id][ENC.Junction.INTERCONNECTION_RESPONSE_DEMAND]
+				if map_to_reservoir[junction_id][ENC.Reservoir.DEMAND] >= water_df * map_to_junction[junction_id][ENC.Junction.BASE_DEMAND_AVERAGE]:
+					map_to_junction[junction_id][ENC.Junction.BASE_DEMAND] = water_df * map_to_junction[junction_id][ENC.Junction.BASE_DEMAND_AVERAGE]
 					map_to_pipe[junction_id][ENC.Pipe.OPERATIONAL_STATUS] = 0.0
 					demand_list.remove(junction_id)
 					pda_count += 1
@@ -738,11 +759,10 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 			# Set base_demand to greater than 0 and less than maximum if there are no maximums
 			if pda_count == 0:
 				for junction_id in demand_list_copy:
-					if map_to_reservoir[junction_id][ENC.Reservoir.DEMAND] >= 0.0:
+					if map_to_reservoir[junction_id][ENC.Reservoir.DEMAND] >= -0.01:
 						map_to_junction[junction_id][ENC.Junction.BASE_DEMAND] = map_to_reservoir[junction_id][ENC.Reservoir.DEMAND]
 						map_to_pipe[junction_id][ENC.Pipe.OPERATIONAL_STATUS] = 0.0
 						demand_list.remove(junction_id)
-
 			# End inner loop
 		run_EPANET()
 
@@ -759,7 +779,6 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 		if pda_count == 0:
 			for groundwater_id in groundwater_list_copy:
 				groundwater_list.remove(groundwater_id)
-
 		# End middle loop
 	run_EPANET()
 
@@ -814,7 +833,7 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 		nominal_reserves_list.append(nominal_reserves_dict.get(generator[ODC.Generator.ID], 0.0))
 		reduced_reserves_list.append(nominal_reserves_dict.get(generator[ODC.Generator.ID], 0.0) - reduced_reserves_dict.get(generator[ODC.Generator.ID], 0.0))
 
-	with open('C:\\Users\\' + os_username + '\\Documents\\git\\RISE-power-water-ss-1phase\\model_outputs\\analysis_power_water\\power_water_pipe_{}.csv'.format(int(999.0)), 'a', newline='') as file:
+	with open('C:\\Users\\' + os_username + '\\Documents\\git\\RISE-power-water-ss-1phase\\model_outputs\\analysis_power_water\\power_water_pipe_{}.csv'.format(int(pipe_fail_id)), 'a', newline='') as file:
 		writer = csv.writer(file)
 		writer.writerow([water_df, power_df, need_reserves, actual_reserves, sum(reduced_reserves_dict.values())] + nominal_reserves_list + reduced_reserves_list)
 
