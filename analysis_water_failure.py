@@ -517,6 +517,24 @@ def main(water_df):
 		system_deficit += j_19_deficit
 		system_deficit += j_28_deficit
 
+		# print('syst {:.2f}'.format(system_deficit))
+		# print('j_1_ {:.2f}'.format(j_1_deficit))
+		# print('j_2_ {:.2f}'.format(j_2_deficit))
+		# print('j_3_ {:.2f}'.format(j_3_deficit))
+		# print('j_5_ {:.2f}'.format(j_5_deficit))
+		# print('j_6_ {:.2f}'.format(j_6_deficit))
+		# print('j_7_ {:.2f}'.format(j_7_deficit))
+		# print('j_8_ {:.2f}'.format(j_8_deficit))
+		# print('j_9_ {:.2f}'.format(j_9_deficit))
+		# print('j_10 {:.2f}'.format(j_10_deficit))
+		# print('j_13 {:.2f}'.format(j_13_deficit))
+		# print('j_14 {:.2f}'.format(j_14_deficit))
+		# print('j_15 {:.2f}'.format(j_15_deficit))
+		# print('j_16 {:.2f}'.format(j_16_deficit))
+		# print('j_18 {:.2f}'.format(j_18_deficit))
+		# print('j_19 {:.2f}'.format(j_19_deficit))
+		# print('j_28 {:.2f}'.format(j_28_deficit))
+
 		with open('model_outputs/analysis_water_failure/water_failure_analysis_pipe_{}.csv'.format(int(pipe_fail_id)), 'a', newline='') as file:
 			writer = csv.writer(file)
 			writer.writerow([water_df, system_deficit, j_1_deficit, j_2_deficit, j_3_deficit, j_5_deficit, j_6_deficit, j_7_deficit, j_8_deficit, j_9_deficit, j_10_deficit, j_13_deficit, j_14_deficit, j_15_deficit, j_16_deficit, j_18_deficit, j_19_deficit, j_28_deficit])

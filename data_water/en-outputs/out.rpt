@@ -1,4 +1,4 @@
-  Page 1                                    Thu Feb 08 16:44:48 2018
+  Page 1                                    Mon Feb 12 16:54:38 2018
 
   ******************************************************************
   *                           E P A N E T                          *
@@ -7,10 +7,12 @@
   *                         Version 2.00.12                        *
   ******************************************************************
   
-  Analysis begun Thu Feb 08 16:44:48 2018
+  Analysis begun Mon Feb 12 16:54:38 2018
 
-  WARNING: Negative pressures at 0:00:00 hrs.
+  WARNING: FCV 2001 open but cannot deliver flow at 0:00:00 hrs.
   WARNING: FCV 2002 open but cannot deliver flow at 0:00:00 hrs.
-  WARNING: Pump 7 closed because cannot deliver head at 0:00:00 hrs.
+  WARNING: FCV 2003 open but cannot deliver flow at 0:00:00 hrs.
+  WARNING: FCV 2007 open but cannot deliver flow at 0:00:00 hrs.
+  WARNING: FCV 2008 open but cannot deliver flow at 0:00:00 hrs.
   
-  Analysis ended Thu Feb 08 16:44:48 2018
+  Analysis ended Mon Feb 12 16:54:38 2018

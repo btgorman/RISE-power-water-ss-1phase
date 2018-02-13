@@ -20,7 +20,7 @@ import numpy as np
 
 water_demand_lb = 0.372453
 water_demand_ub = 2.984
-water_sims = 11
+water_sims = 8
 
 power_load_lb = 0.3388
 power_load_ub = 1.0
@@ -30,8 +30,6 @@ wdf_array = np.linspace(water_demand_lb, water_demand_ub, water_sims)
 pdf_array = np.linspace(power_load_lb, power_load_ub, power_sims)
 
 pipe_array = [9.0, 25.0, 24.0]
-pipe_array.remove(9.0)
-pipe_array.remove(24.0)
 
 # POWER-WATER ANALYSIS
 # --------------------

@@ -673,7 +673,7 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 
 		# Track demand junctions
 		for junction in object_junction.matrix:
-			if junction[ENC.Junction.BASE_DEMAND_AVERAGE]+junction[ENC.Junction.INTERCONNECTION_DISPATCH_DEMAND]+junction[ENC.Junction.INTERCONNECTION_RESPONSE_DEMAND] > 0.0:
+			if junction[ENC.Junction.BASE_DEMAND_AVERAGE] + junction[ENC.Junction.INTERCONNECTION_DISPATCH_DEMAND] + junction[ENC.Junction.INTERCONNECTION_RESPONSE_DEMAND] > 0.0:
 				demand_list.append(junction[ENC.Junction.ID])
 		for junction in object_junction.matrix:
 			if junction[ENC.Junction.ID] in demand_list:
