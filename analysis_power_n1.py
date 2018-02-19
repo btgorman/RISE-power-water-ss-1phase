@@ -456,7 +456,6 @@ def main(dss_debug, write_cols, plf):
 		run_OpenDSS(0, True)
 
 		if row[ODC.Generator.REAL_GENERATION] != 0.0:
-			# print('GEN ID', row[ODC.Generator.ID])
 			row[ODC.Generator.REAL_GENERATION] = 0.0
 			row[ODC.Generator.OPERATIONAL_STATUS] = 0.0
 			run_OpenDSS(0, True)
@@ -473,7 +472,7 @@ def main(dss_debug, write_cols, plf):
 			list_gen_post_branch_load.append(abs(object_cable.matrix[branch_idx, ODC.Cable.A_PU_CAPACITY]))
 			list_gen_mint.append(grb_solvers.contingency_response(object_load, object_generator, object_cable))
 			if list_gen_mint[-1] > 10.0:
-				print('GEN ID', list_gen_mint[-1])
+				print('GEN ID {}'.format(int(row[ODC.Generator.ID])))
 				print(list_gen_mint[-1])
 			run_OpenDSS(0, True)
 			list_gen_resp_branch_load.append(abs(object_cable.matrix[branch_idx, ODC.Cable.A_PU_CAPACITY]))
@@ -500,6 +499,9 @@ def main(dss_debug, write_cols, plf):
 
 				list_branch_post_branch_load.append(abs(object_cable.matrix[branch_idx, ODC.Cable.A_PU_CAPACITY]))
 				list_branch_mint.append(grb_solvers.contingency_response(object_load, object_generator, object_cable))
+				if list_branch_mint[-1] > 10.0:
+					print('BRANCH ID {}'.format(int(row[ODC.Cable.ID])))
+					print(list_branch_mint[-1])
 				run_OpenDSS(0, True)
 				list_branch_resp_branch_load.append(abs(object_cable.matrix[branch_idx, ODC.Cable.A_PU_CAPACITY]))
 				list_branch_error.append(0.5*(object_cable.matrix[34-1, ODC.Cable.REAL_POWER_2] - object_cable.matrix[34-1, ODC.Cable.REAL_POWER_1]))

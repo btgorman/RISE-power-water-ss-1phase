@@ -29,4 +29,5 @@ for i in range(0, len(plf_array)):
 	if (i+1)%10 == 0:
 		print(i+1)
 
-	pid = subprocess.call('python analysis_power_n1.py {}'.format(plf_array[i]), shell=True)
+	if plf_array[i] > 0.8:
+		pid = subprocess.call('python analysis_power_n1.py {}'.format(plf_array[i]), shell=True)

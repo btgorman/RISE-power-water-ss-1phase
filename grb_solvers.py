@@ -3794,6 +3794,419 @@ def contingency_response(object_load, object_generator, object_cable):
 	except gurobipy.GurobiError:
 		print('Gurobi error reported in contignency response')
 
+def contingency_response_2(object_load, object_generator, object_cable):
+
+	unit_recommit = {101: 0., 201: 0., 102: 0., 202: 0.}
+	unit_response = {101: 0., 201: 0., 301: 0., 401: 0., 102: 0., 202: 0., 302: 0., 402: 0., 107: 0., 207: 0., 307: 0., 113: 0., 213: 0., 313: 0., 115: 0., 215: 0., 315: 0., 415: 0., 515: 0., 615: 0., 116: 0., 118: 0., 121: 0., 122: 0., 222: 0., 322: 0., 422: 0., 522: 0., 622: 0., 123: 0., 223: 0., 323: 0}
+
+	ptdf_tab = pd.DataFrame.from_csv('C://Users//' + os_username + '//Documents//git//RISE-power-water-ss-1phase//model_methods//dcopf_tables//ptdf.csv', header=0, index_col=0)
+	lodf_tab = pd.DataFrame.from_csv('C://Users//' + os_username + '//Documents//git//RISE-power-water-ss-1phase//model_methods//dcopf_tables//lodf.csv', header=0, index_col=0)
+
+	uc_g = {}
+	r_g = {}
+	P_g = {}
+	P_g_min = {}
+	P_g_max = {}
+	MAX_RESPONSE = max(object_generator.matrix[:, ODC.Generator.REAL_GENERATION_MAX_RATING])
+	for row in object_generator.matrix:
+		if row[ODC.Generator.OPERATIONAL_STATUS] == 0.0:
+			row[ODC.Generator.REAL_GENERATION] = 0.0
+		uc_g[int(row[ODC.Generator.ID])] = row[ODC.Generator.OPERATIONAL_STATUS]
+		r_g[int(row[ODC.Generator.ID])] = row[ODC.Generator.RAMP_RATE]
+		P_g[int(row[ODC.Generator.ID])] = row[ODC.Generator.REAL_GENERATION]
+		P_g_min[int(row[ODC.Generator.ID])] = row[ODC.Generator.REAL_GENERATION_MIN_RATING]
+		P_g_max[int(row[ODC.Generator.ID])] = row[ODC.Generator.REAL_GENERATION_MAX_RATING]
+
+	outage_id = -1
+	outage_count = 0
+	outage_sign = 0
+
+	P_b = {}
+	P_b_min = {}
+	P_b_max = {}
+	for row in object_cable.matrix:
+		P_b[int(row[ODC.Cable.ID])] = 0.5 * (row[ODC.Cable.REAL_POWER_2] - row[ODC.Cable.REAL_POWER_1])
+		P_b_min[int(row[ODC.Cable.ID])] = - row[ODC.Cable.NORMAL_RATING] * row[ODC.Cable.MAX_PU_CAPACITY]
+		P_b_max[int(row[ODC.Cable.ID])] = row[ODC.Cable.NORMAL_RATING] * row[ODC.Cable.MAX_PU_CAPACITY]
+		if row[ODC.Cable.OPERATIONAL_STATUS_A] == 0.0:
+			outage_id = int(row[ODC.Cable.ID])
+			outage_sign = -lodf_tab.loc[outage_id][str(outage_id)]
+			outage_count += 1
+	if outage_id == -1:
+		outage_id = 1
+	if outage_count > 1:
+		print('grb_solvers.py Error: More than one line outage!')
+
+
+	SUM_LOAD = float(sum(object_load.matrix[:, ODC.Load.REAL_LOAD]) + sum(object_load.matrix[:, ODC.Load.INTERCONNECTION_LOAD]))
+
+	try:
+		m = gurobipy.Model('mip1')
+		
+		slack = 0.1 # kW
+		# slack = m.addVar(lb=0.0, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name='slack')
+
+		mint = m.addVar(lb=0.0, ub=100.0, vtype=GRB.CONTINUOUS, name='mint') #minutes
+
+		uc_101 = m.addVar(lb=0.0, ub=1.0, vtype=GRB.BINARY, name='uc_101') # combustion turbine with fast start capability
+		uc_201 = m.addVar(lb=0.0, ub=1.0, vtype=GRB.BINARY, name='uc_201') # combustion turbine with fast start capability
+		uc_102 = m.addVar(lb=0.0, ub=1.0, vtype=GRB.BINARY, name='uc_102') # combustion turbine with fast start capability
+		uc_202 = m.addVar(lb=0.0, ub=1.0, vtype=GRB.BINARY, name='uc_202') # combustion turbine with fast start capability
+
+		r_101 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_101') # combustion turbine with fast start capability
+		r_201 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_201') # combustion turbine with fast start capability
+		r_301 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_301')
+		r_401 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_401')
+		r_102 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_102') # combustion turbine with fast start capability
+		r_202 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_202') # combustion turbine with fast start capability
+		r_302 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_302')
+		r_402 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_402')
+		r_107 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_107')
+		r_207 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_207')
+		r_307 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_307')
+		r_113 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_113')
+		r_213 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_213')
+		r_313 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_313')
+		r_115 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_115')
+		r_215 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_215')
+		r_315 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_315')
+		r_415 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_415')
+		r_515 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_515')
+		r_615 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_615')
+		r_116 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_116')
+		r_118 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_118')
+		r_121 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_121')
+		r_122 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_122')
+		r_222 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_222')
+		r_322 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_322')
+		r_422 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_422')
+		r_522 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_522')
+		r_622 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_622')
+		r_123 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_123')
+		r_223 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_223')
+		r_323 = m.addVar(lb=-MAX_RESPONSE, ub=MAX_RESPONSE, vtype=GRB.CONTINUOUS, name='r_323')
+
+		# Objective function
+		m.setObjective(mint, GRB.MINIMIZE)
+
+		# Zero out imports/exports
+		m.addConstr(-slack <= P_b[100] + uc_101*r_101*(ptdf_tab.loc[101]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[101][str(outage_id)]) +
+			uc_201*r_201*(ptdf_tab.loc[201]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[201][str(outage_id)]) +
+			uc_g[301]*r_301*(ptdf_tab.loc[301]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[301][str(outage_id)]) +
+			uc_g[401]*r_401*(ptdf_tab.loc[401]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[401][str(outage_id)]) +
+			uc_102*r_102*(ptdf_tab.loc[102]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[102][str(outage_id)]) +
+			uc_202*r_202*(ptdf_tab.loc[202]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[202][str(outage_id)]) +
+			uc_g[302]*r_302*(ptdf_tab.loc[302]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[302][str(outage_id)]) +
+			uc_g[402]*r_402*(ptdf_tab.loc[402]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[402][str(outage_id)]) +
+			uc_g[107]*r_107*(ptdf_tab.loc[107]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[107][str(outage_id)]) +
+			uc_g[207]*r_207*(ptdf_tab.loc[207]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[207][str(outage_id)]) +
+			uc_g[307]*r_307*(ptdf_tab.loc[307]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[307][str(outage_id)]) +
+			uc_g[113]*r_113*(ptdf_tab.loc[113]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[113][str(outage_id)]) +
+			uc_g[213]*r_213*(ptdf_tab.loc[213]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[213][str(outage_id)]) +
+			uc_g[313]*r_313*(ptdf_tab.loc[313]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[313][str(outage_id)]) +
+			uc_g[115]*r_115*(ptdf_tab.loc[115]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[115][str(outage_id)]) +
+			uc_g[215]*r_215*(ptdf_tab.loc[215]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[215][str(outage_id)]) +
+			uc_g[315]*r_315*(ptdf_tab.loc[315]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[315][str(outage_id)]) +
+			uc_g[415]*r_415*(ptdf_tab.loc[415]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[415][str(outage_id)]) +
+			uc_g[515]*r_515*(ptdf_tab.loc[515]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[515][str(outage_id)]) +
+			uc_g[615]*r_615*(ptdf_tab.loc[615]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[615][str(outage_id)]) +
+			uc_g[116]*r_116*(ptdf_tab.loc[116]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[116][str(outage_id)]) +
+			uc_g[118]*r_118*(ptdf_tab.loc[118]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[118][str(outage_id)]) +
+			uc_g[121]*r_121*(ptdf_tab.loc[121]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[121][str(outage_id)]) +
+			uc_g[122]*r_122*(ptdf_tab.loc[122]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[122][str(outage_id)]) +
+			uc_g[222]*r_222*(ptdf_tab.loc[222]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[222][str(outage_id)]) +
+			uc_g[322]*r_322*(ptdf_tab.loc[322]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[322][str(outage_id)]) +
+			uc_g[422]*r_422*(ptdf_tab.loc[422]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[422][str(outage_id)]) +
+			uc_g[522]*r_522*(ptdf_tab.loc[522]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[522][str(outage_id)]) +
+			uc_g[622]*r_622*(ptdf_tab.loc[622]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[622][str(outage_id)]) +
+			uc_g[123]*r_123*(ptdf_tab.loc[123]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[123][str(outage_id)]) +
+			uc_g[223]*r_223*(ptdf_tab.loc[223]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[223][str(outage_id)]) +
+			uc_g[323]*r_323*(ptdf_tab.loc[323]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[323][str(outage_id)]))
+
+		m.addConstr(slack >= P_b[100] + uc_101*r_101*(ptdf_tab.loc[101]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[101][str(outage_id)]) +
+			uc_201*r_201*(ptdf_tab.loc[201]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[201][str(outage_id)]) +
+			uc_g[301]*r_301*(ptdf_tab.loc[301]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[301][str(outage_id)]) +
+			uc_g[401]*r_401*(ptdf_tab.loc[401]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[401][str(outage_id)]) +
+			uc_102*r_102*(ptdf_tab.loc[102]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[102][str(outage_id)]) +
+			uc_202*r_202*(ptdf_tab.loc[202]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[202][str(outage_id)]) +
+			uc_g[302]*r_302*(ptdf_tab.loc[302]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[302][str(outage_id)]) +
+			uc_g[402]*r_402*(ptdf_tab.loc[402]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[402][str(outage_id)]) +
+			uc_g[107]*r_107*(ptdf_tab.loc[107]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[107][str(outage_id)]) +
+			uc_g[207]*r_207*(ptdf_tab.loc[207]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[207][str(outage_id)]) +
+			uc_g[307]*r_307*(ptdf_tab.loc[307]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[307][str(outage_id)]) +
+			uc_g[113]*r_113*(ptdf_tab.loc[113]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[113][str(outage_id)]) +
+			uc_g[213]*r_213*(ptdf_tab.loc[213]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[213][str(outage_id)]) +
+			uc_g[313]*r_313*(ptdf_tab.loc[313]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[313][str(outage_id)]) +
+			uc_g[115]*r_115*(ptdf_tab.loc[115]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[115][str(outage_id)]) +
+			uc_g[215]*r_215*(ptdf_tab.loc[215]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[215][str(outage_id)]) +
+			uc_g[315]*r_315*(ptdf_tab.loc[315]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[315][str(outage_id)]) +
+			uc_g[415]*r_415*(ptdf_tab.loc[415]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[415][str(outage_id)]) +
+			uc_g[515]*r_515*(ptdf_tab.loc[515]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[515][str(outage_id)]) +
+			uc_g[615]*r_615*(ptdf_tab.loc[615]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[615][str(outage_id)]) +
+			uc_g[116]*r_116*(ptdf_tab.loc[116]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[116][str(outage_id)]) +
+			uc_g[118]*r_118*(ptdf_tab.loc[118]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[118][str(outage_id)]) +
+			uc_g[121]*r_121*(ptdf_tab.loc[121]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[121][str(outage_id)]) +
+			uc_g[122]*r_122*(ptdf_tab.loc[122]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[122][str(outage_id)]) +
+			uc_g[222]*r_222*(ptdf_tab.loc[222]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[222][str(outage_id)]) +
+			uc_g[322]*r_322*(ptdf_tab.loc[322]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[322][str(outage_id)]) +
+			uc_g[422]*r_422*(ptdf_tab.loc[422]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[422][str(outage_id)]) +
+			uc_g[522]*r_522*(ptdf_tab.loc[522]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[522][str(outage_id)]) +
+			uc_g[622]*r_622*(ptdf_tab.loc[622]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[622][str(outage_id)]) +
+			uc_g[123]*r_123*(ptdf_tab.loc[123]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[123][str(outage_id)]) +
+			uc_g[223]*r_223*(ptdf_tab.loc[223]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[223][str(outage_id)]) +
+			uc_g[323]*r_323*(ptdf_tab.loc[323]['100'] + outage_sign * lodf_tab.loc[outage_id]['100'] * ptdf_tab.loc[323][str(outage_id)]))
+
+
+		# Re-dispatch must be greater than 10-minutes of ramping down *************************************************************
+		m.addConstr(r_101 >= uc_101 * (mint * -r_g[101]))
+		m.addConstr(r_201 >= uc_201 * (mint * -r_g[201]))
+		m.addConstr(r_301 >= uc_g[301] * (mint * -r_g[301]))
+		m.addConstr(r_401 >= uc_g[401] * (mint * -r_g[401]))
+		m.addConstr(r_102 >= uc_102 * (mint * -r_g[102]))
+		m.addConstr(r_202 >= uc_202 * (mint * -r_g[202]))
+		m.addConstr(r_302 >= uc_g[302] * (mint * -r_g[302]))
+		m.addConstr(r_402 >= uc_g[402] * (mint * -r_g[402]))
+		m.addConstr(r_107 >= uc_g[107] * (mint * -r_g[107]))
+		m.addConstr(r_207 >= uc_g[207] * (mint * -r_g[207]))
+		m.addConstr(r_307 >= uc_g[307] * (mint * -r_g[307]))
+		m.addConstr(r_113 >= uc_g[113] * (mint * -r_g[113]))
+		m.addConstr(r_213 >= uc_g[213] * (mint * -r_g[213]))
+		m.addConstr(r_313 >= uc_g[313] * (mint * -r_g[313]))
+		m.addConstr(r_115 >= uc_g[115] * (mint * -r_g[115]))
+		m.addConstr(r_215 >= uc_g[215] * (mint * -r_g[215]))
+		m.addConstr(r_315 >= uc_g[315] * (mint * -r_g[315]))
+		m.addConstr(r_415 >= uc_g[415] * (mint * -r_g[415]))
+		m.addConstr(r_515 >= uc_g[515] * (mint * -r_g[515]))
+		m.addConstr(r_615 >= uc_g[615] * (mint * -r_g[615]))
+		m.addConstr(r_116 >= uc_g[116] * (mint * -r_g[116]))
+		m.addConstr(r_118 >= uc_g[118] * (mint * -r_g[118]))
+		m.addConstr(r_121 >= uc_g[121] * (mint * -r_g[121]))
+		m.addConstr(r_122 >= uc_g[122] * (mint * -r_g[122]))
+		m.addConstr(r_222 >= uc_g[222] * (mint * -r_g[222]))
+		m.addConstr(r_322 >= uc_g[322] * (mint * -r_g[322]))
+		m.addConstr(r_422 >= uc_g[422] * (mint * -r_g[422]))
+		m.addConstr(r_522 >= uc_g[522] * (mint * -r_g[522]))
+		m.addConstr(r_622 >= uc_g[622] * (mint * -r_g[622]))
+		m.addConstr(r_123 >= uc_g[123] * (mint * -r_g[123]))
+		m.addConstr(r_223 >= uc_g[223] * (mint * -r_g[223]))
+		m.addConstr(r_323 >= uc_g[323] * (mint * -r_g[323]))
+
+		# # Re-dispatch must be less than 10-minutes of ramping up ******************************************************************
+		m.addConstr(r_101 <= uc_101 * (mint * r_g[101]))
+		m.addConstr(r_201 <= uc_201 * (mint * r_g[201]))
+		m.addConstr(r_301 <= uc_g[301] * (mint * r_g[301]))
+		m.addConstr(r_401 <= uc_g[401] * (mint * r_g[401]))
+		m.addConstr(r_102 <= uc_102 * (mint * r_g[102]))
+		m.addConstr(r_202 <= uc_202 * (mint * r_g[202]))
+		m.addConstr(r_302 <= uc_g[302] * (mint * r_g[302]))
+		m.addConstr(r_402 <= uc_g[402] * (mint * r_g[402]))
+		m.addConstr(r_107 <= uc_g[107] * (mint * r_g[107]))
+		m.addConstr(r_207 <= uc_g[207] * (mint * r_g[207]))
+		m.addConstr(r_307 <= uc_g[307] * (mint * r_g[307]))
+		m.addConstr(r_113 <= uc_g[113] * (mint * r_g[113]))
+		m.addConstr(r_213 <= uc_g[213] * (mint * r_g[213]))
+		m.addConstr(r_313 <= uc_g[313] * (mint * r_g[313]))
+		m.addConstr(r_115 <= uc_g[115] * (mint * r_g[115]))
+		m.addConstr(r_215 <= uc_g[215] * (mint * r_g[215]))
+		m.addConstr(r_315 <= uc_g[315] * (mint * r_g[315]))
+		m.addConstr(r_415 <= uc_g[415] * (mint * r_g[415]))
+		m.addConstr(r_515 <= uc_g[515] * (mint * r_g[515]))
+		m.addConstr(r_615 <= uc_g[615] * (mint * r_g[615]))
+		m.addConstr(r_116 <= uc_g[116] * (mint * r_g[116]))
+		m.addConstr(r_118 <= uc_g[118] * (mint * r_g[118]))
+		m.addConstr(r_121 <= uc_g[121] * (mint * r_g[121]))
+		m.addConstr(r_122 <= uc_g[122] * (mint * r_g[122]))
+		m.addConstr(r_222 <= uc_g[222] * (mint * r_g[222]))
+		m.addConstr(r_322 <= uc_g[322] * (mint * r_g[322]))
+		m.addConstr(r_422 <= uc_g[422] * (mint * r_g[422]))
+		m.addConstr(r_522 <= uc_g[522] * (mint * r_g[522]))
+		m.addConstr(r_622 <= uc_g[622] * (mint * r_g[622]))
+		m.addConstr(r_123 <= uc_g[123] * (mint * r_g[123]))
+		m.addConstr(r_223 <= uc_g[223] * (mint * r_g[223]))
+		m.addConstr(r_323 <= uc_g[323] * (mint * r_g[323]))
+
+		# # Re-dispatch must be greater than minimum generation *********************************************************************
+		m.addConstr(uc_101*P_g[101] + r_101 >= P_g_min[101])
+		m.addConstr(uc_201*P_g[201] + r_201 >= P_g_min[201])
+		m.addConstr(uc_g[301]*P_g[301] + r_301 >= uc_g[301]*P_g_min[301])
+		m.addConstr(uc_g[401]*P_g[401] + r_401 >= uc_g[401]*P_g_min[401])
+		m.addConstr(uc_102*P_g[102] + r_102 >= P_g_min[102])
+		m.addConstr(uc_202*P_g[202] + r_202 >= P_g_min[202])
+		m.addConstr(uc_g[302]*P_g[302] + r_302 >= uc_g[302]*P_g_min[302])
+		m.addConstr(uc_g[402]*P_g[402] + r_402 >= uc_g[402]*P_g_min[402])
+		m.addConstr(uc_g[107]*P_g[107] + r_107 >= uc_g[107]*P_g_min[107])
+		m.addConstr(uc_g[207]*P_g[207] + r_207 >= uc_g[207]*P_g_min[207])
+		m.addConstr(uc_g[307]*P_g[307] + r_307 >= uc_g[307]*P_g_min[307])
+		m.addConstr(uc_g[113]*P_g[113] + r_113 >= uc_g[113]*P_g_min[113])
+		m.addConstr(uc_g[213]*P_g[213] + r_213 >= uc_g[213]*P_g_min[213])
+		m.addConstr(uc_g[313]*P_g[313] + r_313 >= uc_g[313]*P_g_min[313])
+		m.addConstr(uc_g[115]*P_g[115] + r_115 >= uc_g[115]*P_g_min[115])
+		m.addConstr(uc_g[215]*P_g[215] + r_215 >= uc_g[215]*P_g_min[215])
+		m.addConstr(uc_g[315]*P_g[315] + r_315 >= uc_g[315]*P_g_min[315])
+		m.addConstr(uc_g[415]*P_g[415] + r_415 >= uc_g[415]*P_g_min[415])
+		m.addConstr(uc_g[515]*P_g[515] + r_515 >= uc_g[515]*P_g_min[515])
+		m.addConstr(uc_g[615]*P_g[615] + r_615 >= uc_g[615]*P_g_min[615])
+		m.addConstr(uc_g[116]*P_g[116] + r_116 >= uc_g[116]*P_g_min[116])
+		m.addConstr(uc_g[118]*P_g[118] + r_118 >= uc_g[118]*P_g_min[118])
+		m.addConstr(uc_g[121]*P_g[121] + r_121 >= uc_g[121]*P_g_min[121])
+		m.addConstr(uc_g[122]*P_g[122] + r_122 >= uc_g[122]*P_g_min[122])
+		m.addConstr(uc_g[222]*P_g[222] + r_222 >= uc_g[222]*P_g_min[222])
+		m.addConstr(uc_g[322]*P_g[322] + r_322 >= uc_g[322]*P_g_min[322])
+		m.addConstr(uc_g[422]*P_g[422] + r_422 >= uc_g[422]*P_g_min[422])
+		m.addConstr(uc_g[522]*P_g[522] + r_522 >= uc_g[522]*P_g_min[522])
+		m.addConstr(uc_g[622]*P_g[622] + r_622 >= uc_g[622]*P_g_min[622])
+		m.addConstr(uc_g[123]*P_g[123] + r_123 >= uc_g[123]*P_g_min[123])
+		m.addConstr(uc_g[223]*P_g[223] + r_223 >= uc_g[223]*P_g_min[223])
+		m.addConstr(uc_g[323]*P_g[323] + r_323 >= uc_g[323]*P_g_min[323])
+
+		# # # Re-dispatch must be less than maximum generation ************************************************************************
+		m.addConstr(uc_101*P_g[101] + r_101 <= P_g_max[101])
+		m.addConstr(uc_201*P_g[201] + r_201 <= P_g_max[201])
+		m.addConstr(uc_g[301]*P_g[301] + r_301 <= uc_g[301]*P_g_max[301])
+		m.addConstr(uc_g[401]*P_g[401] + r_401 <= uc_g[401]*P_g_max[401])
+		m.addConstr(uc_102*P_g[102] + r_102 <= P_g_max[102])
+		m.addConstr(uc_202*P_g[202] + r_202 <= P_g_max[202])
+		m.addConstr(uc_g[302]*P_g[302] + r_302 <= uc_g[302]*P_g_max[302])
+		m.addConstr(uc_g[402]*P_g[402] + r_402 <= uc_g[402]*P_g_max[402])
+		m.addConstr(uc_g[107]*P_g[107] + r_107 <= uc_g[107]*P_g_max[107])
+		m.addConstr(uc_g[207]*P_g[207] + r_207 <= uc_g[207]*P_g_max[207])
+		m.addConstr(uc_g[307]*P_g[307] + r_307 <= uc_g[307]*P_g_max[307])
+		m.addConstr(uc_g[113]*P_g[113] + r_113 <= uc_g[113]*P_g_max[113])
+		m.addConstr(uc_g[213]*P_g[213] + r_213 <= uc_g[213]*P_g_max[213])
+		m.addConstr(uc_g[313]*P_g[313] + r_313 <= uc_g[313]*P_g_max[313])
+		m.addConstr(uc_g[115]*P_g[115] + r_115 <= uc_g[115]*P_g_max[115])
+		m.addConstr(uc_g[215]*P_g[215] + r_215 <= uc_g[215]*P_g_max[215])
+		m.addConstr(uc_g[315]*P_g[315] + r_315 <= uc_g[315]*P_g_max[315])
+		m.addConstr(uc_g[415]*P_g[415] + r_415 <= uc_g[415]*P_g_max[415])
+		m.addConstr(uc_g[515]*P_g[515] + r_515 <= uc_g[515]*P_g_max[515])
+		m.addConstr(uc_g[615]*P_g[615] + r_615 <= uc_g[615]*P_g_max[615])
+		m.addConstr(uc_g[116]*P_g[116] + r_116 <= uc_g[116]*P_g_max[116])
+		m.addConstr(uc_g[118]*P_g[118] + r_118 <= uc_g[118]*P_g_max[118])
+		m.addConstr(uc_g[121]*P_g[121] + r_121 <= uc_g[121]*P_g_max[121])
+		m.addConstr(uc_g[122]*P_g[122] + r_122 <= uc_g[122]*P_g_max[122])
+		m.addConstr(uc_g[222]*P_g[222] + r_222 <= uc_g[222]*P_g_max[222])
+		m.addConstr(uc_g[322]*P_g[322] + r_322 <= uc_g[322]*P_g_max[322])
+		m.addConstr(uc_g[422]*P_g[422] + r_422 <= uc_g[422]*P_g_max[422])
+		m.addConstr(uc_g[522]*P_g[522] + r_522 <= uc_g[522]*P_g_max[522])
+		m.addConstr(uc_g[622]*P_g[622] + r_622 <= uc_g[622]*P_g_max[622])
+		m.addConstr(uc_g[123]*P_g[123] + r_123 <= uc_g[123]*P_g_max[123])
+		m.addConstr(uc_g[223]*P_g[223] + r_223 <= uc_g[223]*P_g_max[223])
+		m.addConstr(uc_g[323]*P_g[323] + r_323 <= uc_g[323]*P_g_max[323])
+
+		# Branches must be less than maximum thermal limit ************************************************************************
+		# Branches must be greater than the minimum thermal limit *****************************************************************
+
+		# Solve
+		m.params.outputFlag = 0
+		m.optimize()
+
+		opt_results = 0.
+		for elem in m.getVars():
+			if elem.varName == 'uc_101':
+				unit_recommit[101] = float(round(elem.x))
+			elif elem.varName == 'uc_102':
+				unit_recommit[102] = float(round(elem.x))
+			elif elem.varName == 'uc_201':
+				unit_recommit[201] = float(round(elem.x))
+			elif elem.varName == 'uc_202':
+				unit_recommit[202] = float(round(elem.x))
+			elif elem.varName == 'r_101':
+				unit_response[101] = float(elem.x)
+			elif elem.varName == 'r_201':
+				unit_response[201] = float(elem.x)
+			elif elem.varName == 'r_301':
+				unit_response[301] = float(elem.x)
+			elif elem.varName == 'r_401':
+				unit_response[401] = float(elem.x)
+			elif elem.varName == 'r_102':
+				unit_response[102] = float(elem.x)
+			elif elem.varName == 'r_202':
+				unit_response[202] = float(elem.x)
+			elif elem.varName == 'r_302':
+				unit_response[302] = float(elem.x)
+			elif elem.varName == 'r_402':
+				unit_response[402] = float(elem.x)
+			elif elem.varName == 'r_107':
+				unit_response[107] = float(elem.x)
+			elif elem.varName == 'r_207':
+				unit_response[207] = float(elem.x)
+			elif elem.varName == 'r_307':
+				unit_response[307] = float(elem.x)
+			elif elem.varName == 'r_113':
+				unit_response[113] = float(elem.x)
+			elif elem.varName == 'r_213':
+				unit_response[213] = float(elem.x)
+			elif elem.varName == 'r_313':
+				unit_response[313] = float(elem.x)
+			elif elem.varName == 'r_115':
+				unit_response[115] = float(elem.x)
+			elif elem.varName == 'r_215':
+				unit_response[215] = float(elem.x)
+			elif elem.varName == 'r_315':
+				unit_response[315] = float(elem.x)
+			elif elem.varName == 'r_415':
+				unit_response[415] = float(elem.x)
+			elif elem.varName == 'r_515':
+				unit_response[515] = float(elem.x)
+			elif elem.varName == 'r_615':
+				unit_response[615] = float(elem.x)
+			elif elem.varName == 'r_116':
+				unit_response[116] = float(elem.x)
+			elif elem.varName == 'r_118':
+				unit_response[118] = float(elem.x)
+			elif elem.varName == 'r_121':
+				unit_response[121] = float(elem.x)
+			elif elem.varName == 'r_122':
+				unit_response[122] = float(elem.x)
+			elif elem.varName == 'r_222':
+				unit_response[222] = float(elem.x)
+			elif elem.varName == 'r_322':
+				unit_response[322] = float(elem.x)
+			elif elem.varName == 'r_422':
+				unit_response[422] = float(elem.x)
+			elif elem.varName == 'r_522':
+				unit_response[522] = float(elem.x)
+			elif elem.varName == 'r_622':
+				unit_response[622] = float(elem.x)
+			elif elem.varName == 'r_123':
+				unit_response[123] = float(elem.x)
+			elif elem.varName == 'r_223':
+				unit_response[223] = float(elem.x)
+			elif elem.varName == 'r_323':
+				unit_response[323] = float(elem.x)
+			elif elem.varName == 'mint':
+				opt_results = float(elem.x)
+
+		# unit_response[101] = 0.0
+		# unit_response[201] = 0.0
+		# unit_response[102] = 0.0
+		# unit_response[202] = 0.0
+
+		# unit_response[313] = 0.0
+
+		# unit_response[615] = 0.0
+		# unit_response[116] = 0.0
+		# unit_response[118] = 0.0
+		# unit_response[121] = 0.0
+
+		# unit_response[123] = 0.0
+		# unit_response[223] = 0.0
+
+		for row in object_generator.matrix:
+			row[ODC.Generator.REAL_GENERATION] = uc_g[int(row[ODC.Generator.ID])]*row[ODC.Generator.REAL_GENERATION]
+			if row[ODC.Generator.ID] == 101.0 or row[ODC.Generator.ID] == 201.0 or row[ODC.Generator.ID] == 102.0 or row[ODC.Generator.ID] == 202.0:
+				uc_g[int(row[ODC.Generator.ID])] = unit_recommit[int(row[ODC.Generator.ID])]
+			row[ODC.Generator.OPERATIONAL_STATUS] = uc_g[int(row[ODC.Generator.ID])]
+			row[ODC.Generator.REAL_GENERATION] += row[ODC.Generator.OPERATIONAL_STATUS]*unit_response[int(row[ODC.Generator.ID])]
+
+		# for elem in unit_response:
+		# 	print(elem, unit_response[elem])
+
+		return opt_results
+
+	except gurobipy.GurobiError:
+		print('Gurobi error reported in contingency response')
+
 def contingency_response_water(object_load, object_generator, object_cable, node_list_constraint):
 
 	unit_recommit = {101: 0., 201: 0., 102: 0., 202: 0.}
