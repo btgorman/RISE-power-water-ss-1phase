@@ -850,7 +850,7 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 	for row in object_generator.matrix:
 		reduced_reserves_val = nominal_reserves_dict.get(row[ODC.Generator.ID], 0.0) - reduced_reserves_dict.get(row[ODC.Generator.ID], 0.0)
 		if reduced_reserves_val > 0.0:
-			row[ODC.Generator.REAL_GENERATION_MAX_RATING] = 0.5+row[ODC.Generator.REAL_GENERATION_MAX_RATING] - reduced_reserves_val
+			row[ODC.Generator.REAL_GENERATION_MAX_RATING] = row[ODC.Generator.REAL_GENERATION] + reduced_reserves_dict.get(row[ODC.Generator.ID], 0.0)
 
 	print('Generators')
 	for row in object_generator.matrix:
