@@ -839,28 +839,41 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 	
 	# POWER N-1 CONTINGENCY ANALYSIS
 	# ------------------------------
+	for row in object_generator.matrix:
+		reduced_reserves_val = nominal_reserves_dict.get(row[ODC.Generator.ID], 0.0) - reduced_reserves_dict.get(row[ODC.Generator.ID], 0.0)
+		if reduced_reserves_val > 0.001:
+			row[ODC.Generator.REAL_GENERATION_MAX_RATING] = row[ODC.Generator.REAL_GENERATION] + reduced_reserves_dict.get(row[ODC.Generator.ID], 0.0)
+
+	for row in object_generator.matrix:
+		if row[ODC.Generator.REAL_GENERATION_MAX_RATING] < row[ODC.Generator.REAL_GENERATION_MIN_RATING]:
+			row[ODC.Generator.OPERATIONAL_STATUS] = 0.0
+			row[ODC.Generator.REAL_GENERATION] = 0.0
+			row[ODC.Generator.REAL_GENERATION_MIN_RATING] = 0.0
+			row[ODC.Generator.REAL_GENERATION_MAX_RATING] = 0.0
+
 	base_gen_commitment = np.array(object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS], copy=True)
 	base_gen_dispatch = np.array(object_generator.matrix[:, ODC.Generator.REAL_GENERATION], copy=True)
+	base_gen_dispatch_min = np.array(object_generator.matrix[:, ODC.Generator.REAL_GENERATION_MIN_RATING], copy=True)
 	base_gen_dispatch_max = np.array(object_generator.matrix[:, ODC.Generator.REAL_GENERATION_MAX_RATING], copy=True)
 	list_gen_mint = []
 
 	base_branch_commitment = np.array(object_cable.matrix[:, ODC.Cable.OPERATIONAL_STATUS_A], copy=True)
 	list_branch_mint = []
 
-	for row in object_generator.matrix:
-		reduced_reserves_val = nominal_reserves_dict.get(row[ODC.Generator.ID], 0.0) - reduced_reserves_dict.get(row[ODC.Generator.ID], 0.0)
-		if reduced_reserves_val > 0.001:
-			row[ODC.Generator.REAL_GENERATION_MAX_RATING] = row[ODC.Generator.REAL_GENERATION] + reduced_reserves_dict.get(row[ODC.Generator.ID], 0.0)
 
 	print('Generators')
 	for row in object_generator.matrix:
 		object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS] = np.array(base_gen_commitment, copy=True)
 		object_generator.matrix[:, ODC.Generator.REAL_GENERATION] = np.array(base_gen_dispatch, copy=True)
+		object_generator.matrix[:, ODC.Generator.REAL_GENERATION_MIN_RATING] = np.array(base_gen_dispatch_min, copy=True)
+		object_generator.matrix[:, ODC.Generator.REAL_GENERATION_MAX_RATING] = np.array(base_gen_dispatch_max, copy=True)
 		run_OpenDSS(0, True)
 
-		if row[ODC.Generator.REAL_GENERATION] != 0.0:
-			row[ODC.Generator.REAL_GENERATION] = 0.0
+		if row[ODC.Generator.REAL_GENERATION] != 0.0 or row[ODC.Generator.ID] in [101.0, 102.0, 201.0, 202.0]:
 			row[ODC.Generator.OPERATIONAL_STATUS] = 0.0
+			row[ODC.Generator.REAL_GENERATION] = 0.0
+			row[ODC.Generator.REAL_GENERATION_MIN_RATING] = 0.0
+			row[ODC.Generator.REAL_GENERATION_MAX_RATING] = 0.0
 			run_OpenDSS(0, True)
 			try:
 				list_gen_mint.append(grb_solvers.contingency_response(object_load, object_generator, object_cable))
@@ -871,6 +884,8 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 
 	object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS] = np.array(base_gen_commitment, copy=True)
 	object_generator.matrix[:, ODC.Generator.REAL_GENERATION] = np.array(base_gen_dispatch, copy=True)
+	object_generator.matrix[:, ODC.Generator.REAL_GENERATION_MIN_RATING] = np.array(base_gen_dispatch_min, copy=True)
+	object_generator.matrix[:, ODC.Generator.REAL_GENERATION_MAX_RATING] = np.array(base_gen_dispatch_max, copy=True)
 	
 	print('Cables')
 	for row in object_cable.matrix:
@@ -889,7 +904,6 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 				list_branch_mint.append(0)
 
 	object_cable.matrix[:, ODC.Cable.OPERATIONAL_STATUS_A] = np.array(base_branch_commitment, copy=True)
-	object_generator.matrix[:, ODC.Generator.REAL_GENERATION_MAX_RATING] = np.array(base_gen_dispatch_max, copy=True)
 	print('')
 
 	with open('C:\\Users\\' + os_username + '\\Documents\\git\\RISE-power-water-ss-1phase\\model_outputs\\analysis_power_water\\power_water_gen_response_{}.csv'.format(int(pipe_fail_id)), 'a', newline='') as file:
