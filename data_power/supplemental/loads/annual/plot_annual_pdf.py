@@ -313,9 +313,9 @@ x = np.array([i for i in x if i <= max(hour_mults)]) # for non-exponential distr
 # weib_scale = np.exp(-0.399517)
 # plt.plot(x, weibull_pdf(x, weib_scale, weib_shape) * sumcount, color="teal", label="weibull")
 
-lnorm_mu = -0.5138546
-lnorm_sigma = 0.23256321
-plt.plot(x, lognormal_pdf(x, lnorm_mu, lnorm_sigma) * sumcount, label="lognormal")
+# lnorm_mu = -0.5138546
+# lnorm_sigma = 0.23256321
+# plt.plot(x, lognormal_pdf(x, lnorm_mu, lnorm_sigma) * sumcount, label="lognormal")
 
 # exp_rate = 1./np.exp(-0.4872712)
 # exp_x = np.array([i for i in x if i <= max(x)-min(hour_mults)])
@@ -348,8 +348,8 @@ plt.plot(x, lognormal_pdf(x, lnorm_mu, lnorm_sigma) * sumcount, label="lognormal
 
 arialfont = {'fontname': 'Arial'}
 plt.xticks(fontsize="large", **arialfont)
-plt.xlabel("Power load factors throughout the year", fontsize="x-large", **arialfont)
+plt.xlabel("Power demand factors", fontsize="x-large", **arialfont)
 plt.yticks(fontsize="large", **arialfont)
-plt.ylabel("Frequency", fontsize="x-large", ** arialfont)
+plt.ylabel("Number of hours in the year", fontsize="x-large", ** arialfont)
 plt.legend(fontsize="large", loc=1)
 plt.show()

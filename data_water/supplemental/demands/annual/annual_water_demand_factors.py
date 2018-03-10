@@ -243,8 +243,8 @@ x = np.arange(0.0, max(total_hourly_demands) - min(total_hourly_demands), 0.08) 
 # lnorm_sigma = 0.5054088
 # plt.plot(x, lognormal_pdf(x, lnorm_mu, lnorm_sigma) * sumcount, label="lognormal")
 
-exp_rate = 1./np.exp(-0.4559995)
-plt.plot(x+min(total_hourly_demands), exponential_pdf(x, exp_rate) * sumcount, label="exponential")
+# exp_rate = 1./np.exp(-0.4559995)
+# plt.plot(x+min(total_hourly_demands), exponential_pdf(x, exp_rate) * sumcount, label="exponential")
 
 # frech_shape = 1./0.42136022
 # frech_scale = np.exp(-0.3719968)
@@ -273,8 +273,8 @@ plt.plot(x+min(total_hourly_demands), exponential_pdf(x, exp_rate) * sumcount, l
 
 arialfont = {'fontname': 'Arial'}
 plt.xticks(fontsize="large", **arialfont)
-plt.xlabel("Water demand factors throughout the year", fontsize="x-large", **arialfont)
+plt.xlabel("Water demand factors", fontsize="x-large", **arialfont)
 plt.yticks(fontsize="large", **arialfont)
-plt.ylabel("Frequency", fontsize="x-large", **arialfont)
+plt.ylabel("Number of hours in the year", fontsize="x-large", **arialfont)
 plt.legend(fontsize='large', loc=1)
 plt.show()

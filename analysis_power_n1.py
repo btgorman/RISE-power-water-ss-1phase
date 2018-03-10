@@ -477,11 +477,11 @@ def main(dss_debug, write_cols, plf):
 			run_OpenDSS(0, True)
 			list_gen_resp_branch_load.append(abs(object_cable.matrix[branch_idx, ODC.Cable.A_PU_CAPACITY]))
 			list_gen_error.append(0.5*(object_cable.matrix[34-1, ODC.Cable.REAL_POWER_2] - object_cable.matrix[34-1, ODC.Cable.REAL_POWER_1]))
-	object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS] = np.array(base_gen_commitment, copy=True)
-	object_generator.matrix[:, ODC.Generator.REAL_GENERATION] = np.array(base_gen_dispatch, copy=True)
 	
 	print('Cables')
 	for row in object_cable.matrix:
+		object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS] = np.array(base_gen_commitment, copy=True)
+		object_generator.matrix[:, ODC.Generator.REAL_GENERATION] = np.array(base_gen_dispatch, copy=True)
 		object_cable.matrix[:, ODC.Cable.OPERATIONAL_STATUS_A] = np.array(base_branch_commitment, copy=True)
 		run_OpenDSS(0, True)
  

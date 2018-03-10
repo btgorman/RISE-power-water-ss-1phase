@@ -860,7 +860,6 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 	base_branch_commitment = np.array(object_cable.matrix[:, ODC.Cable.OPERATIONAL_STATUS_A], copy=True)
 	list_branch_mint = []
 
-
 	print('Generators')
 	for row in object_generator.matrix:
 		object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS] = np.array(base_gen_commitment, copy=True)
