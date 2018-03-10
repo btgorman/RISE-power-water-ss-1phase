@@ -512,7 +512,7 @@ def main(dss_debug, write_cols, plf):
 	med_gen_mint = median(list_gen_mint)
 	avg_gen_mint = sum(list_gen_mint) / len(list_gen_mint)
 
-	max_gen_error = max(max(list_gen_error), abs(min(list_branch_error)))
+	max_gen_error = max(max(list_gen_error), abs(min(list_gen_error)))
 	med_gen_error = median(list_gen_error)
 	avg_gen_error = sum(list_gen_error) / len(list_gen_error)
 
