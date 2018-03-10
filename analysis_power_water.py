@@ -880,14 +880,13 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 				list_gen_mint.append(10000)
 		else:
 			list_gen_mint.append(0)
-
-	object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS] = np.array(base_gen_commitment, copy=True)
-	object_generator.matrix[:, ODC.Generator.REAL_GENERATION] = np.array(base_gen_dispatch, copy=True)
-	object_generator.matrix[:, ODC.Generator.REAL_GENERATION_MIN_RATING] = np.array(base_gen_dispatch_min, copy=True)
-	object_generator.matrix[:, ODC.Generator.REAL_GENERATION_MAX_RATING] = np.array(base_gen_dispatch_max, copy=True)
 	
 	print('Cables')
 	for row in object_cable.matrix:
+		object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS] = np.array(base_gen_commitment, copy=True)
+		object_generator.matrix[:, ODC.Generator.REAL_GENERATION] = np.array(base_gen_dispatch, copy=True)
+		object_generator.matrix[:, ODC.Generator.REAL_GENERATION_MIN_RATING] = np.array(base_gen_dispatch_min, copy=True)
+		object_generator.matrix[:, ODC.Generator.REAL_GENERATION_MAX_RATING] = np.array(base_gen_dispatch_max, copy=True)
 		object_cable.matrix[:, ODC.Cable.OPERATIONAL_STATUS_A] = np.array(base_branch_commitment, copy=True)
 		run_OpenDSS(0, True)
  
