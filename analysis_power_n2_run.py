@@ -18,7 +18,7 @@ import numpy as np
 import subprocess
 import sys
 
-number_of_sims = 501
+number_of_sims = 101
 
 power_load_lb = 0.3388
 power_load_ub = 1.0
@@ -29,4 +29,4 @@ for i in range(0, len(plf_array)):
 	if (i+1)%25 == 0:
 		print(i+1)
 
-	pid = subprocess.call('python analysis_power_n1.py {}'.format(plf_array[i]), shell=True)
+	pid = subprocess.call('python analysis_power_n2.py {}'.format(plf_array[i]), shell=True)

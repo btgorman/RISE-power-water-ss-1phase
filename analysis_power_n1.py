@@ -384,7 +384,7 @@ def main(dss_debug, write_cols, plf):
 		counter = 0
 		lost_min = 10000000.0
 		while True:
-			needreserves, actualreserves, _ = grb_solvers.unit_commitment_priority_list(object_load, object_generator, losses, exports) # unit commitment is variable
+			needreserves, actualreserves, reserves_dict = grb_solvers.unit_commitment_priority_list(object_load, object_generator, losses, exports) # unit commitment is variable
 			new_loss = run_OpenDSS(0, True)
 			counter += 1
 
@@ -395,23 +395,23 @@ def main(dss_debug, write_cols, plf):
 				elif counter > 150:
 					while True:
 						object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS] = dispatcher_max
-						needreserves, actualreserves, _ = grb_solvers.unit_commitment_priority_list_2(object_load, object_generator, losses, exports) # unit commitment is input
+						needreserves, actualreserves, reserves_dict = grb_solvers.unit_commitment_priority_list_2(object_load, object_generator, losses, exports) # unit commitment is input
 						new_loss = run_OpenDSS(0, True)
 						counter +=1
 
 						if math.fabs(losses - new_loss) < 1.0:
-							return needreserves, actualreserves, _
+							return needreserves, actualreserves, reserves_dict
 						else:
 							losses += 0.8 * (new_loss - losses)
 				elif counter > 100:
 					while True:
 						object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS] = dispatcher_min
-						needreserves, actualreserves, _ = grb_solvers.unit_commitment_priority_list_2(object_load, object_generator, losses, exports) # unit commitment is input
+						needreserves, actualreserves, reserves_dict = grb_solvers.unit_commitment_priority_list_2(object_load, object_generator, losses, exports) # unit commitment is input
 						new_loss = run_OpenDSS(0, True)
 						counter +=1
 
 						if math.fabs(losses - new_loss) < 1.0:
-							return needreserves, actualreserves, _
+							return needreserves, actualreserves, reserves_dict
 						else:
 							losses += 0.8 * (new_loss - losses)
 				elif counter > 50:
@@ -422,12 +422,12 @@ def main(dss_debug, write_cols, plf):
 						dispatcher_max = np.array(object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS], copy=True)
 				losses += 0.8*(new_loss - losses)
 			else:
-				return needreserves, actualreserves, _
+				return needreserves, actualreserves, reserves_dict
 
-	needed_reserves, actual_reserves, _ = fun_set_power_dispatch(object_load, object_generator, losses, exports)
-	print('exports #1', 0.5 * (object_cable.matrix[33, ODC.Cable.REAL_POWER_2] - object_cable.matrix[33, ODC.Cable.REAL_POWER_1]))
-	print('')
-
+	needed_reserves, actual_reserves, dict_reserves = fun_set_power_dispatch(object_load, object_generator, losses, exports)
+	# print('exports #1', 0.5 * (object_cable.matrix[33, ODC.Cable.REAL_POWER_2] - object_cable.matrix[33, ODC.Cable.REAL_POWER_1]))
+	# print('')
+	
 	pre_contingency_branch_max = 0.0
 	for cable in object_cable.matrix:
 		if cable[ODC.Cable.ID] in [10.0, 100.0]:
