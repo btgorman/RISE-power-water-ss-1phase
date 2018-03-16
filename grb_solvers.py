@@ -23,8 +23,8 @@ GEN_PRIORITY_KEY = {122: 1, 222: 1, 322: 1, 422: 1, 522: 1, 622: 1,
 GEN_PRIORITY_COUNT = {1: 6, 2: 2, 3: 1, 4: 4, 5: 4, 6: 3, 7: 3, 8: 5, 9: 4}
 
 NUMBER_OF_MINUTES = 10
-EXTRA_RESERVE_MARGIN = 1.06 # %
-EXTRA_RESERVE_MARGIN_n2 = 1.07 # %
+EXTRA_RESERVE_MARGIN = 1.05 # %
+EXTRA_RESERVE_MARGIN_n2 = 1.075 # %
 
 def unit_commitment_priority_list(object_load, object_generator, losses, exports):
 

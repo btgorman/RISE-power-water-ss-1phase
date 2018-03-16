@@ -18,7 +18,7 @@ import numpy as np
 import subprocess
 import sys
 
-number_of_sims = 101
+number_of_sims = 501
 
 power_load_lb = 0.3388
 power_load_ub = 1.0
