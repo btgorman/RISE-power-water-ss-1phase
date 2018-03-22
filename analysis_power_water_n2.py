@@ -369,7 +369,7 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 	# ----------------------------------------
 
 	for pipe in object_pipe.matrix:
-		if pipe[ENC.Pipe.ID] == pipe_fail_id:
+		if pipe[ENC.Pipe.ID] in [39.0, 40.0]:
 			pipe[ENC.Pipe.OPERATIONAL_STATUS] = 0.0
 
 	base_curve_matrix = np.array(object_curve.matrix, copy=True)
@@ -560,7 +560,7 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 		counter = 0
 		lost_min = 10000000.0
 		while True:
-			need_reserves, actual_reserves, nominal_reserves_dict = grb_solvers.unit_commitment_priority_list(object_load, object_generator, losses, exports) # unit commitment is variable
+			need_reserves, actual_reserves, nominal_reserves_dict = grb_solvers.unit_commitment_priority_list_n2(object_load, object_generator, losses, exports) # unit commitment is variable
 			new_loss = run_OpenDSS(0, True)
 			counter += 1
 
@@ -571,7 +571,7 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 				elif counter > 150:
 					while True:
 						object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS] = dispatcher_max
-						need_reserves, actual_reserves, nominal_reserves_dict = grb_solvers.unit_commitment_priority_list_2(object_load, object_generator, losses, exports) # unit commitment is input
+						need_reserves, actual_reserves, nominal_reserves_dict = grb_solvers.unit_commitment_priority_list_2_n2(object_load, object_generator, losses, exports) # unit commitment is input
 						new_loss = run_OpenDSS(0, True)
 						counter +=1
 
@@ -582,7 +582,7 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 				elif counter > 100:
 					while True:
 						object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS] = dispatcher_min
-						need_reserves, actual_reserves, nominal_reserves_dict = grb_solvers.unit_commitment_priority_list_2(object_load, object_generator, losses, exports) # unit commitment is input
+						need_reserves, actual_reserves, nominal_reserves_dict = grb_solvers.unit_commitment_priority_list_2_n2(object_load, object_generator, losses, exports) # unit commitment is input
 						new_loss = run_OpenDSS(0, True)
 						counter +=1
 
@@ -833,7 +833,7 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 		nominal_reserves_list.append(nominal_reserves_dict.get(generator[ODC.Generator.ID], 0.0))
 		reduced_reserves_list.append(nominal_reserves_dict.get(generator[ODC.Generator.ID], 0.0) - reduced_reserves_dict.get(generator[ODC.Generator.ID], 0.0))
 
-	with open('C:\\Users\\' + os_username + '\\Documents\\git\\RISE-power-water-ss-1phase\\model_outputs\\analysis_power_water\\power_water_pipe_{}.csv'.format(int(pipe_fail_id)), 'a', newline='') as file:
+	with open('C:\\Users\\' + os_username + '\\Documents\\git\\RISE-power-water-ss-1phase\\model_outputs\\analysis_power_water\\power_water_pipe_n2_{}.csv'.format(int(3940)), 'a', newline='') as file:
 		writer = csv.writer(file)
 		writer.writerow([water_df, power_df, need_reserves, actual_reserves, sum(reduced_reserves_dict.values())] + nominal_reserves_list + reduced_reserves_list)
 	
@@ -904,11 +904,11 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 	object_cable.matrix[:, ODC.Cable.OPERATIONAL_STATUS_A] = np.array(base_branch_commitment, copy=True)
 	print('')
 
-	with open('C:\\Users\\' + os_username + '\\Documents\\git\\RISE-power-water-ss-1phase\\model_outputs\\analysis_power_water\\power_water_gen_response_{}.csv'.format(int(pipe_fail_id)), 'a', newline='') as file:
+	with open('C:\\Users\\' + os_username + '\\Documents\\git\\RISE-power-water-ss-1phase\\model_outputs\\analysis_power_water\\power_water_gen_response_n2_{}.csv'.format(int(3940)), 'a', newline='') as file:
 		writer = csv.writer(file)
 		writer.writerow([water_df, power_df] + list_gen_mint)
 
-	with open('C:\\Users\\' + os_username + '\\Documents\\git\\RISE-power-water-ss-1phase\\model_outputs\\analysis_power_water\\power_water_branch_response_{}.csv'.format(int(pipe_fail_id)), 'a', newline='') as file:
+	with open('C:\\Users\\' + os_username + '\\Documents\\git\\RISE-power-water-ss-1phase\\model_outputs\\analysis_power_water\\power_water_branch_response_n2_{}.csv'.format(int(3940)), 'a', newline='') as file:
 		writer = csv.writer(file)
 		writer.writerow([water_df, power_df] + list_branch_mint)
 
