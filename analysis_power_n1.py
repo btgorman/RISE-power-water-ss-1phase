@@ -534,15 +534,15 @@ def main(dss_debug, write_cols, plf):
 	max_branch_post_branch_load = list_branch_post_branch_load[max_branch_branch_idx]
 	max_branch_resp_branch_load = list_branch_resp_branch_load[max_branch_branch_idx]
 
-	with open('reserves.csv', 'a', newline='') as file:
+	with open('reserves_n1.csv', 'a', newline='') as file:
 		writer = csv.writer(file)
 		writer.writerow([power_load_factor, needed_reserves, actual_reserves])
 
-	with open('gen_response.csv', 'a', newline='') as file:
+	with open('gen_response_n1.csv', 'a', newline='') as file:
 		writer = csv.writer(file)
 		writer.writerow([power_load_factor, pre_contingency_branch_max, max_gen_post_branch_load, max_gen_resp_branch_load, max_gen_mint, med_gen_mint, avg_gen_mint, max_gen_error, med_gen_error, avg_gen_error])
 
-	with open('branch_response.csv', 'a', newline='') as file:
+	with open('branch_response_n1.csv', 'a', newline='') as file:
 		writer = csv.writer(file)
 		writer.writerow([power_load_factor, pre_contingency_branch_max, max_branch_post_branch_load, max_branch_resp_branch_load, max_branch_mint, med_branch_mint, avg_branch_mint, max_branch_error, med_branch_error, avg_branch_error])
 
