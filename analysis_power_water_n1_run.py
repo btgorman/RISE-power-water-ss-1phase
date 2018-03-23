@@ -44,6 +44,6 @@ pipe_array.remove(24.0)
 # pump 34
 
 for pipe_fid in pipe_array:
-	for widx in range(0, water_sims):
+	for widx in range(1, 3):
 		for pidx in range(0, power_sims):
 			pid = subprocess.call('python analysis_power_water_n1.py {} {} {}'.format(pdf_array[pidx], wdf_array[widx], pipe_fid), shell=True)

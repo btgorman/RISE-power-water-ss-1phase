@@ -25,8 +25,14 @@ power_load_ub = 1.0
 
 plf_array = np.linspace(power_load_lb, power_load_ub, number_of_sims)
 
-for i in range(0, len(plf_array)):
+for i in range(250, len(plf_array)):
 	if (i+1)%25 == 0:
 		print(i+1)
 
 	pid = subprocess.call('python analysis_power_n1.py {}'.format(plf_array[i]), shell=True)
+
+for i in range(250, len(plf_array)):
+	if (i+1)%25 == 0:
+		print(i+1)
+	
+	pid = subprocess.call('python analysis_power_n2.py {}'.format(plf_array[i]), shell=True)
