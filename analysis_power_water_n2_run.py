@@ -33,16 +33,6 @@ pipe_array = [9.0, 25.0, 24.0]
 pipe_array.remove(25.0)
 pipe_array.remove(24.0)
 
-# POWER-WATER ANALYSIS
-# --------------------
-# pump 9
-# pumps 25-28
-# pumps 36 & 37
-# NOT pumps 13-17
-# pump 24
-# pumps 1, 2, 4
-# pump 34
-
 for pipe_fid in pipe_array:
 	for widx in range(0, water_sims):
 		for pidx in range(0, power_sims):
