@@ -53,6 +53,7 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 	csv_pipe = pd.read_csv('./data_water/network-water/2200pipe.csv', sep=',', header=1, index_col=None, dtype=np.float64)
 	csv_pump = pd.read_csv('./data_water/network-water/2201pump.csv', sep=',', header=1, index_col=None, dtype=np.float64)
 	csv_valve = pd.read_csv('./data_water/network-water/2202valve.csv', sep=',', header=1, index_col=None, dtype=np.float64)
+	csv_pumpvalve = pd.read_csv('./data_water/network-water/2203pumpvalve.csv', sep=',', header=1, index_col=None, dtype=np.float64)
 
 	csv_xycurve = pd.read_csv('./data_power/network-power/1000xycurve.csv', sep=',', header=1, index_col=None, dtype=np.float64)
 	csv_regcontrol = pd.read_csv('./data_power/network-power/1100regcontrol.csv', sep=',', header=1, index_col=None, dtype=np.float64)
@@ -83,6 +84,7 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 	object_pipe = ENC.Pipe(csv_pipe)
 	object_pump = ENC.Pump(csv_pump)
 	object_valve = ENC.Valve(csv_valve)
+	object_pumpvalve = ENC.PumpValve(csv_pumpvalve)
 
 	object_xycurve = ODC.XYCurve(csv_xycurve)
 	object_regcontrol = ODC.RegControl(csv_regcontrol)
@@ -106,7 +108,7 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 	# -----------------------
 
 	w_object_list = [object_junction, object_reservoir, object_tank, # Water NODES
-	object_pipe, object_pump, object_valve, # Water LINKS
+	object_pipe, object_pump, object_valve, object_pumpvalve, # Water LINKS
 	object_curve] # Water SYSTEM OPS
 
 	object_list = [object_vsource, object_bus, object_generator, object_load, object_solarpv, object_windturbine, #NODES
@@ -114,7 +116,7 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 	object_directconnection, object_cable, object_overheadline, object_twowindingtransformer, object_capacitor, object_reactor, # CONNECTIONS
 	object_regcontrol] # CONTROLS
 
-	interconn_dict = {'generator': object_generator, 'load': object_load, 'pump': object_pump, 'junction': object_junction}
+	interconn_dict = {'generator': object_generator, 'load': object_load, 'pump': object_pump, 'junction': object_junction, 'pumpvalve': object_pumpvalve}
 
 	# ---------
 	# RUN EPANET and OPENDSS
@@ -369,7 +371,7 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 	# ----------------------------------------
 
 	for pipe in object_pipe.matrix:
-		if pipe[ENC.Pipe.ID] in [pipe_fail_id]:
+		if pipe[ENC.Pipe.ID] in [39, 40]:#[pipe_fail_id]:
 			pipe[ENC.Pipe.OPERATIONAL_STATUS] = 0.0
 
 	base_curve_matrix = np.array(object_curve.matrix, copy=True)
@@ -379,6 +381,7 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 	base_pipe_matrix = np.array(object_pipe.matrix, copy=True)
 	base_pump_matrix = np.array(object_pump.matrix, copy=True)
 	base_valve_matrix = np.array(object_valve.matrix, copy=True)
+	base_pumpvalve_matrix = np.array(object_pumpvalve.matrix, copy=True)
 
 	artificial_reservoir_id_shift = 1000.0
 	max_groundwater_flow = 12399.0 # GPM
@@ -624,6 +627,7 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 	object_pipe.matrix = np.array(base_pipe_matrix, copy=True)
 	object_pump.matrix = np.array(base_pump_matrix, copy=True)
 	object_valve.matrix = np.array(base_valve_matrix, copy=True)
+	object_pumpvalve.matrix = np.array(base_pumpvalve_matrix, copy=True)
 
 	object_junction.setInterconnectionDemand(interconn_dict, nominal_reserves_dict)
 
@@ -833,7 +837,7 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 		nominal_reserves_list.append(nominal_reserves_dict.get(generator[ODC.Generator.ID], 0.0))
 		reduced_reserves_list.append(nominal_reserves_dict.get(generator[ODC.Generator.ID], 0.0) - reduced_reserves_dict.get(generator[ODC.Generator.ID], 0.0))
 
-	with open('C:\\Users\\' + os_username + '\\Documents\\git\\RISE-power-water-ss-1phase\\model_outputs\\analysis_power_water\\power_water_pipe_n1_{}.csv'.format(int(pipe_fail_id)), 'a', newline='') as file:
+	with open('C:\\Users\\' + os_username + '\\Documents\\git\\RISE-power-water-ss-1phase\\model_outputs\\analysis_power_water\\power_water_pipe_n1_{}.csv'.format(int(3940)), 'a', newline='') as file:
 		writer = csv.writer(file)
 		writer.writerow([water_df, power_df, need_reserves, actual_reserves, sum(reduced_reserves_dict.values())] + nominal_reserves_list + reduced_reserves_list)
 	
@@ -904,11 +908,11 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 	object_cable.matrix[:, ODC.Cable.OPERATIONAL_STATUS_A] = np.array(base_branch_commitment, copy=True)
 	print('')
 
-	with open('C:\\Users\\' + os_username + '\\Documents\\git\\RISE-power-water-ss-1phase\\model_outputs\\analysis_power_water\\power_water_gen_response_n1_{}.csv'.format(int(pipe_fail_id)), 'a', newline='') as file:
+	with open('C:\\Users\\' + os_username + '\\Documents\\git\\RISE-power-water-ss-1phase\\model_outputs\\analysis_power_water\\power_water_gen_response_n1_{}.csv'.format(int(3940)), 'a', newline='') as file:
 		writer = csv.writer(file)
 		writer.writerow([water_df, power_df] + list_gen_mint)
 
-	with open('C:\\Users\\' + os_username + '\\Documents\\git\\RISE-power-water-ss-1phase\\model_outputs\\analysis_power_water\\power_water_branch_response_n1_{}.csv'.format(int(pipe_fail_id)), 'a', newline='') as file:
+	with open('C:\\Users\\' + os_username + '\\Documents\\git\\RISE-power-water-ss-1phase\\model_outputs\\analysis_power_water\\power_water_branch_response_n1_{}.csv'.format(int(3940)), 'a', newline='') as file:
 		writer = csv.writer(file)
 		writer.writerow([water_df, power_df] + list_branch_mint)
 

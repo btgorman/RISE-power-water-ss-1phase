@@ -1,0 +1,4 @@
+INPUT,INPUT,INPUT,INPUT,INPUT,INPUT,INPUT,INPUT,INPUT,INPUT,INPUT,INPUT,CONTROLS,OUTPUTS,OUTPUTS,OUTPUTS,OUTPUTS
+ID,type,terminal_1_ID,terminal_2_ID,functional_status,diameter,headloss,loss_coefficient,model,setting,average_efficiency,load_ID,operational_status,power_consumption,flow,headloss,velocity
+3,2203,204,104,1,144,0,0,2,37.24,0.8329,4,1,0,0,0,0
+7,2203,220,120,1,144,0,0,2,83.14,0.8111,20,1,0,0,0,0

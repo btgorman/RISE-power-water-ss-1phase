@@ -1084,12 +1084,12 @@ class Load: #errors -1225 to -1249
 
 	def setInterconnectionLoad(self, interconn_dict):
 		try:
-			object_pump = interconn_dict['pump']
+			object_pumpvalve = interconn_dict['pumpvalve']
 
 			for load in self.matrix:
-				for pump in object_pump.matrix:
-					if load[Load.ID] == pump[ENC.Pump.LOAD_ID]:
-						load[Load.INTERCONNECTION_LOAD] += pump[ENC.Pump.OPERATIONAL_STATUS] * pump[ENC.Pump.POWER_CONSUMPTION]
+				for pumpvalve in object_pumpvalve.matrix:
+					if load[Load.ID] == pumpvalve[ENC.PumpValve.LOAD_ID]:
+						load[Load.INTERCONNECTION_LOAD] += pumpvalve[ENC.PumpValve.OPERATIONAL_STATUS] * pumpvalve[ENC.PumpValve.POWER_CONSUMPTION]
 
 		except:
 			print('Error: #-1240')

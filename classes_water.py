@@ -25,6 +25,7 @@ import ctypes as ct
 import pandas as pd
 import numpy as np
 import random
+import math
 
 import classes_power as ODC
 
@@ -1021,14 +1022,37 @@ class Valve:
 	def randomSwitching(self):
 		pass
 
-class Emitter:
+class PumpValve:
 	CLID = 2203
+
+	# INPUTS
+	ID = 0
+	TYPE = 1
+	TERMINAL_1_ID = 2
+	TERMINAL_2_ID = 3
+	FUNCTIONAL_STATUS = 4 # switch
+	DIAMETER = 5
+	HEADLOSS = 6
+	LOSS_COEFFICIENT = 7
+	MODEL = 8
+	SETTING = 9
+	AVERAGE_EFFICIENCY = 10
+	LOAD_ID = 11
+	# INPUT VARIABLES
+	# RELIABILITY
+	# CONTROLS
+	OPERATIONAL_STATUS = 12 # switch
+	# OUTPUTS
+	POWER_CONSUMPTION = 13
+	FLOW = 14
+	HEADLOSS = 15
+	VELOCITY = 16
 
 	def __init__(self, dframe):
 		self.cols = list(dframe.columns)
 		self.matrix = dframe.values
 		self.num_components = len(dframe.index)
-		self.num_switches = self.num_components * 0
+		self.num_switches = self.num_components * 1 # temporary "FIXED STATUS" also?
 		self.num_stochastic = self.num_components * 0
 		self.switch_chance = (0.0, 0.0)
 		self.stochastic_chance = (0.0, 0.0)
@@ -1037,25 +1061,85 @@ class Emitter:
 		try:
 			return getattr(cls, str)
 		except:
-			print('WATER ERROR in Emitter0')
+			print('WATER ERROR in Valve0')
 
 	def createAllEN(self, txtwriter, interconn_dict):
 		try:
-			pass
+			for row in self.matrix:
+				multiplier = 1
+
+				# if self.valveType(row[PumpValve.MODEL] == 'FCV'):
+				# 	multiplier = 0
+
+				templist = [int(row[PumpValve.ID]), int(row[PumpValve.TERMINAL_1_ID]), int(row[PumpValve.TERMINAL_2_ID]), row[PumpValve.DIAMETER],
+				self.valveType(row[PumpValve.MODEL]), multiplier*row[PumpValve.SETTING], row[PumpValve.LOSS_COEFFICIENT]]
+				txtwriter.writerow(templist)
+
+			txtwriter.writerow('')
 		except:
-			print('WATER ERROR in Emitter1')
+			print('WATER ERROR in PumpValve1')
 
 	def readAllENoutputs(self, ENlib):
 		try:
-			pass
+			for row in self.matrix:
+				EN_ID = ct.c_char_p(str(int(row[PumpValve.ID])).encode('utf-8'))
+				EN_idx = ct.pointer(ct.c_int(0))
+				EN_val = ct.pointer(ct.c_float(0.0))
+
+				errorcode = ENlib.ENgetlinkindex(EN_ID, EN_idx)
+				if errorcode != 0:
+					print('WATER ERRORCODE', errorcode, 'in PumpValve2')
+					break
+
+				errorcode = ENlib.ENgetlinkvalue(EN_idx.contents, ENlinkparam.FLOW, EN_val)
+				if errorcode != 0:
+					print('WATER ERRORCODE', errorcode, 'in PumpValve2')
+					break
+				row[PumpValve.FLOW] = EN_val.contents.value
+
+				errorcode = ENlib.ENgetlinkvalue(EN_idx.contents, ENlinkparam.HEADLOSS, EN_val)
+				if errorcode != 0:
+					print('WATER ERRORCODE', errorcode, 'in PumpValve2')
+					break
+				row[PumpValve.HEADLOSS] = EN_val.contents.value
+
+				errorcode = ENlib.ENgetlinkvalue(EN_idx.contents, ENlinkparam.VELOCITY, EN_val)
+				if errorcode != 0:
+					print('WATER ERRORCODE', errorcode, 'in PumpValve2')
+					break
+				row[PumpValve.VELOCITY] = EN_val.contents.value
+
+				row[PumpValve.POWER_CONSUMPTION] = 0.7457 * (row[PumpValve.SETTING]/0.433) * math.fabs(row[PumpValve.FLOW]) * 1.0 / (row[PumpValve.AVERAGE_EFFICIENCY] * 3960) # 0.7457 hp-to-kw conversion factor; 1.0 SG water; 3960 for GPM conversion 
 		except:
-			print('WATER ERROR in Emitter2')
+			print('WATER ERROR in Valve2')
 
 	def convertToDataFrame(self):
 		try:
 			return pd.DataFrame(data=self.matrix, columns=self.cols)
 		except:
-			print('WATER ERROR in Emitter3')
+			print('WATER ERROR in Valve3')
+
+	def valveType(self, floatval):
+		try:
+			tempdict = {0.0: 'PRV', 1.0: 'PSV', 2.0: 'PBV', 3.0: 'FCV',
+			4.0: 'TCV', 5.0: 'GPV'}
+			return tempdict[floatval]
+		except:
+			print('WATER ERROR in Valve4')
+
+	def convertToInputTensor(self):
+		try:
+			return [], [], np.empty([0,0], dtype=np.float32).flatten(), np.empty([0,0], dtype=np.float32).flatten()
+		except:
+			print('WATER ERROR in Valve5')
+			return -1
+
+	def convertToOutputTensor(self):
+		try:
+			return [], np.empty([0,0], dtype=np.float32).flatten()
+		except:
+			print('WATER ERROR in Valve6')
+			return -1
 
 	def randomStochasticity(self):
 		pass
