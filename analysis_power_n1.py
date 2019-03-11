@@ -101,6 +101,11 @@ def main(dss_debug, write_cols, plf):
 	object_pumpload = ICC.PumpLoad(csv_pumpload)
 	object_tankgenerator = ICC.GeneratorJunction(csv_tankgenerator)
 
+	for idx, generator in object_generator.matrix:
+		print(idx, generator[ODC.Generator.ID])
+		if(generator[ODC.Generator.ID]) == 121.0:
+			print(object_generator[idx+1][ODC.Generator.ID])
+
 	# -----------------------
 	# ADD COMPONENTS TO LISTS
 	# -----------------------

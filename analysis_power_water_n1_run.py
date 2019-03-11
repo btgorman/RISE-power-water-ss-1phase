@@ -33,7 +33,10 @@ pipe_array = [9.0, 25.0, 24.0]
 pipe_array.remove(25.0)
 pipe_array.remove(24.0)
 
+alpha_array = [0.4, 0.6]
+
 for pipe_fid in pipe_array:
 	for widx in range(0, water_sims):
 		for pidx in range(0, power_sims):
-			pid = subprocess.call('python analysis_power_water_n1.py {} {} {}'.format(pdf_array[pidx], wdf_array[widx], pipe_fid), shell=True)
+			for alpha in alpha_array:
+				pid = subprocess.call('python analysis_power_water_n1.py {} {} {} {}'.format(pdf_array[pidx], wdf_array[widx], alpha, pipe_fid), shell=True)

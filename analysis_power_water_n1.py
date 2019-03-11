@@ -38,7 +38,7 @@ import win32com.client
 
 from operator import itemgetter
 
-def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
+def main(dss_debug, write_cols, power_df, water_df, a_sens, pipe_fail_id):
 
 	os_username = os.getlogin()
 
@@ -102,6 +102,16 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 	object_twowindingtransformer = ODC.TwoWindingTransformer(csv_twowindingtransformer)
 	object_capacitor = ODC.Capacitor(csv_capacitor)
 	object_reactor = ODC.Reactor(csv_reactor)
+
+	total_capacity_reduce = 0.0 # Reduce maximum network load equal to amount of capacity that is reduced from Unit 121
+	for generator in object_generator.matrix:
+		if generator[ODC.Generator.ID] == 121.0:
+			total_capacity_reduce = (1.0 - a_sens) * generator[ODC.Generator.REAL_GENERATION_MAX_RATING]
+			generator[ODC.Generator.RAMP_RATE] = a_sens * generator[ODC.Generator.RAMP_RATE]
+			generator[ODC.Generator.REAL_GENERATION_MIN_RATING] = a_sens * generator[ODC.Generator.REAL_GENERATION_MIN_RATING]
+			generator[ODC.Generator.REAL_GENERATION_MAX_RATING] = a_sens * generator[ODC.Generator.REAL_GENERATION_MAX_RATING]
+	percent_capacity_reduce = total_capacity_reduce / sum(object_load.matrix[:, ODC.Load.REAL_LOAD_MAX])
+	object_load.matrix[:, ODC.Load.REAL_LOAD_MAX] = (1.0 - percent_capacity_reduce) * object_load.matrix[:, ODC.Load.REAL_LOAD_MAX]
 
 	# -----------------------
 	# ADD COMPONENTS TO LISTS
@@ -371,7 +381,7 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 	# ----------------------------------------
 
 	for pipe in object_pipe.matrix:
-		if pipe[ENC.Pipe.ID] in [39, 40]:#[pipe_fail_id]:
+		if pipe[ENC.Pipe.ID] in [pipe_fail_id]:
 			pipe[ENC.Pipe.OPERATIONAL_STATUS] = 0.0
 
 	base_curve_matrix = np.array(object_curve.matrix, copy=True)
@@ -545,7 +555,7 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 	power_load_factor = power_df
 	object_load.multiplyLoadFactor(power_load_factor, power_factor)
 	print('power load factor', power_load_factor)
-	# object_junction.multiplyLoadFactor(water_df)
+	# object_junction.multiplyLoadFactor(water_df) # unnecessary the EPANET PDNA will solve for this
 	print('water demand factor', water_df)
 
 	# SIM STEP 2: SET LOAD INTERCONNECTIONS
@@ -837,7 +847,7 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 		nominal_reserves_list.append(nominal_reserves_dict.get(generator[ODC.Generator.ID], 0.0))
 		reduced_reserves_list.append(nominal_reserves_dict.get(generator[ODC.Generator.ID], 0.0) - reduced_reserves_dict.get(generator[ODC.Generator.ID], 0.0))
 
-	with open('C:\\Users\\' + os_username + '\\Documents\\git\\RISE-power-water-ss-1phase\\model_outputs\\analysis_power_water\\power_water_pipe_n1_{}.csv'.format(int(3940)), 'a', newline='') as file:
+	with open('C:\\Users\\' + os_username + '\\Documents\\git\\RISE-power-water-ss-1phase\\model_outputs\\analysis_power_water\\power_water_pipe_n1_{}_{}.csv'.format(int(pipe_fail_id), a_sens), 'a', newline='') as file:
 		writer = csv.writer(file)
 		writer.writerow([water_df, power_df, need_reserves, actual_reserves, sum(reduced_reserves_dict.values())] + nominal_reserves_list + reduced_reserves_list)
 	
@@ -885,36 +895,36 @@ def main(dss_debug, write_cols, power_df, water_df, pipe_fail_id):
 		else:
 			list_gen_mint.append(0)
 	
-	print('Cables')
-	for row in object_cable.matrix:
-		object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS] = np.array(base_gen_commitment, copy=True)
-		object_generator.matrix[:, ODC.Generator.REAL_GENERATION] = np.array(base_gen_dispatch, copy=True)
-		object_generator.matrix[:, ODC.Generator.REAL_GENERATION_MIN_RATING] = np.array(base_gen_dispatch_min, copy=True)
-		object_generator.matrix[:, ODC.Generator.REAL_GENERATION_MAX_RATING] = np.array(base_gen_dispatch_max, copy=True)
-		object_cable.matrix[:, ODC.Cable.OPERATIONAL_STATUS_A] = np.array(base_branch_commitment, copy=True)
-		run_OpenDSS(0, True)
+	# print('Cables')
+	# for row in object_cable.matrix:
+	# 	object_generator.matrix[:, ODC.Generator.OPERATIONAL_STATUS] = np.array(base_gen_commitment, copy=True)
+	# 	object_generator.matrix[:, ODC.Generator.REAL_GENERATION] = np.array(base_gen_dispatch, copy=True)
+	# 	object_generator.matrix[:, ODC.Generator.REAL_GENERATION_MIN_RATING] = np.array(base_gen_dispatch_min, copy=True)
+	# 	object_generator.matrix[:, ODC.Generator.REAL_GENERATION_MAX_RATING] = np.array(base_gen_dispatch_max, copy=True)
+	# 	object_cable.matrix[:, ODC.Cable.OPERATIONAL_STATUS_A] = np.array(base_branch_commitment, copy=True)
+	# 	run_OpenDSS(0, True)
  
-		if row[ODC.Cable.ID] not in [10.0, 100.0]:
-			if row[ODC.Cable.OPERATIONAL_STATUS_A] == 1.0:
-				row[ODC.Cable.OPERATIONAL_STATUS_A] = 0.0
-				run_OpenDSS(0, True)
-				try:
-					list_branch_mint.append(grb_solvers.contingency_response(object_load, object_generator, object_cable))
-				except:
-					list_branch_mint.append(10000)
-			else:
-				list_branch_mint.append(0)
+	# 	if row[ODC.Cable.ID] not in [10.0, 100.0]:
+	# 		if row[ODC.Cable.OPERATIONAL_STATUS_A] == 1.0:
+	# 			row[ODC.Cable.OPERATIONAL_STATUS_A] = 0.0
+	# 			run_OpenDSS(0, True)
+	# 			try:
+	# 				list_branch_mint.append(grb_solvers.contingency_response(object_load, object_generator, object_cable))
+	# 			except:
+	# 				list_branch_mint.append(10000)
+	# 		else:
+	# 			list_branch_mint.append(0)
 
-	object_cable.matrix[:, ODC.Cable.OPERATIONAL_STATUS_A] = np.array(base_branch_commitment, copy=True)
-	print('')
+	# object_cable.matrix[:, ODC.Cable.OPERATIONAL_STATUS_A] = np.array(base_branch_commitment, copy=True)
+	# print('')
 
-	with open('C:\\Users\\' + os_username + '\\Documents\\git\\RISE-power-water-ss-1phase\\model_outputs\\analysis_power_water\\power_water_gen_response_n1_{}.csv'.format(int(3940)), 'a', newline='') as file:
+	with open('C:\\Users\\' + os_username + '\\Documents\\git\\RISE-power-water-ss-1phase\\model_outputs\\analysis_power_water\\power_water_gen_response_n1_{}_{}.csv'.format(int(pipe_fail_id), a_sens), 'a', newline='') as file:
 		writer = csv.writer(file)
 		writer.writerow([water_df, power_df] + list_gen_mint)
 
-	with open('C:\\Users\\' + os_username + '\\Documents\\git\\RISE-power-water-ss-1phase\\model_outputs\\analysis_power_water\\power_water_branch_response_n1_{}.csv'.format(int(3940)), 'a', newline='') as file:
-		writer = csv.writer(file)
-		writer.writerow([water_df, power_df] + list_branch_mint)
+	# with open('C:\\Users\\' + os_username + '\\Documents\\git\\RISE-power-water-ss-1phase\\model_outputs\\analysis_power_water\\power_water_branch_response_n1_{}_{}.csv'.format(int(pipe_fail_id), a_sens), 'a', newline='') as file:
+	# 	writer = csv.writer(file)
+	# 	writer.writerow([water_df, power_df] + list_branch_mint)
 
 	# Interconnections have no effect
 	# input_list_continuous, input_list_categorical, output_list, input_tensor_continuous, input_tensor_categorical, output_tensor = run_OpenDSS(dss_debug, False)
@@ -964,6 +974,7 @@ if __name__ == '__main__':
 
 	power_df = float(sys.argv[1])
 	water_df = float(sys.argv[2])
-	pipe_fid = float(sys.argv[3])
+	a_sens = float(sys.argv[3])
+	pipe_fid = float(sys.argv[4])
 
-	main(dss_debug, write_cols, power_df, water_df, pipe_fid)
+	main(dss_debug, write_cols, power_df, water_df, a_sens, pipe_fid)
