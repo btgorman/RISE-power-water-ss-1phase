@@ -38,7 +38,7 @@ import win32com.client
 
 from operator import itemgetter
 
-def main(dss_debug, write_cols, power_df, water_df, a_sens, pipe_fail_id):
+def main(dss_debug, write_cols, power_df, water_df, a_sens, pipe_fail_id, junc_sens):
 
 	os_username = os.getlogin()
 
@@ -110,6 +110,8 @@ def main(dss_debug, write_cols, power_df, water_df, a_sens, pipe_fail_id):
 			generator[ODC.Generator.RAMP_RATE] = a_sens * generator[ODC.Generator.RAMP_RATE]
 			generator[ODC.Generator.REAL_GENERATION_MIN_RATING] = a_sens * generator[ODC.Generator.REAL_GENERATION_MIN_RATING]
 			generator[ODC.Generator.REAL_GENERATION_MAX_RATING] = a_sens * generator[ODC.Generator.REAL_GENERATION_MAX_RATING]
+			generator[ODC.Generator.JUNCTION_ID] = junc_sens
+			print('Unit {} new junction ID {}'.format(generator[ODC.Generator.ID], generator[ODC.Generator.JUNCTION_ID]))
 	percent_capacity_reduce = total_capacity_reduce / sum(object_load.matrix[:, ODC.Load.REAL_LOAD_MAX])
 	object_load.matrix[:, ODC.Load.REAL_LOAD_MAX] = (1.0 - percent_capacity_reduce) * object_load.matrix[:, ODC.Load.REAL_LOAD_MAX]
 
@@ -916,7 +918,8 @@ def main(dss_debug, write_cols, power_df, water_df, a_sens, pipe_fail_id):
 	# 			list_branch_mint.append(0)
 
 	# object_cable.matrix[:, ODC.Cable.OPERATIONAL_STATUS_A] = np.array(base_branch_commitment, copy=True)
-	# print('')
+
+	print('')
 
 	with open('C:\\Users\\' + os_username + '\\Documents\\git\\RISE-power-water-ss-1phase\\model_outputs\\analysis_power_water\\power_water_gen_response_n1_{}_{}.csv'.format(int(pipe_fail_id), a_sens), 'a', newline='') as file:
 		writer = csv.writer(file)
@@ -976,5 +979,6 @@ if __name__ == '__main__':
 	water_df = float(sys.argv[2])
 	a_sens = float(sys.argv[3])
 	pipe_fid = float(sys.argv[4])
+	junc_sens = float(sys.argv[5])
 
-	main(dss_debug, write_cols, power_df, water_df, a_sens, pipe_fid)
+	main(dss_debug, write_cols, power_df, water_df, a_sens, pipe_fid, junc_sens)
