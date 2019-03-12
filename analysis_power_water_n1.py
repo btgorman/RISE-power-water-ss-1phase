@@ -849,7 +849,7 @@ def main(dss_debug, write_cols, power_df, water_df, a_sens, pipe_fail_id, junc_s
 		nominal_reserves_list.append(nominal_reserves_dict.get(generator[ODC.Generator.ID], 0.0))
 		reduced_reserves_list.append(nominal_reserves_dict.get(generator[ODC.Generator.ID], 0.0) - reduced_reserves_dict.get(generator[ODC.Generator.ID], 0.0))
 
-	with open('C:\\Users\\' + os_username + '\\Documents\\git\\RISE-power-water-ss-1phase\\model_outputs\\analysis_power_water\\power_water_pipe_n1_{}_{}.csv'.format(int(pipe_fail_id), a_sens), 'a', newline='') as file:
+	with open('C:\\Users\\' + os_username + '\\Documents\\git\\RISE-power-water-ss-1phase\\model_outputs\\analysis_power_water\\power_water_pipe_n1_{}_{}_jid{}.csv'.format(int(pipe_fail_id), a_sens, int(junc_sens)), 'a', newline='') as file:
 		writer = csv.writer(file)
 		writer.writerow([water_df, power_df, need_reserves, actual_reserves, sum(reduced_reserves_dict.values())] + nominal_reserves_list + reduced_reserves_list)
 	
@@ -921,11 +921,11 @@ def main(dss_debug, write_cols, power_df, water_df, a_sens, pipe_fail_id, junc_s
 
 	print('')
 
-	with open('C:\\Users\\' + os_username + '\\Documents\\git\\RISE-power-water-ss-1phase\\model_outputs\\analysis_power_water\\power_water_gen_response_n1_{}_{}.csv'.format(int(pipe_fail_id), a_sens), 'a', newline='') as file:
+	with open('C:\\Users\\' + os_username + '\\Documents\\git\\RISE-power-water-ss-1phase\\model_outputs\\analysis_power_water\\power_water_gen_response_n1_{}_{}_jid{}.csv'.format(int(pipe_fail_id), a_sens, int(junc_sens)), 'a', newline='') as file:
 		writer = csv.writer(file)
 		writer.writerow([water_df, power_df] + list_gen_mint)
 
-	# with open('C:\\Users\\' + os_username + '\\Documents\\git\\RISE-power-water-ss-1phase\\model_outputs\\analysis_power_water\\power_water_branch_response_n1_{}_{}.csv'.format(int(pipe_fail_id), a_sens), 'a', newline='') as file:
+	# with open('C:\\Users\\' + os_username + '\\Documents\\git\\RISE-power-water-ss-1phase\\model_outputs\\analysis_power_water\\power_water_branch_response_n1_{}_{}_jid{}.csv'.format(int(pipe_fail_id), a_sens, int(junc_sens)), 'a', newline='') as file:
 	# 	writer = csv.writer(file)
 	# 	writer.writerow([water_df, power_df] + list_branch_mint)
 
