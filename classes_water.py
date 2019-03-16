@@ -215,7 +215,7 @@ class Junction:
 				if row[Junction.PATTERN_ID] != 0.0:
 					pattern = int(row[Junction.PATTERN_ID])
 
-				templist = [int(row[Junction.ID]), row[Junction.ELEVATION], row[Junction.BASE_DEMAND]+row[Junction.INTERCONNECTION_DISPATCH_DEMAND]+row[Junction.INTERCONNECTION_RESPONSE_DEMAND], pattern]
+				templist = [int(row[Junction.ID]), row[Junction.ELEVATION], row[Junction.BASE_DEMAND], pattern]
 				txtwriter.writerow(templist)
 
 			txtwriter.writerow('')

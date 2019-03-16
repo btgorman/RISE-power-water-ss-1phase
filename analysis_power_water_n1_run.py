@@ -37,23 +37,13 @@ alpha_array = [1.0]
 
 municipal_junction_array = [1.0, 2.0, 3.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 13.0, 14.0, 15.0, 16.0, 18.0, 19.0, 28.0]
 municipal_junction_array.remove(28.0) # tuscon exports
-municipal_junction_array.remove(19.0)
-municipal_junction_array.remove(16.0)
-municipal_junction_array.remove(15.0)
-municipal_junction_array.remove(14.0)
-municipal_junction_array.remove(13.0)
-municipal_junction_array.remove(10.0)
-municipal_junction_array.remove(9.0)
-municipal_junction_array.remove(8.0)
-municipal_junction_array.remove(7.0)
-municipal_junction_array.remove(6.0)
 municipal_junction_array.remove(18.0) # base model
-# municipal_junction_array = [18.0] # base model
+municipal_junction_array = [18.0]
 print(municipal_junction_array)
 
 for junction in municipal_junction_array:
 	for pipe_fid in pipe_array:
 		for alpha in alpha_array:
-			for widx in range(0, water_sims):
-				for pidx in range(0, power_sims):
+			for widx in [0]:#range(0, water_sims):
+				for pidx in [0]:#range(0, power_sims):
 					pid = subprocess.call('python analysis_power_water_n1.py {} {} {} {} {}'.format(pdf_array[pidx], wdf_array[widx], alpha, pipe_fid, junction), shell=True)
